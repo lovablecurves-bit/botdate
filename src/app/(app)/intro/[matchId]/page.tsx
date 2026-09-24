@@ -6,7 +6,7 @@ import { PersonStrip } from "@/components/person";
 import { StageTrail } from "@/components/stage";
 import { SubmitButton } from "@/components/submit-button";
 import { requireOnboarded } from "@/lib/auth";
-import { getDb } from "@/lib/db/open";
+import { withDb } from "@/lib/db/open";
 import { getIntro } from "@/lib/domain";
 import { formatPacific } from "@/lib/time";
 
@@ -22,7 +22,7 @@ export default async function IntroPage({
   const member = await requireOnboarded();
   const { matchId } = await params;
   const { error } = await searchParams;
-  const intro = getIntro(getDb(), member.id, matchId);
+  const intro = await withDb((db) => getIntro(db, member.id, matchId));
   if (!intro) notFound();
   const other = intro.person.displayName.split(" ")[0];
   const both = intro.viewerOptIn && intro.otherOptIn;

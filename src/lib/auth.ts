@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getDb } from "./db/open";
+import { withDb } from "./db/open";
 import { getMember } from "./domain";
 import type { Member } from "./types";
 
@@ -10,7 +10,7 @@ export async function requireUser(): Promise<Member> {
   const jar = await cookies();
   const id = jar.get(COOKIE)?.value;
   if (!id) redirect("/login");
-  const member = getMember(getDb(), id);
+  const member = await withDb((db) => getMember(db, id));
   if (!member) {
     jar.set(COOKIE, "", { path: "/", maxAge: 0 });
     redirect("/login");

@@ -3,7 +3,7 @@ import { Avatar } from "@/components/avatar";
 import { Banner } from "@/components/banner";
 import { SubmitButton } from "@/components/submit-button";
 import { DEMO_NOTES, DEMO_ORDER } from "@/lib/demo/members";
-import { getDb } from "@/lib/db/open";
+import { withDb } from "@/lib/db/open";
 import { listRoster } from "@/lib/domain";
 
 export const metadata = { title: "Enter" };
@@ -11,7 +11,7 @@ export const metadata = { title: "Enter" };
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
-  const roster = listRoster(getDb()).sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
+  const roster = (await withDb((db) => listRoster(db))).sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
 
   return (
     <main className="login">

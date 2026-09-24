@@ -7,7 +7,7 @@ import { Facts, PersonStrip } from "@/components/person";
 import { StageTrail } from "@/components/stage";
 import { SubmitButton } from "@/components/submit-button";
 import { requireOnboarded } from "@/lib/auth";
-import { getDb } from "@/lib/db/open";
+import { withDb } from "@/lib/db/open";
 import { getDesk } from "@/lib/domain";
 
 export const metadata = { title: "Bot desk" };
@@ -22,7 +22,7 @@ export default async function DeskPage({
   const member = await requireOnboarded();
   const { matchId } = await params;
   const { error } = await searchParams;
-  const desk = getDesk(getDb(), member.id, matchId);
+  const desk = await withDb((db) => getDesk(db, member.id, matchId));
   if (!desk) notFound();
 
   return (
