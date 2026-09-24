@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 import { openDatabase, type BotDateDb } from "./db/open";
 import { messages } from "./db/schema";
@@ -23,12 +26,24 @@ import {
 } from "./domain";
 import { upcomingSaturdayLocal } from "./time";
 
-function fresh(): BotDateDb {
+async function fresh(): Promise<BotDateDb> {
   return openDatabase(":memory:");
 }
 
-test("Avery's shortlist hides dealbreaker misses and ranks the rest", () => {
-  const ctx = fresh();
+test("a file database reopens with Avery Chen still seeded", async () => {
+  const file = path.join(os.tmpdir(), `botdate-${process.pid}-${Date.now()}.sqlite`);
+  const first = await openDatabase(file);
+  assert.equal(getMember(first, "avery")?.displayName, "Avery Chen");
+  first.close();
+  const second = await openDatabase(file);
+  assert.equal(getMember(second, "avery")?.displayName, "Avery Chen");
+  assert.equal(listShortlist(second, "avery").cards.map((card) => card.person.id).join(","), "jordan,riley,sam");
+  second.close();
+  fs.unlinkSync(file);
+});
+
+test("Avery's shortlist hides dealbreaker misses and ranks the rest", async () => {
+  const ctx = await fresh();
   const list = listShortlist(ctx, "avery");
   assert.deepEqual(
     list.cards.map((card) => card.person.id),
@@ -43,8 +58,8 @@ test("Avery's shortlist hides dealbreaker misses and ranks the rest", () => {
   ctx.close();
 });
 
-test("bot notes are sent without a human and both people can read them", () => {
-  const ctx = fresh();
+test("bot notes are sent without a human and both people can read them", async () => {
+  const ctx = await fresh();
   const avery = getDesk(ctx, "avery", "match_avery_riley");
   const riley = getDesk(ctx, "riley", "match_avery_riley");
   assert.equal(avery?.draft, null);
@@ -58,8 +73,8 @@ test("bot notes are sent without a human and both people can read them", () => {
   ctx.close();
 });
 
-test("matchmakers send the next note unless they are paused", () => {
-  const ctx = fresh();
+test("matchmakers send the next note unless they are paused", async () => {
+  const ctx = await fresh();
   assert.equal(getDesk(ctx, "avery", "match_avery_sam")?.items.some((item) => item.body.includes("Sunday table")), false);
   assert.equal(setPaused(ctx, "avery", true).ok, true);
   assert.equal(advanceBotTalk(ctx, "match_avery_sam").ok, false);
@@ -72,8 +87,8 @@ test("matchmakers send the next note unless they are paused", () => {
   ctx.close();
 });
 
-test("intro opt-in opens human chat only after both people agree", () => {
-  const ctx = fresh();
+test("intro opt-in opens human chat only after both people agree", async () => {
+  const ctx = await fresh();
   const local = upcomingSaturdayLocal();
   assert.equal(
     proposeDate(ctx, "avery", "match_avery_sam", { local, place: "A quiet table", note: "" }).ok,
@@ -91,8 +106,8 @@ test("intro opt-in opens human chat only after both people agree", () => {
   ctx.close();
 });
 
-test("a date offer is approved by both people, and tweak or pass closes the ask", () => {
-  const ctx = fresh();
+test("a date offer is approved by both people, and tweak or pass closes the ask", async () => {
+  const ctx = await fresh();
   const open = getDate(ctx, "avery", "match_avery_jordan")?.proposals.find((item) => item.status === "proposed");
   assert.ok(open);
   assert.equal(open.myDecision, "pending");
@@ -106,7 +121,7 @@ test("a date offer is approved by both people, and tweak or pass closes the ask"
   assert.equal(confirmed?.canPropose, false);
   ctx.close();
 
-  const passed = fresh();
+  const passed = await fresh();
   const offer = getDate(passed, "avery", "match_avery_jordan")?.proposals[0];
   assert.ok(offer);
   assert.equal(passOffer(passed, "avery", offer.id).ok, true);
@@ -114,7 +129,7 @@ test("a date offer is approved by both people, and tweak or pass closes the ask"
   assert.equal(approveOffer(passed, "jordan", offer.id).ok, false);
   passed.close();
 
-  const tweaked = fresh();
+  const tweaked = await fresh();
   const target = getDate(tweaked, "avery", "match_avery_jordan")?.proposals[0];
   assert.ok(target);
   assert.equal(
@@ -132,8 +147,8 @@ test("a date offer is approved by both people, and tweak or pass closes the ask"
   tweaked.close();
 });
 
-test("loosening a kids dealbreaker surfaces Noah and tightening hides a desk", () => {
-  const ctx = fresh();
+test("loosening a kids dealbreaker surfaces Noah and tightening hides a desk", async () => {
+  const ctx = await fresh();
   const avery = getMember(ctx, "avery");
   assert.ok(avery);
   const opened = saveMember(ctx, "avery", { ...memberToInput(avery), kidsFilter: "any" });
@@ -154,8 +169,8 @@ test("loosening a kids dealbreaker surfaces Noah and tightening hides a desk", (
   ctx.close();
 });
 
-test("wiping bot memory keeps human chat", () => {
-  const ctx = fresh();
+test("wiping bot memory keeps human chat", async () => {
+  const ctx = await fresh();
   ctx.db
     .insert(messages)
     .values({

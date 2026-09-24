@@ -18,11 +18,11 @@ export function Wordmark() {
             <path d={RIGHT_OVER} />
           </clipPath>
         </defs>
-        <path fill="var(--pop)" transform="translate(0 3)" d={HEART} />
-        <path fill="var(--rose)" transform="translate(32 3)" d={HEART} />
-        <circle cx="32" cy="15" r="10" fill="none" stroke="var(--accent)" strokeWidth="4.5" />
-        <path fill="var(--pop)" transform="translate(0 3)" d={HEART} clipPath="url(#bd-heart-left)" />
-        <path fill="var(--rose)" transform="translate(32 3)" d={HEART} clipPath="url(#bd-heart-right)" />
+        <path fill="var(--melon)" transform="translate(0 3)" d={HEART} />
+        <path fill="var(--pop)" transform="translate(32 3)" d={HEART} />
+        <circle cx="32" cy="15" r="10" fill="none" stroke="var(--cherry)" strokeWidth="4.5" />
+        <path fill="var(--melon)" transform="translate(0 3)" d={HEART} clipPath="url(#bd-heart-left)" />
+        <path fill="var(--pop)" transform="translate(32 3)" d={HEART} clipPath="url(#bd-heart-right)" />
       </svg>
       <span>BotDate</span>
     </>

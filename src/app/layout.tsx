@@ -22,10 +22,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#fff7fb",
+  themeColor: "#fff0f8",
 };
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

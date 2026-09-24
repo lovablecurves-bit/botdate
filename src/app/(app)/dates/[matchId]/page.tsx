@@ -5,7 +5,7 @@ import { DateOffer } from "@/components/date-offer";
 import { MatchNav } from "@/components/match-nav";
 import { PersonStrip } from "@/components/person";
 import { requireOnboarded } from "@/lib/auth";
-import { getDb } from "@/lib/db/open";
+import { withDb } from "@/lib/db/open";
 import { getDate } from "@/lib/domain";
 
 export const metadata = { title: "Date" };
@@ -20,7 +20,7 @@ export default async function DatePage({
   const member = await requireOnboarded();
   const { matchId } = await params;
   const { error } = await searchParams;
-  const date = getDate(getDb(), member.id, matchId);
+  const date = await withDb((db) => getDate(db, member.id, matchId));
   if (!date) notFound();
   const other = date.person.displayName.split(" ")[0];
 

@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { requireOnboarded } from "@/lib/auth";
-import { getDb } from "@/lib/db/open";
+import { withDb } from "@/lib/db/open";
 import { listDateIndex } from "@/lib/domain";
 
 export const metadata = { title: "Dates" };
 
 export default async function DatesPage() {
   const member = await requireOnboarded();
-  const rows = listDateIndex(getDb(), member.id).filter((row) => row.status === "proposed" || row.status === "confirmed");
+  const rows = (await withDb((db) => listDateIndex(db, member.id))).filter((row) => row.status === "proposed" || row.status === "confirmed");
   return (
     <div className="stack">
       <header className="page-head">

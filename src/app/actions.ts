@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { clearSession, requireOnboarded, requireUser, setSession } from "@/lib/auth";
 import { resetDatabase } from "@/lib/db/seed";
-import { getDb } from "@/lib/db/open";
+import { withDb } from "@/lib/db/open";
 import {
   approveDraft,
   approveOffer,
@@ -69,7 +69,7 @@ function bounce(path: string, result: ActionResult) {
 
 export async function loginAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
-  const member = getMember(getDb(), userId);
+  const member = await withDb((db) => getMember(db, userId));
   if (!member) redirect("/login?error=That+demo+member+is+not+in+the+seed.");
   await setSession(member.id);
   redirect(member.prefs.locked ? "/shortlist" : "/onboarding");
@@ -81,14 +81,14 @@ export async function logoutAction() {
 }
 
 export async function resetDemoAction() {
-  resetDatabase(getDb());
+  await withDb((db) => resetDatabase(db));
   await clearSession();
   redirect("/login");
 }
 
 export async function saveOnboardingAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const result = saveMember(getDb(), user.id, inputFromForm(formData));
+  const result = await withDb((db) => saveMember(db, user.id, inputFromForm(formData)));
   if (!result.ok) return { ok: false, error: result.error, message: null };
   touch();
   const locked = formData.get("locked") === "on";
@@ -102,7 +102,7 @@ export async function saveOnboardingAction(_prev: FormState, formData: FormData)
 export async function setPausedAction(formData: FormData) {
   const user = await requireUser();
   const paused = String(formData.get("paused")) === "true";
-  const result = setPaused(getDb(), user.id, paused);
+  const result = await withDb((db) => setPaused(db, user.id, paused));
   if (!result.ok) redirect(`/onboarding?error=${encodeURIComponent(result.error)}`);
   touch();
   redirect(`/onboarding?notice=${paused ? "paused" : "unpaused"}`);
@@ -110,7 +110,7 @@ export async function setPausedAction(formData: FormData) {
 
 export async function wipeMemoryAction() {
   const user = await requireUser();
-  const result = wipeMemory(getDb(), user.id);
+  const result = await withDb((db) => wipeMemory(db, user.id));
   if (!result.ok) redirect(`/onboarding?error=${encodeURIComponent(result.error)}`);
   touch();
   redirect("/onboarding?notice=wiped");
@@ -118,42 +118,42 @@ export async function wipeMemoryAction() {
 
 export async function approveOfferAction(matchId: string, proposalId: string): Promise<ActionResult> {
   const user = await requireOnboarded();
-  const result = approveOffer(getDb(), user.id, proposalId);
+  const result = await withDb((db) => approveOffer(db, user.id, proposalId));
   touch(matchId);
   return result;
 }
 
 export async function passOfferAction(matchId: string, proposalId: string): Promise<ActionResult> {
   const user = await requireOnboarded();
-  const result = passOffer(getDb(), user.id, proposalId);
+  const result = await withDb((db) => passOffer(db, user.id, proposalId));
   touch(matchId);
   return result;
 }
 
 export async function tweakOfferAction(matchId: string, proposalId: string, local: string, place: string, note: string): Promise<ActionResult> {
   const user = await requireOnboarded();
-  const result = tweakOffer(getDb(), user.id, proposalId, { local, place, note });
+  const result = await withDb((db) => tweakOffer(db, user.id, proposalId, { local, place, note }));
   touch(matchId);
   return result;
 }
 
 export async function approveDraftAction(messageId: string, body: string): Promise<ActionResult> {
   const user = await requireOnboarded();
-  const result = approveDraft(getDb(), user.id, messageId, body);
+  const result = await withDb((db) => approveDraft(db, user.id, messageId, body));
   touch();
   return result;
 }
 
 export async function editDraftAction(messageId: string, body: string): Promise<ActionResult> {
   const user = await requireOnboarded();
-  const result = editDraft(getDb(), user.id, messageId, body);
+  const result = await withDb((db) => editDraft(db, user.id, messageId, body));
   touch();
   return result;
 }
 
 export async function killDraftAction(messageId: string): Promise<ActionResult> {
   const user = await requireOnboarded();
-  const result = killDraft(getDb(), user.id, messageId);
+  const result = await withDb((db) => killDraft(db, user.id, messageId));
   touch();
   return result;
 }
@@ -161,7 +161,7 @@ export async function killDraftAction(messageId: string): Promise<ActionResult> 
 export async function createDraftAction(formData: FormData) {
   const user = await requireOnboarded();
   const matchId = String(formData.get("matchId") ?? "");
-  const result = createDraft(getDb(), user.id, matchId);
+  const result = await withDb((db) => createDraft(db, user.id, matchId));
   touch(matchId);
   bounce(`/desk/${matchId}`, result);
   redirect(`/desk/${matchId}`);
@@ -170,7 +170,7 @@ export async function createDraftAction(formData: FormData) {
 export async function optInAction(formData: FormData) {
   const user = await requireOnboarded();
   const matchId = String(formData.get("matchId") ?? "");
-  const result = optIn(getDb(), user.id, matchId);
+  const result = await withDb((db) => optIn(db, user.id, matchId));
   touch(matchId);
   bounce(`/intro/${matchId}`, result);
   redirect(`/intro/${matchId}`);
@@ -180,7 +180,7 @@ export async function chooseChannelAction(formData: FormData) {
   const user = await requireOnboarded();
   const matchId = String(formData.get("matchId") ?? "");
   const choice = String(formData.get("choice") ?? "") as ChannelChoice;
-  const result = chooseChannel(getDb(), user.id, matchId, choice);
+  const result = await withDb((db) => chooseChannel(db, user.id, matchId, choice));
   touch(matchId);
   bounce(`/intro/${matchId}`, result);
   redirect(`/intro/${matchId}`);
@@ -189,7 +189,7 @@ export async function chooseChannelAction(formData: FormData) {
 export async function sendHumanAction(formData: FormData) {
   const user = await requireOnboarded();
   const matchId = String(formData.get("matchId") ?? "");
-  const result = sendHuman(getDb(), user.id, matchId, String(formData.get("body") ?? ""));
+  const result = await withDb((db) => sendHuman(db, user.id, matchId, String(formData.get("body") ?? "")));
   touch(matchId);
   bounce(`/intro/${matchId}`, result);
   redirect(`/intro/${matchId}`);
@@ -198,11 +198,11 @@ export async function sendHumanAction(formData: FormData) {
 export async function proposeDateAction(formData: FormData) {
   const user = await requireOnboarded();
   const matchId = String(formData.get("matchId") ?? "");
-  const result = proposeDate(getDb(), user.id, matchId, {
+  const result = await withDb((db) => proposeDate(db, user.id, matchId, {
     local: String(formData.get("local") ?? ""),
     place: String(formData.get("place") ?? ""),
     note: String(formData.get("note") ?? ""),
-  });
+  }));
   touch(matchId);
   bounce(`/dates/${matchId}`, result);
   redirect(`/dates/${matchId}`);
@@ -212,7 +212,7 @@ export async function respondDateAction(formData: FormData) {
   const user = await requireOnboarded();
   const matchId = String(formData.get("matchId") ?? "");
   const decision = String(formData.get("decision") ?? "") as "confirm" | "decline" | "withdraw";
-  const result = respondToDate(getDb(), user.id, String(formData.get("proposalId") ?? ""), decision);
+  const result = await withDb((db) => respondToDate(db, user.id, String(formData.get("proposalId") ?? ""), decision));
   touch(matchId);
   bounce(`/dates/${matchId}`, result);
   redirect(`/dates/${matchId}`);

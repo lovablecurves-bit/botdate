@@ -16,7 +16,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). There is no password. Pick a demo member.
 
-The first request creates `data/botdate.sqlite` and seeds it. That file is local and gitignored. **Reset demo data** on Profile (or the signed-out login screen) restores the seed.
+The first request creates `data/botdate.sqlite` and seeds it with Avery Chen and the rest of the demo roster. That file is local and gitignored. **Reset demo data** on Profile (or the signed-out login screen) restores the seed.
 
 `npm test` covers hard filters, bot notes sent without a draft queue, date-offer approve / tweak / pass, intro opt-in, and wipe. No API keys.
 
@@ -53,9 +53,48 @@ Soft prefs rank the list. Shared interests add the most, then the same city. The
 
 Scripted notes are sent as the matchmakers talk. A paused matchmaker does not send the next note. A date offer is the human interrupt.
 
+## Deploy on Vercel
+
+The demo does not use native SQLite. Queries run on [sql.js](https://sql.js.org/) (SQLite compiled to WebAssembly), so a Vercel function can boot without a build toolchain. Avery Chen and the rest of the roster are seeded on first use.
+
+### One-shot demo (no database to provision)
+
+1. Push this repo to GitHub.
+2. In Vercel, choose **Add New… → Project** and import the repo.
+3. Leave the framework preset as **Next.js**. Do not set environment variables.
+4. Deploy.
+
+Open the deployment URL. The login screen lists the demo members with no password. Each serverless instance keeps its own in-memory copy and reseeds after a cold start, so one visitor's approvals are not shared with another instance. That is enough for a clickable public demo.
+
+`npm run dev` on your machine still stores `data/botdate.sqlite` so a local session survives a restart.
+
+### Optional: one shared database with Turso
+
+Set both variables on the Vercel project when every visitor should see the same desks. The free Starter plan is enough for a demo (no credit card). Create a **libSQL** database so `@libsql/client` can reach it. Do not pass `--tursodb`.
+
+```bash
+# https://docs.turso.tech/quickstart
+curl -sSfL https://get.tur.so/install.sh | bash
+turso auth signup
+turso db create botdate
+turso db show botdate --url
+turso db tokens create botdate
+```
+
+In the Vercel project settings, add:
+
+| Name | Value |
+| --- | --- |
+| `TURSO_DATABASE_URL` | The `libsql://…` URL from `turso db show` |
+| `TURSO_AUTH_TOKEN` | The token from `turso db tokens create` |
+
+Redeploy. The first request creates the tables and seeds Avery Chen if the database is empty. Later requests read and write that database, so a reset or an approval is visible to the next visitor. Leave both variables unset to go back to the in-memory demo. Setting only one of them fails startup on purpose.
+
+Copy [`.env.example`](.env.example) to `.env.local` to point `npm run dev` at the same database.
+
 ## Data
 
-SQLite via [Drizzle ORM](https://orm.drizzle.team/) and `better-sqlite3`.
+SQLite via [Drizzle ORM](https://orm.drizzle.team/) and [sql.js](https://sql.js.org/). On Vercel the database is in memory unless `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are set, in which case writes also go to Turso through [`@libsql/client`](https://github.com/tursodatabase/libsql-client-ts).
 
 | Table | Holds |
 | --- | --- |

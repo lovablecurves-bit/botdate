@@ -59,7 +59,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["cooking", "libraries", "walking", "design"],
-    accent: "#ff3d6e",
+    accent: "#ff2d92",
     prefs: {
       ageMin: 28,
       ageMax: 38,
@@ -83,7 +83,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["architecture", "walking", "cooking", "cities"],
-    accent: "#ff4d94",
+    accent: "#ff4db8",
     prefs: {
       ageMin: 29,
       ageMax: 40,
@@ -107,7 +107,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "wants",
     intent: "serious",
     interests: ["cooking", "hospitality", "music", "markets"],
-    accent: "#ff6f61",
+    accent: "#ff3d6e",
     prefs: {
       ageMin: 27,
       ageMax: 36,
@@ -131,7 +131,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["climate", "reading", "hiking", "walking"],
-    accent: "#ff5ca8",
+    accent: "#ff5ab0",
     prefs: {
       ageMin: 28,
       ageMax: 38,
@@ -155,7 +155,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "doesnt",
     intent: "serious",
     interests: ["health", "cooking", "walking", "coffee"],
-    accent: "#ff4f6d",
+    accent: "#ff2f78",
     prefs: {
       ageMin: 28,
       ageMax: 40,
@@ -179,7 +179,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "wants",
     intent: "serious",
     interests: ["reading", "cooking", "libraries", "hiking"],
-    accent: "#ff5a7a",
+    accent: "#ff47c0",
     prefs: {
       ageMin: 34,
       ageMax: 42,
@@ -203,7 +203,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "doesnt",
     intent: "casual",
     interests: ["film", "cities", "music", "galleries"],
-    accent: "#ff3d8a",
+    accent: "#ff3cac",
     prefs: {
       ageMin: 30,
       ageMax: 42,
@@ -227,7 +227,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["film", "reading", "coffee", "cooking"],
-    accent: "#ff6b6b",
+    accent: "#ff1493",
     prefs: {
       ageMin: 28,
       ageMax: 38,
@@ -251,7 +251,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["galleries", "art", "walking", "cooking"],
-    accent: "#ff7a9a",
+    accent: "#ff6aa0",
     prefs: {
       ageMin: 40,
       ageMax: 55,
@@ -275,7 +275,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["reading", "cooking", "coffee", "walking"],
-    accent: "#ff4d7a",
+    accent: "#ff47a8",
     prefs: {
       ageMin: 28,
       ageMax: 38,

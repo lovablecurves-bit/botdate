@@ -4,3 +4,6 @@ node_modules
 *.log
 tsconfig.tsbuildinfo
 .DS_Store
+.env
+.env.*
+!.env.example

@@ -5,7 +5,10 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: ["sql.js"],
+  outputFileTracingIncludes: {
+    "*": ["./node_modules/sql.js/dist/sql-wasm.wasm"],
+  },
   webpack: (config) => {
     config.resolve.alias["@"] = path.join(root, "src");
     return config;
