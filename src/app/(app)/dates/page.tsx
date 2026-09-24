@@ -6,26 +6,18 @@ import { listDateIndex } from "@/lib/domain";
 
 export const metadata = { title: "Dates" };
 
-function summary(row: { bothOptIn: boolean; status: string | null; whenLabel: string | null; place: string | null; mine: boolean }): string {
-  if (!row.bothOptIn) return "Introduction is not mutual yet";
-  if (row.status === "confirmed") return `${row.whenLabel} · ${row.place}`;
-  if (row.status === "proposed" && !row.mine) return `${row.whenLabel} · waiting on you`;
-  if (row.status === "proposed") return `${row.whenLabel} · waiting on them`;
-  return "No time proposed yet";
-}
-
 export default async function DatesPage() {
   const member = await requireOnboarded();
-  const rows = listDateIndex(getDb(), member.id);
+  const rows = listDateIndex(getDb(), member.id).filter((row) => row.status === "proposed" || row.status === "confirmed");
   return (
     <div className="stack">
       <header className="page-head">
         <h1>Dates</h1>
-        <p className="lede">A time opens after you both opt in. One proposal at a time, shown in Pacific time.</p>
+        <p className="lede">A date shows up here only after the matchmakers are ready. Times are Pacific.</p>
       </header>
       {rows.length === 0 ? (
         <section className="empty">
-          <p>No one is on your shortlist yet, so there is nowhere to propose.</p>
+          <p>Nothing needs you yet. Your bots are still talking.</p>
         </section>
       ) : (
         <div className="people">
@@ -35,11 +27,17 @@ export default async function DatesPage() {
                 <Avatar name={row.person.displayName} accent={row.person.accent} />
                 <div>
                   <h2>{row.person.displayName}</h2>
-                  <p className="meta">{summary(row)}</p>
+                  <p className="meta">
+                    {row.status === "confirmed"
+                      ? `${row.whenLabel} · ${row.place}`
+                      : row.offerWaiting
+                        ? `${row.whenLabel} · ready for you`
+                        : `${row.whenLabel} · waiting on them`}
+                  </p>
                 </div>
               </div>
-              <Link className="btn primary wide" href={row.bothOptIn ? `/dates/${row.matchId}` : `/intro/${row.matchId}`}>
-                {row.bothOptIn ? (row.status === "proposed" && !row.mine ? "Confirm date" : "Open date") : "Go to intro"}
+              <Link className={row.offerWaiting ? "btn primary wide" : "btn ghost wide"} href={`/dates/${row.matchId}`}>
+                {row.offerWaiting ? "Review offer" : "View date"}
               </Link>
             </article>
           ))}

@@ -101,7 +101,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   width: min(480px, 100%);
   z-index: 6;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 2px;
   padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--bg) 92%, white);
@@ -335,7 +335,7 @@ fieldset { border: 0; margin: 0; padding: 0; }
 
 .match-nav {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
   border-radius: 16px;

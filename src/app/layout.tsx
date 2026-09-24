@@ -16,7 +16,7 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: { default: "BotDate", template: "%s · BotDate" },
-  description: "A matchmaker desk for dating. Bots do the first pass. You approve every note that goes out in your name.",
+  description: "A matchmaker for dating. Bots do the small talk. You step in when there is a date to approve.",
 };
 
 export const viewport: Viewport = {

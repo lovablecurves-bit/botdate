@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db/open";
 import { listDesk } from "@/lib/domain";
 import { truncate } from "@/lib/labels";
 
-export const metadata = { title: "Bot desk" };
+export const metadata = { title: "Activity" };
 
 export default async function DeskIndexPage() {
   const member = await requireOnboarded();
@@ -13,12 +13,12 @@ export default async function DeskIndexPage() {
   return (
     <div className="stack">
       <header className="page-head">
-        <h1>Desk</h1>
-        <p className="lede">What the matchmakers have already sent. A draft that speaks for you waits until you approve, edit, or kill it.</p>
+        <h1>Activity</h1>
+        <p className="lede">What the matchmakers have already said. Nothing here is waiting on you.</p>
       </header>
       {desks.length === 0 ? (
         <section className="empty">
-          <p>No desks yet. When someone clears both sets of dealbreakers, a desk opens here.</p>
+          <p>No conversations yet. When someone clears both sets of dealbreakers, the bots start talking.</p>
         </section>
       ) : (
         <div>
@@ -28,8 +28,6 @@ export default async function DeskIndexPage() {
               <span>
                 <strong>{desk.person.displayName}</strong>
                 <span className="meta">{truncate(desk.preview, 90)}</span>
-                {desk.draftWaiting ? <span className="draft-flag">Draft to approve</span> : null}
-                {!desk.draftWaiting && desk.held ? <span className="meta">Waiting on their approval</span> : null}
               </span>
             </Link>
           ))}

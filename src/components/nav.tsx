@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/shortlist", label: "Shortlist" },
-  { href: "/desk", label: "Desk" },
   { href: "/dates", label: "Dates" },
   { href: "/onboarding", label: "Profile" },
 ];
@@ -19,7 +18,7 @@ export function Nav({ pending }: { pending: number }) {
         return (
           <Link key={link.href} href={link.href} className={active ? "active" : undefined} aria-current={active ? "page" : undefined}>
             <span>{link.label}</span>
-            {link.href === "/desk" && pending > 0 ? <span className="badge">{pending}</span> : null}
+            {link.href === "/dates" && pending > 0 ? <span className="badge">{pending}</span> : null}
           </Link>
         );
       })}

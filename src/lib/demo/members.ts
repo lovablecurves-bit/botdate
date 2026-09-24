@@ -292,10 +292,10 @@ export const DEMO_MEMBERS: Member[] = [
 export const DEMO_ORDER = ["avery", "jordan", "sam", "riley", "priya", "noah", "alex", "morgan", "casey", "quinn"];
 
 export const DEMO_NOTES: Record<string, string> = {
-  avery: "Primary desk. Jordan's Saturday is waiting on you. Sam's matchmaker has a draft you can approve, edit, or kill.",
-  jordan: "You already proposed Saturday with Avery. Open Dates to see it from your side.",
-  sam: "Avery's matchmaker is mid-conversation. Read the desk, then opt in on Intro.",
-  riley: "Your matchmaker is holding a reply to Avery. It stays unsent until you approve it.",
+  avery: "Your bots have been talking. Jordan's matchmakers are ready with a Saturday date. Sam and Riley are still in conversation.",
+  jordan: "Your matchmakers offered Avery Saturday at Tartine. Approve, tweak, or pass.",
+  sam: "Still talking with Avery's matchmaker. No date to review yet.",
+  riley: "Still talking with Avery's matchmaker. You won't be asked until there's a date.",
   priya: "Profile is filled in. Lock dealbreakers on Profile to open a shortlist.",
   noah: "Doesn't want kids, so anyone with that dealbreaker — Avery included — will not see him.",
   alex: "Clears Avery's filters. Avery is outside Alex's age range, so neither shortlist shows the pair.",

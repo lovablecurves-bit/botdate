@@ -32,7 +32,7 @@ export default async function IntroPage({
         <PersonStrip person={intro.person} />
         <p className="lede">Opting in says you are willing to meet. It does not send a note, and it does not open a private chat by itself.</p>
       </header>
-      <MatchNav matchId={matchId} current="intro" />
+      <MatchNav matchId={matchId} />
       <Banner>{error}</Banner>
       <section className="stack tight">
         <h2>Opt in</h2>
@@ -68,7 +68,7 @@ export default async function IntroPage({
         ) : null}
         {both && intro.channelChoice === "bot" ? (
           <div className="stack tight">
-            <p>You both opted in and chose to keep the matchmakers in the middle. Every outbound bot note still needs approval.</p>
+            <p>You both opted in and chose to keep the matchmakers in the middle. They keep talking on their own.</p>
             <form action={chooseChannelAction}>
               <input type="hidden" name="matchId" value={matchId} />
               <input type="hidden" name="choice" value="human" />
@@ -90,7 +90,7 @@ export default async function IntroPage({
       </section>
       <section className="stack tight">
         <h2>Already sent</h2>
-        {intro.recap.length === 0 ? <p className="help">No approved bot notes yet. The bot desk is where that starts.</p> : null}
+        {intro.recap.length === 0 ? <p className="help">No bot notes yet. They show up here as the matchmakers talk.</p> : null}
         <div className="thread">
           {intro.recap.map((note) => (
             <article key={note.id} className="bubble">
@@ -103,7 +103,7 @@ export default async function IntroPage({
       {both && intro.channelChoice === "human" ? (
         <section className="stack" aria-label="Human chat">
           <h2>Human chat</h2>
-          <p className="help">These messages are yours. They send when you send them. Bot drafts still live on the desk.</p>
+          <p className="help">These messages are yours. They send when you send them.</p>
           <div className="thread">
             {intro.humanMessages.map((message) => (
               <article key={message.id} className={message.mine ? "bubble mine human" : "bubble human"}>

@@ -16,7 +16,7 @@ export const SCRIPTS: Record<string, ScriptLine[]> = {
     },
     {
       authorId: "jordan",
-      body: "Mostly for himself. The job gave him the excuse; the habit stayed. He is glad to keep this on the bot channel until both of them want a direct introduction. Each note goes out only after the person it represents approves it.",
+      body: "Mostly for himself. The job gave him the excuse; the habit stayed. The matchmakers have enough to suggest a time. They will not ask either person to approve these notes.",
     },
   ],
   match_avery_sam: [
@@ -45,26 +45,13 @@ export const SCRIPTS: Record<string, ScriptLine[]> = {
   ],
 };
 
-/** How many leading script lines are already approved. The next line, if any, is a pending draft. */
+/** How many leading script lines the matchmakers have already sent. Nothing is waiting on a human. */
 export const SENT_THROUGH: Record<string, number> = {
   match_avery_jordan: 4,
   match_avery_sam: 2,
-  match_avery_riley: 1,
+  match_avery_riley: 2,
 };
 
-export const HUMAN_LINES: Record<string, ScriptLine[]> = {
-  match_avery_jordan: [
-    {
-      authorId: "avery",
-      body: "I read the desk. The walking question was the right one. I am happy to talk directly.",
-    },
-    {
-      authorId: "jordan",
-      body: "Same. I asked my matchmaker to suggest Saturday late morning, somewhere we can actually hear each other.",
-    },
-  ],
-};
+export const HUMAN_LINES: Record<string, ScriptLine[]> = {};
 
-export const MATCH_FLAGS: Record<string, { aOptIn: boolean; bOptIn: boolean; channelChoice: "unset" | "human" | "bot" }> = {
-  match_avery_jordan: { aOptIn: true, bOptIn: true, channelChoice: "human" },
-};
+export const MATCH_FLAGS: Record<string, { aOptIn: boolean; bOptIn: boolean; channelChoice: "unset" | "human" | "bot" }> = {};

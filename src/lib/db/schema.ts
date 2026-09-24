@@ -72,6 +72,8 @@ export const dateProposals = sqliteTable("date_proposals", {
   place: text("place").notNull(),
   note: text("note").notNull().default(""),
   status: text("status").notNull(),
+  aDecision: text("a_decision").notNull().default("pending"),
+  bDecision: text("b_decision").notNull().default("pending"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -143,6 +145,8 @@ CREATE TABLE IF NOT EXISTS date_proposals (
   place TEXT NOT NULL,
   note TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL,
+  a_decision TEXT NOT NULL DEFAULT 'pending',
+  b_decision TEXT NOT NULL DEFAULT 'pending',
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS messages_match_idx ON messages(match_id);

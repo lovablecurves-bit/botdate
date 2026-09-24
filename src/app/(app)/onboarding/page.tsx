@@ -7,7 +7,7 @@ import { requireUser } from "@/lib/auth";
 
 const NOTICES: Record<string, string> = {
   wiped: "Matchmaker memory is wiped. Human chats were left in place.",
-  paused: "Your matchmaker is paused. Nothing new will send until you unpause.",
+  paused: "Your matchmaker is paused. It will not send anything new until you unpause.",
   unpaused: "Your matchmaker is active again.",
 };
 
@@ -36,7 +36,7 @@ export default async function OnboardingPage({
       <section className="stack tight">
         <div>
           <h2>Matchmaker</h2>
-          <p className="help">Pause stops new drafts and sends. Wipe deletes bot-to-bot notes for every desk you are on. Human messages stay.</p>
+          <p className="help">Pause stops your matchmaker from saying anything new. Wipe clears bot-to-bot notes. You are only asked when there is a date.</p>
         </div>
         <form action={setPausedAction}>
           <input type="hidden" name="paused" value={member.botPaused ? "false" : "true"} />

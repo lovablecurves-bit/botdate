@@ -6,7 +6,7 @@ import { SCRIPTS } from "./demo/scripts";
 import { HOLD_LABELS, mutualPass, primaryHold } from "./matchmaker/filters";
 import { matchmaker } from "./matchmaker/service";
 import { fail, ok, type ActionResult } from "./result";
-import { formatPacific, isFutureIso, pacificLocalToIso } from "./time";
+import { formatPacific, isFutureIso, isoToPacificLocal, pacificLocalToIso } from "./time";
 import {
   CITIES,
   INTERESTS,
@@ -58,8 +58,10 @@ export type ShortlistCard = {
   bothOptedIn: boolean;
   viewerOptIn: boolean;
   channelChoice: ChannelChoice;
-  dateStatus: "none" | "proposed" | "confirmed";
+  dateStatus: "none" | "proposed" | "confirmed" | "declined";
   proposalMine: boolean;
+  offerWaiting: boolean;
+  offer: { id: string; whenLabel: string; place: string; note: string; local: string } | null;
 };
 
 export type Shortlist = {
@@ -114,14 +116,19 @@ export type IntroData = {
   stage: StageState;
 };
 
+export type OfferDecision = "pending" | "approved" | "passed";
+
 export type DateProposalView = {
   id: string;
   place: string;
   note: string;
+  local: string;
   whenLabel: string;
   status: ProposalStatus;
   mine: boolean;
   proposedBy: string;
+  myDecision: OfferDecision;
+  theirDecision: OfferDecision;
 };
 
 export type DateData = {
@@ -300,7 +307,28 @@ function ensureMutualMatches(ctx: BotDateDb, userId: string) {
       })
       .run();
     ctx.db.insert(botThreads).values({ id: `thread_${id}`, matchId: id, createdAt: now }).run();
+    sendOpening(ctx, id, viewer);
+    sendOpening(ctx, id, other);
   }
+}
+
+function sendOpening(ctx: BotDateDb, matchId: string, author: Member) {
+  if (author.botPaused) return;
+  ctx.db
+    .insert(messages)
+    .values({
+      id: `msg_${crypto.randomUUID()}`,
+      matchId,
+      channel: "bot",
+      authorUserId: author.id,
+      authorKind: "bot",
+      body: matchmaker.composeOpening(author),
+      approvalStatus: "sent",
+      scriptStep: null,
+      edited: false,
+      createdAt: new Date().toISOString(),
+    })
+    .run();
 }
 
 function loadPair(ctx: BotDateDb, userId: string, matchId: string) {
@@ -368,7 +396,9 @@ export function listShortlist(ctx: BotDateDb, userId: string): Shortlist {
     const proposalRows = proposalsFor(ctx, matchId);
     const open = proposalRows.find((row) => row.status === "proposed");
     const confirmed = proposalRows.find((row) => row.status === "confirmed");
+    const declined = proposalRows.find((row) => row.status === "declined");
     const viewerIsA = match.userAId === userId;
+    const myDecision = open ? sideDecision(open, viewerIsA) : null;
     cards.push({
       matchId,
       person: toPublic(other),
@@ -379,8 +409,18 @@ export function listShortlist(ctx: BotDateDb, userId: string): Shortlist {
       bothOptedIn: asBool(match.aOptIn) && asBool(match.bOptIn),
       viewerOptIn: viewerIsA ? asBool(match.aOptIn) : asBool(match.bOptIn),
       channelChoice: channelOf(match.channelChoice),
-      dateStatus: confirmed ? "confirmed" : open ? "proposed" : "none",
+      dateStatus: confirmed ? "confirmed" : open ? "proposed" : declined ? "declined" : "none",
       proposalMine: Boolean(open && open.proposedByUserId === userId && !confirmed),
+      offerWaiting: myDecision === "pending",
+      offer: open
+        ? {
+            id: open.id,
+            whenLabel: formatPacific(open.startsAt),
+            place: open.place,
+            note: open.note,
+            local: isoToPacificLocal(open.startsAt),
+          }
+        : null,
     });
   }
   cards.sort((a, b) => b.score - a.score || a.person.displayName.localeCompare(b.person.displayName));
@@ -389,6 +429,10 @@ export function listShortlist(ctx: BotDateDb, userId: string): Shortlist {
     count,
   }));
   return { locked: true, niceToHaves: viewer.prefs.niceToHaves, cards, heldBack, inactive };
+}
+
+export function countOpenOffers(ctx: BotDateDb, userId: string): number {
+  return listShortlist(ctx, userId).cards.filter((card) => card.offerWaiting).length;
 }
 
 export function countMyDrafts(ctx: BotDateDb, userId: string): number {
@@ -513,15 +557,29 @@ export function getIntro(ctx: BotDateDb, userId: string, matchId: string): Intro
   };
 }
 
-function presentProposal(row: typeof dateProposals.$inferSelect, userId: string, members: Map<string, Member>): DateProposalView {
+function sideDecision(row: { aDecision: string; bDecision: string }, viewerIsA: boolean): OfferDecision {
+  const raw = viewerIsA ? row.aDecision : row.bDecision;
+  if (raw === "approved" || raw === "passed") return raw;
+  return "pending";
+}
+
+function presentProposal(
+  row: typeof dateProposals.$inferSelect,
+  userId: string,
+  match: { userAId: string; userBId: string },
+): DateProposalView {
+  const viewerIsA = match.userAId === userId;
   return {
     id: row.id,
     place: row.place,
     note: row.note,
+    local: isoToPacificLocal(row.startsAt),
     whenLabel: formatPacific(row.startsAt),
     status: row.status as ProposalStatus,
     mine: row.proposedByUserId === userId,
-    proposedBy: members.get(row.proposedByUserId)?.displayName ?? "Member",
+    proposedBy: "Your matchmakers",
+    myDecision: sideDecision(row, viewerIsA),
+    theirDecision: sideDecision(row, !viewerIsA),
   };
 }
 
@@ -530,19 +588,15 @@ export function getDate(ctx: BotDateDb, userId: string, matchId: string): DateDa
   if (!pair) return null;
   const rows = messagesFor(ctx, matchId);
   const proposalRows = proposalsFor(ctx, matchId);
-  const members = new Map(listMembers(ctx).map((member) => [member.id, member]));
   const bothOptIn = asBool(pair.match.aOptIn) && asBool(pair.match.bOptIn);
   const open = proposalRows.some((row) => row.status === "proposed");
   const confirmed = proposalRows.some((row) => row.status === "confirmed");
-  let blockReason: string | null = null;
-  if (!bothOptIn) blockReason = "Both of you opt in on Intro before a date can be proposed.";
-  else if (confirmed) blockReason = "This date is already confirmed.";
-  else if (open) blockReason = "There's already an open proposal.";
+  const blockReason = confirmed ? "This date is already set." : null;
   return {
     matchId,
     person: toPublic(pair.other),
     bothOptIn,
-    proposals: proposalRows.map((row) => presentProposal(row, userId, members)),
+    proposals: proposalRows.map((row) => presentProposal(row, userId, pair.match)),
     canPropose: bothOptIn && !open && !confirmed,
     blockReason,
     suggestion: matchmaker.suggestDate(pair.viewer, pair.other),
@@ -559,9 +613,10 @@ export function listDateIndex(ctx: BotDateDb, userId: string) {
       person: card.person,
       bothOptIn: card.bothOptedIn,
       status: active?.status ?? "none",
-      whenLabel: active?.whenLabel ?? null,
-      place: active?.place ?? null,
+      whenLabel: card.offer?.whenLabel ?? active?.whenLabel ?? null,
+      place: card.offer?.place ?? active?.place ?? null,
       mine: active?.mine ?? false,
+      offerWaiting: card.offerWaiting,
     };
   });
 }
@@ -809,6 +864,100 @@ export function proposeDate(
       place,
       note,
       status: "proposed",
+      aDecision: "pending",
+      bDecision: "pending",
+      createdAt: new Date().toISOString(),
+    })
+    .run();
+  return ok();
+}
+
+function applyDecision(
+  ctx: BotDateDb,
+  userId: string,
+  proposalId: string,
+  decision: "approved" | "passed",
+  next?: { startsAt: string; place: string; note: string },
+): ActionResult {
+  const proposal = ctx.db.select().from(dateProposals).where(eq(dateProposals.id, proposalId)).get();
+  if (!proposal) return fail("Offer not found.");
+  const pair = loadPair(ctx, userId, proposal.matchId);
+  if (!pair) return fail("That date is not on your shortlist.");
+  if (proposal.status !== "proposed") return fail("This date offer is already closed.");
+  const viewerIsA = pair.match.userAId === userId;
+  const mine = sideDecision(proposal, viewerIsA);
+  if (mine !== "pending" && !next) return fail("You already answered this offer.");
+  const theirs = sideDecision(proposal, !viewerIsA);
+  const theirNext = next ? "pending" : theirs;
+  const myNext = decision;
+  const status = myNext === "passed" || theirNext === "passed" ? "declined" : myNext === "approved" && theirNext === "approved" ? "confirmed" : "proposed";
+  ctx.db
+    .update(dateProposals)
+    .set({
+      aDecision: viewerIsA ? myNext : theirNext,
+      bDecision: viewerIsA ? theirNext : myNext,
+      status,
+      ...(next ? { startsAt: next.startsAt, place: next.place, note: next.note } : {}),
+    })
+    .where(eq(dateProposals.id, proposalId))
+    .run();
+  return ok();
+}
+
+export function approveOffer(ctx: BotDateDb, userId: string, proposalId: string): ActionResult {
+  return applyDecision(ctx, userId, proposalId, "approved");
+}
+
+export function passOffer(ctx: BotDateDb, userId: string, proposalId: string): ActionResult {
+  return applyDecision(ctx, userId, proposalId, "passed");
+}
+
+export function tweakOffer(
+  ctx: BotDateDb,
+  userId: string,
+  proposalId: string,
+  input: { local: string; place: string; note: string },
+): ActionResult {
+  const place = input.place.trim();
+  const note = input.note.trim();
+  if (place.length < 2 || place.length > 120) return fail("Name a place.");
+  if (note.length > 280) return fail("Keep the note under 280 characters.");
+  let startsAt: string;
+  try {
+    startsAt = pacificLocalToIso(input.local);
+  } catch {
+    return fail("Choose a date and time.");
+  }
+  if (!isFutureIso(startsAt)) return fail("Pick a time in the future. Times are Pacific.");
+  return applyDecision(ctx, userId, proposalId, "approved", { startsAt, place, note });
+}
+
+/** Send the next scripted matchmaker note immediately. A paused author sends nothing. */
+export function advanceBotTalk(ctx: BotDateDb, matchId: string): ActionResult {
+  const match = ctx.db.select().from(matches).where(eq(matches.id, matchId)).get();
+  if (!match) return fail("That conversation is not on file.");
+  const script = SCRIPTS[matchId];
+  if (!script) return fail("There is no scripted conversation to continue.");
+  const rows = messagesFor(ctx, matchId);
+  const nextIndex = script.findIndex((line, index) => !rows.some((row) => row.scriptStep === index && row.approvalStatus === "sent" && row.authorUserId === line.authorId));
+  if (nextIndex < 0) return ok();
+  const line = script[nextIndex];
+  if (!line) return ok();
+  const author = getMember(ctx, line.authorId);
+  if (!author) return fail("That matchmaker is missing.");
+  if (author.botPaused) return fail("That matchmaker is paused.");
+  ctx.db
+    .insert(messages)
+    .values({
+      id: `msg_${crypto.randomUUID()}`,
+      matchId,
+      channel: "bot",
+      authorUserId: line.authorId,
+      authorKind: "bot",
+      body: line.body,
+      approvalStatus: "sent",
+      scriptStep: nextIndex,
+      edited: false,
       createdAt: new Date().toISOString(),
     })
     .run();

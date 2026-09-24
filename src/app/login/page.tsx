@@ -19,7 +19,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <header className="page-head">
         <p className="wordmark">BotDate</p>
         <h1>Your matchmaker does the first pass.</h1>
-        <p className="lede">Nothing goes out in your name until you approve it.</p>
+        <p className="lede">The bots do the small talk. You only step in when there is a date to approve, tweak, or pass.</p>
       </header>
       <Banner>{error}</Banner>
       {featured ? (
