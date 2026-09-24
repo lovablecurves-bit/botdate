@@ -80,10 +80,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: 12px;
 }
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 1.45rem;
   line-height: 1;
   color: var(--accent);
   text-decoration: none;
+}
+.wordmark.splash { font-size: 2.6rem; gap: 10px; }
+.brand-heart {
+  width: 1.7em;
+  height: 1.7em;
+  flex: none;
+  display: block;
+  color: var(--pop);
 }
 .content {
   padding: 12px 20px 132px;

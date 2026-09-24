@@ -1,6 +1,7 @@
 import { loginAction, logoutAction } from "@/app/actions";
 import { Avatar } from "@/components/avatar";
 import { Nav } from "@/components/nav";
+import { Wordmark } from "@/components/wordmark";
 import type { RosterEntry } from "@/lib/domain";
 import type { Member } from "@/lib/types";
 
@@ -24,7 +25,7 @@ export function Shell({
         <header className="topbar">
           <div className="topbar-inner">
             <a className="wordmark" href="/shortlist">
-              BotDate
+              <Wordmark />
             </a>
             <details className="switcher">
               <summary>

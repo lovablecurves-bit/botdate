@@ -1,5 +1,6 @@
 import { loginAction, resetDemoAction } from "@/app/actions";
 import { Portrait } from "@/components/person";
+import { Wordmark } from "@/components/wordmark";
 import { Banner } from "@/components/banner";
 import { SubmitButton } from "@/components/submit-button";
 import { DEMO_NOTES, DEMO_ORDER } from "@/lib/demo/members";
@@ -17,7 +18,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main className="login">
       <header className="page-head">
-        <p className="wordmark">BotDate</p>
+        <p className="wordmark splash">
+          <Wordmark />
+        </p>
         <h1>Your matchmaker does the first pass.</h1>
         <p className="lede">The bots do the small talk. You only step in when there is a date to approve, tweak, or pass.</p>
       </header>
