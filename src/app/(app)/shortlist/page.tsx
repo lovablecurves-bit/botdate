@@ -1,128 +1,124 @@
 import Link from "next/link";
-import { Avatar } from "@/components/avatar";
-import { Facts } from "@/components/person";
+import { DateOffer } from "@/components/date-offer";
+import { Portrait, Facts } from "@/components/person";
 import { requireOnboarded } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { listShortlist, type ShortlistCard } from "@/lib/domain";
 
 export const metadata = { title: "Shortlist" };
 
-function primaryCta(card: ShortlistCard): { href: string; label: string } {
-  if (card.dateStatus === "proposed" && !card.proposalMine) return { href: `/dates/${card.matchId}`, label: "Confirm date" };
-  if (card.dateStatus === "confirmed") return { href: `/dates/${card.matchId}`, label: "View date" };
-  if (card.dateStatus === "proposed") return { href: `/dates/${card.matchId}`, label: "Date proposed" };
-  if (card.draftWaiting) return { href: `/desk/${card.matchId}`, label: "Review draft" };
-  if (card.bothOptedIn) return { href: `/intro/${card.matchId}`, label: "Open intro" };
-  return { href: `/desk/${card.matchId}`, label: "Open bot desk" };
+function whyPassed(card: ShortlistCard): string {
+  const specific = card.why.filter((line) => line !== "Clears their dealbreakers too");
+  const city = specific.find((line) => /city|cities/i.test(line));
+  const intent = specific.find((line) => /serious|casual/i.test(line));
+  const lead = [city, intent].filter(Boolean).join(" · ");
+  return lead || specific[0] || "Clears every dealbreaker on both sides.";
 }
 
-function pill(card: ShortlistCard): string | null {
-  if (card.dateStatus === "confirmed") return "Date confirmed";
-  if (card.dateStatus === "proposed" && !card.proposalMine) return "Date to confirm";
-  if (card.dateStatus === "proposed") return "Waiting on them";
-  if (card.draftWaiting) return "Draft to approve";
-  if (card.bothOptedIn && card.channelChoice === "human") return "Human chat open";
-  if (card.bothOptedIn) return "Introduced";
-  if (card.viewerOptIn) return "Waiting on their intro";
-  return null;
+function statusLine(card: ShortlistCard): string {
+  if (card.dateStatus === "confirmed") return "Date is set";
+  if (card.dateStatus === "declined") return "You passed";
+  if (card.offer && !card.offerWaiting) return "Waiting on them";
+  return "Bots are talking";
 }
 
 export default async function ShortlistPage() {
   const member = await requireOnboarded();
   const list = await withDb((db) => listShortlist(db, member.id));
+  const offers = list.cards.filter((card) => card.offerWaiting && card.offer);
+  const rest = list.cards.filter((card) => !(card.offerWaiting && card.offer));
   return (
     <div className="stack">
       <header className="page-head">
-        <p className="eyebrow">Shortlist</p>
-        <h1>{list.cards.length === 0 ? "No one clears both sides yet" : `${list.cards.length} ${list.cards.length === 1 ? "person clears" : "people clear"} your dealbreakers`}</h1>
-        <p className="lede">Ranked by must-haves — shared interests, then city. A hard miss is never shown as a profile.</p>
-        {list.niceToHaves ? <p className="note">Nice-to-haves on file: {list.niceToHaves}</p> : null}
+        <h1>Shortlist</h1>
+        <p className="lede">Your bots are working. You only get pinged when they are ready to offer a date.</p>
+        <Link href="/desk">Activity</Link>
       </header>
       {list.cards.length === 0 ? (
-        <section className="card empty">
-          <p>Loosen a dealbreaker on your profile, or wait for a member who clears the ones you locked.</p>
-          <Link className="btn primary" href="/onboarding">
+        <section className="empty">
+          <p>No one clears both sides yet. A hard miss never shows up as a profile.</p>
+          <Link className="btn primary wide" href="/onboarding">
             Review dealbreakers
           </Link>
         </section>
       ) : (
-        <div className="stack">
-          {list.cards.map((card) => {
-            const cta = primaryCta(card);
-            const status = pill(card);
-            return (
-              <article key={card.matchId} className="card person-block" data-testid={`shortlist-${card.person.id}`}>
-                <div className="person-top">
-                  <Avatar name={card.person.displayName} accent={card.person.accent} />
-                  <div>
-                    <h2>{card.person.displayName}</h2>
-                    <p className="meta">
-                      {card.person.age} · {card.person.occupation} · {card.person.city}
-                    </p>
-                  </div>
-                  <p className="score" title="Soft score from shared interests and city">
-                    Score {card.score}
-                  </p>
-                </div>
-                {status ? <p className="pill">{status}</p> : null}
-                <p>{card.person.bio}</p>
-                <Facts person={card.person} />
-                <div>
-                  <h3>Why it passed</h3>
-                  <ul className="why">
-                    {card.why.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h3>Why it ranks here</h3>
-                  {card.rankNotes.length ? (
-                    <ul className="why soft">
-                      {card.rankNotes.map((line) => (
-                        <li key={line}>{line}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="help">No extra must-have overlap. They still clear every dealbreaker.</p>
-                  )}
-                </div>
-                <div className="actions">
-                  <Link className="btn primary" href={cta.href}>
-                    {cta.label}
-                  </Link>
-                  <Link className="btn ghost" href={`/desk/${card.matchId}`}>
-                    Bot desk
-                  </Link>
-                  <Link className="btn ghost" href={`/intro/${card.matchId}`}>
-                    Intro
-                  </Link>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+        <>
+          {offers.map((card) =>
+            card.offer ? (
+              <DateOffer
+                key={card.offer.id}
+                matchId={card.matchId}
+                proposalId={card.offer.id}
+                personName={card.person.displayName}
+                whenLabel={card.offer.whenLabel}
+                local={card.offer.local}
+                place={card.offer.place}
+                note={card.offer.note}
+              />
+            ) : null,
+          )}
+          {rest.length > 0 ? (
+            <div className="people">
+              {rest.map((card) => {
+                const first = card.person.displayName.split(" ")[0];
+                return (
+                  <article key={card.matchId} className="person-card" data-testid={`shortlist-${card.person.id}`}>
+                    <Portrait name={card.person.displayName} accent={card.person.accent} />
+                    <div className="person-copy">
+                      <h2>{card.person.displayName}</h2>
+                      <p className="meta">
+                        {card.person.age} · {card.person.occupation}
+                      </p>
+                      <p className="why-line">{whyPassed(card)}</p>
+                      <p className="meta">{statusLine(card)}</p>
+                    </div>
+                    <div className="text-links">
+                      <Link href={`/desk/${card.matchId}`}>Activity</Link>
+                      {card.dateStatus === "confirmed" ? <Link href={`/dates/${card.matchId}`}>View date</Link> : null}
+                    </div>
+                    <details className="more">
+                      <summary>More about {first}</summary>
+                      <p>{card.person.bio}</p>
+                      <Facts person={card.person} />
+                      <div>
+                        <h3>Why it passed</h3>
+                        <ul className="why">
+                          {card.why.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </details>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+        </>
       )}
-      <section className="filter-log" data-testid="held-back">
-        <h2>Held back by dealbreakers</h2>
-        <p className="help">Counts only. These people are not shown as profiles.</p>
-        {list.heldBack.length === 0 ? (
-          <p>No locked profile is currently held back.</p>
-        ) : (
-          <ul>
-            {list.heldBack.map((row) => (
-              <li key={row.label}>
-                <strong>{row.count}</strong> {row.label.toLowerCase()}
-              </li>
-            ))}
-          </ul>
-        )}
-        {list.inactive > 0 ? (
-          <p className="help">
-            {list.inactive} {list.inactive === 1 ? "profile hasn't" : "profiles haven't"} locked dealbreakers yet.
-          </p>
-        ) : null}
-      </section>
+      <details className="quiet-fold" data-testid="held-back">
+        <summary>Held back by dealbreakers</summary>
+        <div className="filter-log">
+          {list.niceToHaves ? <p className="help">Nice-to-haves on file: {list.niceToHaves}</p> : null}
+          <p className="help">Counts only. These people are not shown as profiles.</p>
+          {list.heldBack.length === 0 ? (
+            <p>No locked profile is currently held back.</p>
+          ) : (
+            <ul>
+              {list.heldBack.map((row) => (
+                <li key={row.label}>
+                  <strong>{row.count}</strong> {row.label.toLowerCase()}
+                </li>
+              ))}
+            </ul>
+          )}
+          {list.inactive > 0 ? (
+            <p className="help">
+              {list.inactive} {list.inactive === 1 ? "profile hasn't" : "profiles haven't"} locked dealbreakers yet.
+            </p>
+          ) : null}
+        </div>
+      </details>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { requireUser } from "@/lib/auth";
 
 const NOTICES: Record<string, string> = {
   wiped: "Matchmaker memory is wiped. Human chats were left in place.",
-  paused: "Your matchmaker is paused. Nothing new will send until you unpause.",
+  paused: "Your matchmaker is paused. It will not send anything new until you unpause.",
   unpaused: "Your matchmaker is active again.",
 };
 
@@ -23,8 +23,7 @@ export default async function OnboardingPage({
   return (
     <div className="stack">
       <header className="page-head">
-        <p className="eyebrow">Profile</p>
-        <h1>{member.prefs.locked ? "Your profile and dealbreakers" : "Set up your matchmaker"}</h1>
+        <h1>Profile</h1>
         <p className="lede">
           {member.prefs.locked
             ? "Hard filters hide misses. Must-haves only change the order."
@@ -34,26 +33,26 @@ export default async function OnboardingPage({
       <Banner tone="good">{query.notice ? NOTICES[query.notice] : null}</Banner>
       <Banner>{query.error}</Banner>
       <OnboardingForm member={member} />
-      <section className="card stack">
+      <section className="stack tight">
         <div>
-          <h2>Matchmaker controls</h2>
-          <p className="help">Pause stops new drafts and sends. Wipe deletes bot-to-bot notes for every desk you are on. Human messages stay.</p>
+          <h2>Matchmaker</h2>
+          <p className="help">Pause stops your matchmaker from saying anything new. Wipe clears bot-to-bot notes. You are only asked when there is a date.</p>
         </div>
         <form action={setPausedAction}>
           <input type="hidden" name="paused" value={member.botPaused ? "false" : "true"} />
-          <SubmitButton className="btn ghost" pendingLabel="Saving…" testId="toggle-pause">
+          <SubmitButton className="btn ghost wide" pendingLabel="Saving…" testId="toggle-pause">
             {member.botPaused ? "Unpause matchmaker" : "Pause matchmaker"}
           </SubmitButton>
         </form>
         <WipeControl />
       </section>
-      <section className="card stack">
+      <section className="stack tight">
         <div>
           <h2>Demo data</h2>
           <p className="help">Resets every member, desk, and date, then signs you out.</p>
         </div>
         <form action={resetDemoAction}>
-          <SubmitButton className="btn ghost" pendingLabel="Resetting…">
+          <SubmitButton className="btn ghost wide" pendingLabel="Resetting…">
             Reset demo data
           </SubmitButton>
         </form>

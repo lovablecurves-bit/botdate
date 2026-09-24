@@ -7,14 +7,17 @@ import { resetDatabase } from "@/lib/db/seed";
 import { withDb } from "@/lib/db/open";
 import {
   approveDraft,
+  approveOffer,
   chooseChannel,
   createDraft,
   editDraft,
   getMember,
   killDraft,
   optIn,
+  passOffer,
   proposeDate,
   respondToDate,
+  tweakOffer,
   saveMember,
   sendHuman,
   setPaused,
@@ -111,6 +114,27 @@ export async function wipeMemoryAction() {
   if (!result.ok) redirect(`/onboarding?error=${encodeURIComponent(result.error)}`);
   touch();
   redirect("/onboarding?notice=wiped");
+}
+
+export async function approveOfferAction(matchId: string, proposalId: string): Promise<ActionResult> {
+  const user = await requireOnboarded();
+  const result = await withDb((db) => approveOffer(db, user.id, proposalId));
+  touch(matchId);
+  return result;
+}
+
+export async function passOfferAction(matchId: string, proposalId: string): Promise<ActionResult> {
+  const user = await requireOnboarded();
+  const result = await withDb((db) => passOffer(db, user.id, proposalId));
+  touch(matchId);
+  return result;
+}
+
+export async function tweakOfferAction(matchId: string, proposalId: string, local: string, place: string, note: string): Promise<ActionResult> {
+  const user = await requireOnboarded();
+  const result = await withDb((db) => tweakOffer(db, user.id, proposalId, { local, place, note }));
+  touch(matchId);
+  return result;
 }
 
 export async function approveDraftAction(messageId: string, body: string): Promise<ActionResult> {

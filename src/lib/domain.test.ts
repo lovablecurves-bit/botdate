@@ -4,24 +4,24 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { openDatabase, type BotDateDb } from "./db/open";
+import { messages } from "./db/schema";
 import {
-  approveDraft,
+  advanceBotTalk,
+  approveOffer,
   chooseChannel,
-  createDraft,
-  editDraft,
   getDate,
   getDesk,
   getIntro,
   getMember,
-  killDraft,
   listShortlist,
   memberToInput,
   optIn,
+  passOffer,
   proposeDate,
-  respondToDate,
   saveMember,
   sendHuman,
   setPaused,
+  tweakOffer,
   wipeMemory,
 } from "./domain";
 import { upcomingSaturdayLocal } from "./time";
@@ -58,70 +58,32 @@ test("Avery's shortlist hides dealbreaker misses and ranks the rest", async () =
   ctx.close();
 });
 
-test("unapproved drafts stay invisible to the other person", async () => {
+test("bot notes are sent without a human and both people can read them", async () => {
   const ctx = await fresh();
   const avery = getDesk(ctx, "avery", "match_avery_riley");
   const riley = getDesk(ctx, "riley", "match_avery_riley");
-  assert.ok(avery && riley?.draft);
-  assert.equal(avery.draft, null);
-  assert.equal(avery.heldCount, 1);
-  assert.equal(JSON.stringify(avery).includes("solitude"), false);
-  assert.match(riley.draft.body, /solitude/);
-  ctx.close();
-});
-
-test("approve, edit, and kill only work on your own draft", async () => {
-  const ctx = await fresh();
-  const samDesk = getDesk(ctx, "avery", "match_avery_sam");
-  assert.ok(samDesk?.draft);
-  const draftId = samDesk.draft.id;
-  assert.match(samDesk.draft.body, /library job/);
-
-  const edited = editDraft(ctx, "avery", draftId, "Avery would like a weeknight table, nothing performative.");
-  assert.equal(edited.ok, true);
-  const afterEdit = getDesk(ctx, "avery", "match_avery_sam");
-  assert.match(afterEdit?.draft?.body ?? "", /weeknight table/);
-  assert.equal(afterEdit?.items.some((item) => item.body.includes("weeknight")), false);
-
-  const killed = killDraft(ctx, "avery", draftId);
-  assert.equal(killed.ok, true);
-  const afterKill = getDesk(ctx, "avery", "match_avery_sam");
-  assert.equal(afterKill?.draft, null);
-  assert.equal(afterKill?.killed.length, 1);
-  const samView = getDesk(ctx, "sam", "match_avery_sam");
-  assert.equal(JSON.stringify(samView).includes("weeknight"), false);
-  assert.equal(JSON.stringify(samView).includes("library job"), false);
-
-  const redraft = createDraft(ctx, "avery", "match_avery_sam");
-  assert.equal(redraft.ok, true);
-  const freshDraft = getDesk(ctx, "avery", "match_avery_sam")?.draft;
-  assert.ok(freshDraft);
-  const sentBody = "Avery is free after six on a weeknight if the room is quiet.";
-  const approved = approveDraft(ctx, "avery", freshDraft.id, sentBody);
-  assert.equal(approved.ok, true);
-  const sent = getDesk(ctx, "avery", "match_avery_sam");
-  assert.equal(sent?.items.some((item) => item.body === sentBody), true);
-  const samAfter = getDesk(ctx, "sam", "match_avery_sam");
-  assert.ok(samAfter?.draft);
-  assert.equal(JSON.stringify(sent).includes(samAfter.draft.body), false);
-
-  const rileyDraft = getDesk(ctx, "riley", "match_avery_riley")?.draft;
-  assert.ok(rileyDraft);
-  const sneak = approveDraft(ctx, "avery", rileyDraft.id, rileyDraft.body);
-  assert.equal(sneak.ok, false);
-  ctx.close();
-});
-
-test("a paused matchmaker cannot send", async () => {
-  const ctx = await fresh();
-  const draft = getDesk(ctx, "riley", "match_avery_riley")?.draft;
-  assert.ok(draft);
-  assert.equal(setPaused(ctx, "riley", true).ok, true);
-  assert.equal(approveDraft(ctx, "riley", draft.id).ok, false);
-  assert.equal(setPaused(ctx, "riley", false).ok, true);
-  assert.equal(approveDraft(ctx, "riley", draft.id).ok, true);
-  const avery = getDesk(ctx, "avery", "match_avery_riley");
+  assert.equal(avery?.draft, null);
+  assert.equal(riley?.draft, null);
   assert.equal(avery?.items.some((item) => item.body.includes("solitude")), true);
+  assert.equal(riley?.items.some((item) => item.body.includes("solitude")), true);
+  const list = listShortlist(ctx, "avery");
+  assert.equal(list.cards.find((card) => card.person.id === "jordan")?.offerWaiting, true);
+  assert.equal(list.cards.find((card) => card.person.id === "sam")?.offerWaiting, false);
+  assert.equal(list.cards.every((card) => card.draftWaiting === false), true);
+  ctx.close();
+});
+
+test("matchmakers send the next note unless they are paused", async () => {
+  const ctx = await fresh();
+  assert.equal(getDesk(ctx, "avery", "match_avery_sam")?.items.some((item) => item.body.includes("Sunday table")), false);
+  assert.equal(setPaused(ctx, "avery", true).ok, true);
+  assert.equal(advanceBotTalk(ctx, "match_avery_sam").ok, false);
+  assert.equal(getDesk(ctx, "sam", "match_avery_sam")?.items.some((item) => item.body.includes("Sunday table")), false);
+  assert.equal(setPaused(ctx, "avery", false).ok, true);
+  assert.equal(advanceBotTalk(ctx, "match_avery_sam").ok, true);
+  const after = getDesk(ctx, "sam", "match_avery_sam");
+  assert.equal(after?.items.some((item) => item.body.includes("Sunday table")), true);
+  assert.equal(after?.draft, null);
   ctx.close();
 });
 
@@ -144,26 +106,45 @@ test("intro opt-in opens human chat only after both people agree", async () => {
   ctx.close();
 });
 
-test("the other person confirms a date and the proposer cannot", async () => {
+test("a date offer is approved by both people, and tweak or pass closes the ask", async () => {
   const ctx = await fresh();
-  const date = getDate(ctx, "avery", "match_avery_jordan");
-  const open = date?.proposals.find((item) => item.status === "proposed");
+  const open = getDate(ctx, "avery", "match_avery_jordan")?.proposals.find((item) => item.status === "proposed");
   assert.ok(open);
-  assert.equal(open.mine, false);
-  assert.equal(respondToDate(ctx, "jordan", open.id, "confirm").ok, false);
-  assert.equal(
-    proposeDate(ctx, "avery", "match_avery_jordan", {
-      local: upcomingSaturdayLocal(),
-      place: "Somewhere else",
-      note: "",
-    }).ok,
-    false,
-  );
-  assert.equal(respondToDate(ctx, "avery", open.id, "confirm").ok, true);
-  const after = getDate(ctx, "jordan", "match_avery_jordan");
-  assert.equal(after?.proposals.some((item) => item.status === "confirmed"), true);
-  assert.equal(after?.canPropose, false);
+  assert.equal(open.myDecision, "pending");
+  assert.equal(approveOffer(ctx, "avery", open.id).ok, true);
+  assert.equal(getDate(ctx, "avery", "match_avery_jordan")?.proposals[0]?.status, "proposed");
+  assert.equal(getDate(ctx, "avery", "match_avery_jordan")?.proposals[0]?.myDecision, "approved");
+  assert.equal(getDate(ctx, "jordan", "match_avery_jordan")?.proposals[0]?.myDecision, "pending");
+  assert.equal(approveOffer(ctx, "jordan", open.id).ok, true);
+  const confirmed = getDate(ctx, "jordan", "match_avery_jordan");
+  assert.equal(confirmed?.proposals.some((item) => item.status === "confirmed"), true);
+  assert.equal(confirmed?.canPropose, false);
   ctx.close();
+
+  const passed = await fresh();
+  const offer = getDate(passed, "avery", "match_avery_jordan")?.proposals[0];
+  assert.ok(offer);
+  assert.equal(passOffer(passed, "avery", offer.id).ok, true);
+  assert.equal(getDate(passed, "jordan", "match_avery_jordan")?.proposals[0]?.status, "declined");
+  assert.equal(approveOffer(passed, "jordan", offer.id).ok, false);
+  passed.close();
+
+  const tweaked = await fresh();
+  const target = getDate(tweaked, "avery", "match_avery_jordan")?.proposals[0];
+  assert.ok(target);
+  assert.equal(
+    tweakOffer(tweaked, "avery", target.id, {
+      local: target.local,
+      place: "Ferry Building",
+      note: "A short walk if the weather holds.",
+    }).ok,
+    true,
+  );
+  const jordanView = getDate(tweaked, "jordan", "match_avery_jordan")?.proposals[0];
+  assert.equal(jordanView?.place, "Ferry Building");
+  assert.equal(jordanView?.myDecision, "pending");
+  assert.equal(getDate(tweaked, "avery", "match_avery_jordan")?.proposals[0]?.myDecision, "approved");
+  tweaked.close();
 });
 
 test("loosening a kids dealbreaker surfaces Noah and tightening hides a desk", async () => {
@@ -190,6 +171,21 @@ test("loosening a kids dealbreaker surfaces Noah and tightening hides a desk", a
 
 test("wiping bot memory keeps human chat", async () => {
   const ctx = await fresh();
+  ctx.db
+    .insert(messages)
+    .values({
+      id: "msg_human_keep",
+      matchId: "match_avery_jordan",
+      channel: "human",
+      authorUserId: "avery",
+      authorKind: "human",
+      body: "The walking question was the right one.",
+      approvalStatus: "sent",
+      scriptStep: null,
+      edited: false,
+      createdAt: "2026-09-21T15:00:00.000Z",
+    })
+    .run();
   assert.equal(wipeMemory(ctx, "avery").ok, true);
   const desk = getDesk(ctx, "avery", "match_avery_jordan");
   assert.equal(desk?.items.some((item) => item.kind === "bot"), false);

@@ -1,6 +1,7 @@
 import { loginAction, logoutAction } from "@/app/actions";
 import { Avatar } from "@/components/avatar";
 import { Nav } from "@/components/nav";
+import { Wordmark } from "@/components/wordmark";
 import type { RosterEntry } from "@/lib/domain";
 import type { Member } from "@/lib/types";
 
@@ -20,21 +21,16 @@ export function Shell({
       <a className="skip" href="#content">
         Skip to content
       </a>
-      <aside className="rail">
-        <Logo />
-        <Nav variant="rail" pending={pending} />
-        <p className="rail-note">Bots draft. You approve. BotDate does not read private human chats.</p>
-      </aside>
-      <div className="workspace">
+      <div className="frame">
         <header className="topbar">
           <div className="topbar-inner">
-            <div className="mobile-logo">
-              <Logo />
-            </div>
+            <a className="wordmark" href="/shortlist">
+              <Wordmark />
+            </a>
             <details className="switcher">
               <summary>
                 <Avatar name={member.displayName} accent={member.profile.accent} size="sm" />
-                <span>{member.displayName}</span>
+                <span>{member.displayName.split(" ")[0]}</span>
               </summary>
               <div className="switcher-panel">
                 <p className="switcher-label">Demo members</p>
@@ -61,19 +57,9 @@ export function Shell({
         </header>
         <main id="content" className="content">
           {children}
-          <p className="privacy">Bot-to-bot runs only with consent. Pause or wipe matchmaker memory from Profile.</p>
         </main>
       </div>
-      <Nav variant="tab" pending={pending} />
+      <Nav pending={pending} />
     </div>
-  );
-}
-
-function Logo() {
-  return (
-    <a className="logo" href="/shortlist">
-      <span className="logo-mark">BotDate</span>
-      <span className="logo-sub">Matchmaker desk</span>
-    </a>
   );
 }

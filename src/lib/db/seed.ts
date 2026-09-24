@@ -76,10 +76,10 @@ export function seed(ctx: BotDateDb) {
     db.insert(botThreads)
       .values({ id: `thread_${matchId}`, matchId, createdAt: at(clock) })
       .run();
-    const sentThrough = SENT_THROUGH[matchId] ?? 0;
+    const sentThrough = SENT_THROUGH[matchId] ?? lines.length;
     lines.forEach((line, index) => {
-      if (index > sentThrough) return;
-      const status = index < sentThrough ? "sent" : "pending";
+      if (index >= sentThrough) return;
+      const status = "sent";
       clock += 60;
       db.insert(messages)
         .values({
@@ -125,6 +125,8 @@ export function seed(ctx: BotDateDb) {
       place: "Tartine Manufactory",
       note: "Late morning, a table, no agenda beyond an hour.",
       status: "proposed",
+      aDecision: "pending",
+      bDecision: "pending",
       createdAt: at(clock + 60),
     })
     .run();

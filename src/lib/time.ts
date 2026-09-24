@@ -43,6 +43,12 @@ export function pacificLocalToIso(local: string): string {
   return new Date(utc).toISOString();
 }
 
+/** Pacific wall-clock `YYYY-MM-DDTHH:mm` for a stored UTC instant. */
+export function isoToPacificLocal(iso: string): string {
+  const parts = partsOf(new Date(iso), PACIFIC);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
 export function formatPacific(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: PACIFIC,

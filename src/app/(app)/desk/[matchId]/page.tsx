@@ -1,16 +1,12 @@
 import { notFound } from "next/navigation";
-import { createDraftAction } from "@/app/actions";
 import { Banner } from "@/components/banner";
-import { DraftCard } from "@/components/draft-card";
 import { MatchNav } from "@/components/match-nav";
 import { Facts, PersonStrip } from "@/components/person";
-import { StageTrail } from "@/components/stage";
-import { SubmitButton } from "@/components/submit-button";
 import { requireOnboarded } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { getDesk } from "@/lib/domain";
 
-export const metadata = { title: "Bot desk" };
+export const metadata = { title: "Activity" };
 
 export default async function DeskPage({
   params,
@@ -24,18 +20,17 @@ export default async function DeskPage({
   const { error } = await searchParams;
   const desk = await withDb((db) => getDesk(db, member.id, matchId));
   if (!desk) notFound();
+  const first = desk.person.displayName.split(" ")[0];
 
   return (
     <div className="stack">
       <PersonStrip person={desk.person} />
-      <p>{desk.person.bio}</p>
-      <Facts person={desk.person} />
-      <StageTrail stage={desk.stage} />
       <MatchNav matchId={matchId} current="desk" />
+      <p className="lede">A log of the bot-to-bot conversation. You do not approve these notes.</p>
       <Banner>{error}</Banner>
-      {desk.paused ? <Banner>Your matchmaker is paused. Kill a draft if you want it gone. Unpause before anything sends.</Banner> : null}
+      {desk.paused ? <Banner>Your matchmaker is paused, so it will not send anything new.</Banner> : null}
       <section className="thread" aria-label="Bot-to-bot thread">
-        {desk.items.length === 0 ? <p className="help">Nothing has been sent on this desk yet.</p> : null}
+        {desk.items.length === 0 ? <p className="help">Nothing has been said on this conversation yet.</p> : null}
         {desk.items.map((item) =>
           item.kind === "system" ? (
             <p key={item.id} className="system-note">
@@ -45,29 +40,15 @@ export default async function DeskPage({
             <article key={item.id} className={item.mine ? "bubble mine" : "bubble"}>
               <p className="who">{item.authorName}</p>
               <p>{item.body}</p>
-              {item.edited ? <p className="edited">Edited before send</p> : null}
             </article>
           ),
         )}
       </section>
-      {desk.heldCount > 0 ? <p className="holding">{desk.heldLabel}</p> : null}
-      {desk.draft ? <DraftCard messageId={desk.draft.id} initialBody={desk.draft.body} paused={desk.paused} /> : null}
-      {desk.canAsk ? (
-        <form action={createDraftAction}>
-          <input type="hidden" name="matchId" value={matchId} />
-          <SubmitButton className="btn primary" pendingLabel="Drafting…" testId="ask-draft">
-            {desk.askLabel}
-          </SubmitButton>
-        </form>
-      ) : null}
-      {desk.killed.length > 0 ? (
-        <details className="killed">
-          <summary>Dropped drafts ({desk.killed.length})</summary>
-          {desk.killed.map((item) => (
-            <p key={item.id}>{item.body}</p>
-          ))}
-        </details>
-      ) : null}
+      <details className="more">
+        <summary>About {first}</summary>
+        <p>{desk.person.bio}</p>
+        <Facts person={desk.person} />
+      </details>
     </div>
   );
 }

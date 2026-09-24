@@ -59,7 +59,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["cooking", "libraries", "walking", "design"],
-    accent: "#7c2d12",
+    accent: "#ff2d92",
     prefs: {
       ageMin: 28,
       ageMax: 38,
@@ -83,7 +83,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["architecture", "walking", "cooking", "cities"],
-    accent: "#24342c",
+    accent: "#ff4db8",
     prefs: {
       ageMin: 29,
       ageMax: 40,
@@ -107,7 +107,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "wants",
     intent: "serious",
     interests: ["cooking", "hospitality", "music", "markets"],
-    accent: "#6b3f2a",
+    accent: "#ff3d6e",
     prefs: {
       ageMin: 27,
       ageMax: 36,
@@ -131,7 +131,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["climate", "reading", "hiking", "walking"],
-    accent: "#1f4b5a",
+    accent: "#ff5ab0",
     prefs: {
       ageMin: 28,
       ageMax: 38,
@@ -155,7 +155,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "doesnt",
     intent: "serious",
     interests: ["health", "cooking", "walking", "coffee"],
-    accent: "#2c4a6e",
+    accent: "#ff2f78",
     prefs: {
       ageMin: 28,
       ageMax: 40,
@@ -179,7 +179,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "wants",
     intent: "serious",
     interests: ["reading", "cooking", "libraries", "hiking"],
-    accent: "#6e3a3a",
+    accent: "#ff47c0",
     prefs: {
       ageMin: 34,
       ageMax: 42,
@@ -203,7 +203,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "doesnt",
     intent: "casual",
     interests: ["film", "cities", "music", "galleries"],
-    accent: "#4c3d66",
+    accent: "#ff3cac",
     prefs: {
       ageMin: 30,
       ageMax: 42,
@@ -227,7 +227,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["film", "reading", "coffee", "cooking"],
-    accent: "#6e3b24",
+    accent: "#ff1493",
     prefs: {
       ageMin: 28,
       ageMax: 38,
@@ -251,7 +251,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["galleries", "art", "walking", "cooking"],
-    accent: "#3e4a32",
+    accent: "#ff6aa0",
     prefs: {
       ageMin: 40,
       ageMax: 55,
@@ -275,7 +275,7 @@ export const DEMO_MEMBERS: Member[] = [
     kids: "open",
     intent: "serious",
     interests: ["reading", "cooking", "coffee", "walking"],
-    accent: "#4a3f6b",
+    accent: "#ff47a8",
     prefs: {
       ageMin: 28,
       ageMax: 38,
@@ -292,10 +292,10 @@ export const DEMO_MEMBERS: Member[] = [
 export const DEMO_ORDER = ["avery", "jordan", "sam", "riley", "priya", "noah", "alex", "morgan", "casey", "quinn"];
 
 export const DEMO_NOTES: Record<string, string> = {
-  avery: "Primary desk. Jordan's Saturday is waiting on you. Sam's matchmaker has a draft you can approve, edit, or kill.",
-  jordan: "You already proposed Saturday with Avery. Open Dates to see it from your side.",
-  sam: "Avery's matchmaker is mid-conversation. Read the desk, then opt in on Intro.",
-  riley: "Your matchmaker is holding a reply to Avery. It stays unsent until you approve it.",
+  avery: "Your bots have been talking. Jordan's matchmakers are ready with a Saturday date. Sam and Riley are still in conversation.",
+  jordan: "Your matchmakers offered Avery Saturday at Tartine. Approve, tweak, or pass.",
+  sam: "Still talking with Avery's matchmaker. No date to review yet.",
+  riley: "Still talking with Avery's matchmaker. You won't be asked until there's a date.",
   priya: "Profile is filled in. Lock dealbreakers on Profile to open a shortlist.",
   noah: "Doesn't want kids, so anyone with that dealbreaker — Avery included — will not see him.",
   alex: "Clears Avery's filters. Avery is outside Alex's age range, so neither shortlist shows the pair.",

@@ -1,9 +1,8 @@
 import Link from "next/link";
 
-export function MatchNav({ matchId, current }: { matchId: string; current: "desk" | "intro" | "date" }) {
+export function MatchNav({ matchId, current }: { matchId: string; current?: "desk" | "date" }) {
   const links = [
-    { id: "desk", href: `/desk/${matchId}`, label: "Bot desk" },
-    { id: "intro", href: `/intro/${matchId}`, label: "Intro" },
+    { id: "desk", href: `/desk/${matchId}`, label: "Activity" },
     { id: "date", href: `/dates/${matchId}`, label: "Date" },
   ] as const;
   return (

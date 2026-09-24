@@ -1,16 +1,24 @@
 import { Avatar } from "@/components/avatar";
-import { intentLabel, kidsLabel, smokingLabel, titleWord } from "@/lib/labels";
+import { intentLabel, kidsLabel, smokingLabel, titleWord, initials } from "@/lib/labels";
 import type { PublicPerson } from "@/lib/domain";
+
+export function Portrait({ name, accent }: { name: string; accent: string }) {
+  return (
+    <div className="portrait" style={{ backgroundColor: accent }} aria-hidden="true">
+      <span className="portrait-mark">{initials(name)}</span>
+      <span className="portrait-caption">Photo placeholder</span>
+    </div>
+  );
+}
 
 export function PersonStrip({ person }: { person: PublicPerson }) {
   return (
     <div className="person-strip">
       <Avatar name={person.displayName} accent={person.accent} size="lg" />
       <div>
-        <p className="kicker">{person.pronouns}</p>
         <h1>{person.displayName}</h1>
         <p className="meta">
-          {person.age} · {person.occupation} · {person.city}
+          {person.pronouns} · {person.age} · {person.city}
         </p>
       </div>
     </div>

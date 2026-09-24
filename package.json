@@ -2,7 +2,7 @@
   "name": "botdate",
   "version": "0.1.0",
   "private": true,
-  "description": "BotDate — a Grok-bot-native dating desk. Matchmakers filter, talk, and schedule. Members approve every outbound note.",
+  "description": "BotDate — a Grok-bot-native dating desk. Matchmakers filter and talk. Members step in when there is a date to approve.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

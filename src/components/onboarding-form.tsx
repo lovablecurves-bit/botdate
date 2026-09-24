@@ -13,7 +13,7 @@ export function OnboardingForm({ member }: { member: Member }) {
   const [state, action] = useActionState(saveOnboardingAction, initial);
   return (
     <form action={action} className="stack">
-      <section className="card stack">
+      <section className="stack tight">
         <div className="photo-row">
           <div className="photo-ph" style={{ background: member.profile.accent }}>
             <Avatar name={member.displayName} accent={member.profile.accent} size="lg" />
@@ -83,7 +83,7 @@ export function OnboardingForm({ member }: { member: Member }) {
         </label>
       </section>
 
-      <section className="card stack">
+      <section className="stack tight">
         <div>
           <h2>Dealbreakers</h2>
           <p className="help">A miss never reaches your shortlist. You also stay off someone else's list when you miss theirs.</p>
@@ -134,7 +134,7 @@ export function OnboardingForm({ member }: { member: Member }) {
         </label>
       </section>
 
-      <section className="card stack">
+      <section className="stack tight">
         <div>
           <h2>Must-haves and nice-to-haves</h2>
           <p className="help">These rank the shortlist. They do not hide anyone. Shared interests and the same city move a person up.</p>
@@ -170,7 +170,7 @@ export function OnboardingForm({ member }: { member: Member }) {
           {state.message}
         </p>
       ) : null}
-      <SubmitButton className="btn primary" pendingLabel="Saving…" testId="save-profile">
+      <SubmitButton className="btn primary wide" pendingLabel="Saving…" testId="save-profile">
         Save profile
       </SubmitButton>
     </form>
