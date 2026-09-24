@@ -1,11 +1,16 @@
+const HEART =
+  "M16 28C16 28 2 18.5 2 11 2 6.5 5.5 3 10 3 12.6 3 14.6 4.3 16 6.6 17.4 4.3 19.4 3 22 3 26.5 3 30 6.5 30 11 30 18.5 16 28 16 28Z";
+
 export function Wordmark() {
   return (
     <>
-      <svg className="brand-heart" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-        />
+      <svg className="brand-mark" viewBox="0 0 84 34" aria-hidden="true">
+        <path fill="var(--pop)" transform="translate(0 2)" d={HEART} />
+        <path fill="var(--rose)" transform="translate(52 2)" d={HEART} />
+        <g fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinejoin="round">
+          <rect x="32.5" y="12.5" width="12" height="10" rx="5" />
+          <rect x="39.5" y="12.5" width="12" height="10" rx="5" />
+        </g>
       </svg>
       <span>BotDate</span>
     </>
