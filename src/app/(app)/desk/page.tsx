@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { requireOnboarded } from "@/lib/auth";
-import { getDb } from "@/lib/db/open";
+import { withDb } from "@/lib/db/open";
 import { listDesk } from "@/lib/domain";
 import { truncate } from "@/lib/labels";
 
@@ -9,7 +9,7 @@ export const metadata = { title: "Bot desk" };
 
 export default async function DeskIndexPage() {
   const member = await requireOnboarded();
-  const desks = listDesk(getDb(), member.id);
+  const desks = await withDb((db) => listDesk(db, member.id));
   return (
     <div className="stack">
       <header className="page-head">

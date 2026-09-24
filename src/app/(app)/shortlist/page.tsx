@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { Facts } from "@/components/person";
 import { requireOnboarded } from "@/lib/auth";
-import { getDb } from "@/lib/db/open";
+import { withDb } from "@/lib/db/open";
 import { listShortlist, type ShortlistCard } from "@/lib/domain";
 
 export const metadata = { title: "Shortlist" };
@@ -29,7 +29,7 @@ function pill(card: ShortlistCard): string | null {
 
 export default async function ShortlistPage() {
   const member = await requireOnboarded();
-  const list = listShortlist(getDb(), member.id);
+  const list = await withDb((db) => listShortlist(db, member.id));
   return (
     <div className="stack">
       <header className="page-head">
