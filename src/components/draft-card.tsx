@@ -30,9 +30,9 @@ export function DraftCard({ messageId, initialBody, paused }: { messageId: strin
 
   return (
     <section className="draft" aria-label="Draft waiting for approval">
-      <div className="draft-head">
-        <p className="eyebrow">Needs your approval</p>
-        <p className="help">This speaks for you. It is not sent until you approve it.</p>
+      <div className="stack tight">
+        <p className="draft-flag">Draft · not sent</p>
+        <p className="help">This speaks for you. It stays here until you approve it.</p>
       </div>
       {editing ? (
         <label className="field">
@@ -49,16 +49,7 @@ export function DraftCard({ messageId, initialBody, paused }: { messageId: strin
           {error}
         </p>
       ) : null}
-      <div className="actions">
-        {editing ? (
-          <button className="btn ghost" type="button" disabled={pending} onClick={() => run(() => editDraftAction(messageId, body))} data-testid="save-draft">
-            Save edit
-          </button>
-        ) : (
-          <button className="btn ghost" type="button" disabled={pending} onClick={() => setEditing(true)} data-testid="edit-draft">
-            Edit
-          </button>
-        )}
+      <div className="draft-actions">
         <button
           className="btn primary"
           type="button"
@@ -68,13 +59,22 @@ export function DraftCard({ messageId, initialBody, paused }: { messageId: strin
         >
           Approve and send
         </button>
+        {editing ? (
+          <button className="btn ghost" type="button" disabled={pending} onClick={() => run(() => editDraftAction(messageId, body))} data-testid="save-draft">
+            Save edit
+          </button>
+        ) : (
+          <button className="btn ghost" type="button" disabled={pending} onClick={() => setEditing(true)} data-testid="edit-draft">
+            Edit
+          </button>
+        )}
         {armed ? (
-          <button className="btn danger" type="button" disabled={pending} onClick={() => run(() => killDraftAction(messageId))} data-testid="confirm-kill">
+          <button className="btn danger solid" type="button" disabled={pending} onClick={() => run(() => killDraftAction(messageId))} data-testid="confirm-kill">
             Confirm kill
           </button>
         ) : (
           <button className="btn danger" type="button" disabled={pending} onClick={() => setArmed(true)} data-testid="kill-draft">
-            Kill draft
+            Kill
           </button>
         )}
       </div>

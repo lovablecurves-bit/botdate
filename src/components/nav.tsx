@@ -10,10 +10,10 @@ const LINKS = [
   { href: "/onboarding", label: "Profile" },
 ];
 
-export function Nav({ variant, pending }: { variant: "rail" | "tab"; pending: number }) {
+export function Nav({ pending }: { pending: number }) {
   const pathname = usePathname();
   return (
-    <nav className={variant === "rail" ? "rail-nav" : "tabbar"} aria-label="Primary">
+    <nav className="tabbar" aria-label="Primary">
       {LINKS.map((link) => {
         const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
         return (

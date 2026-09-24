@@ -13,27 +13,24 @@ export default async function DeskIndexPage() {
   return (
     <div className="stack">
       <header className="page-head">
-        <p className="eyebrow">Bot desk</p>
-        <h1>Bot-to-bot, on your behalf</h1>
-        <p className="lede">You can read what has been sent. A draft that speaks for you waits here until you approve, edit, or kill it.</p>
+        <h1>Desk</h1>
+        <p className="lede">What the matchmakers have already sent. A draft that speaks for you waits until you approve, edit, or kill it.</p>
       </header>
       {desks.length === 0 ? (
-        <section className="card empty">
+        <section className="empty">
           <p>No desks yet. When someone clears both sets of dealbreakers, a desk opens here.</p>
         </section>
       ) : (
-        <div className="stack">
+        <div>
           {desks.map((desk) => (
-            <Link key={desk.matchId} href={`/desk/${desk.matchId}`} className="card link-card">
-              <div className="person-top">
-                <Avatar name={desk.person.displayName} accent={desk.person.accent} size="sm" />
-                <div>
-                  <h2>{desk.person.displayName}</h2>
-                  <p className="meta">{truncate(desk.preview, 120)}</p>
-                </div>
-              </div>
-              {desk.draftWaiting ? <p className="pill warn">Draft to approve</p> : null}
-              {!desk.draftWaiting && desk.held ? <p className="pill">Waiting on their approval</p> : null}
+            <Link key={desk.matchId} href={`/desk/${desk.matchId}`} className="list-link">
+              <Avatar name={desk.person.displayName} accent={desk.person.accent} />
+              <span>
+                <strong>{desk.person.displayName}</strong>
+                <span className="meta">{truncate(desk.preview, 90)}</span>
+                {desk.draftWaiting ? <span className="draft-flag">Draft to approve</span> : null}
+                {!desk.draftWaiting && desk.held ? <span className="meta">Waiting on their approval</span> : null}
+              </span>
             </Link>
           ))}
         </div>

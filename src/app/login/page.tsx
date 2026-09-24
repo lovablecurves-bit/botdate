@@ -1,5 +1,5 @@
 import { loginAction, resetDemoAction } from "@/app/actions";
-import { Avatar } from "@/components/avatar";
+import { Portrait } from "@/components/person";
 import { Banner } from "@/components/banner";
 import { SubmitButton } from "@/components/submit-button";
 import { DEMO_NOTES, DEMO_ORDER } from "@/lib/demo/members";
@@ -12,44 +12,51 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { error } = await searchParams;
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
   const roster = listRoster(getDb()).sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
+  const [featured, ...rest] = roster;
 
   return (
     <main className="login">
-      <header className="login-hero">
-        <p className="eyebrow">BotDate</p>
+      <header className="page-head">
+        <p className="wordmark">BotDate</p>
         <h1>Your matchmaker does the first pass.</h1>
-        <p className="lede">
-          Each member has a desk. The bot filters on dealbreakers, talks to the other matchmaker, and only then asks for an introduction or a time. Nothing goes out in your name until you approve it.
-        </p>
+        <p className="lede">Nothing goes out in your name until you approve it.</p>
       </header>
       <Banner>{error}</Banner>
-      <section className="stack">
-        <h2>Demo members</h2>
-        <p className="help">No password. Pick a person and use their desk. Switch later from the menu.</p>
-        <div className="roster">
-          {roster.map((person) => (
-            <article key={person.id} className="person-card">
-              <div className="person-top">
-                <Avatar name={person.displayName} accent={person.accent} />
-                <div>
-                  <h3>{person.displayName}</h3>
-                  <p className="meta">{person.locked ? person.city : "Dealbreakers not locked"}</p>
-                </div>
+      {featured ? (
+        <section className="featured">
+          <Portrait name={featured.displayName} accent={featured.accent} />
+          <div className="person-copy">
+            <h2>{featured.displayName}</h2>
+            <p className="demo-note">{DEMO_NOTES[featured.id]}</p>
+          </div>
+          <form action={loginAction}>
+            <input type="hidden" name="userId" value={featured.id} />
+            <SubmitButton className="btn primary wide" pendingLabel="Opening…">
+              Continue as {featured.displayName}
+            </SubmitButton>
+          </form>
+        </section>
+      ) : null}
+      {rest.length > 0 ? (
+        <section className="stack tight">
+          <h2 className="section-label">Other demo members</h2>
+          {rest.map((person) => (
+            <form key={person.id} action={loginAction} className="member-row">
+              <input type="hidden" name="userId" value={person.id} />
+              <div>
+                <h3>{person.displayName}</h3>
+                <p className="demo-note">{person.locked ? DEMO_NOTES[person.id] : "Dealbreakers not locked yet."}</p>
               </div>
-              <p className="demo-note">{DEMO_NOTES[person.id]}</p>
-              <form action={loginAction}>
-                <input type="hidden" name="userId" value={person.id} />
-                <SubmitButton className="btn primary wide" pendingLabel="Opening…">
-                  Enter desk
-                </SubmitButton>
-              </form>
-            </article>
+              <SubmitButton className="btn ghost wide" pendingLabel="Opening…">
+                Enter as {person.displayName.split(" ")[0]}
+              </SubmitButton>
+            </form>
           ))}
-        </div>
-      </section>
+        </section>
+      ) : null}
       <form action={resetDemoAction} className="reset-row">
         <p className="help">If a previous pass changed the seed, reset brings every demo member, desk, and date back.</p>
-        <SubmitButton className="btn ghost" pendingLabel="Resetting…">
+        <SubmitButton className="btn ghost wide" pendingLabel="Resetting…">
           Reset demo data
         </SubmitButton>
       </form>

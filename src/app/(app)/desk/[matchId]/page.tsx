@@ -4,7 +4,6 @@ import { Banner } from "@/components/banner";
 import { DraftCard } from "@/components/draft-card";
 import { MatchNav } from "@/components/match-nav";
 import { Facts, PersonStrip } from "@/components/person";
-import { StageTrail } from "@/components/stage";
 import { SubmitButton } from "@/components/submit-button";
 import { requireOnboarded } from "@/lib/auth";
 import { getDb } from "@/lib/db/open";
@@ -24,13 +23,11 @@ export default async function DeskPage({
   const { error } = await searchParams;
   const desk = getDesk(getDb(), member.id, matchId);
   if (!desk) notFound();
+  const first = desk.person.displayName.split(" ")[0];
 
   return (
     <div className="stack">
       <PersonStrip person={desk.person} />
-      <p>{desk.person.bio}</p>
-      <Facts person={desk.person} />
-      <StageTrail stage={desk.stage} />
       <MatchNav matchId={matchId} current="desk" />
       <Banner>{error}</Banner>
       {desk.paused ? <Banner>Your matchmaker is paused. Kill a draft if you want it gone. Unpause before anything sends.</Banner> : null}
@@ -55,7 +52,7 @@ export default async function DeskPage({
       {desk.canAsk ? (
         <form action={createDraftAction}>
           <input type="hidden" name="matchId" value={matchId} />
-          <SubmitButton className="btn primary" pendingLabel="Drafting…" testId="ask-draft">
+          <SubmitButton className="btn primary wide" pendingLabel="Drafting…" testId="ask-draft">
             {desk.askLabel}
           </SubmitButton>
         </form>
@@ -68,6 +65,11 @@ export default async function DeskPage({
           ))}
         </details>
       ) : null}
+      <details className="more">
+        <summary>About {first}</summary>
+        <p>{desk.person.bio}</p>
+        <Facts person={desk.person} />
+      </details>
     </div>
   );
 }
