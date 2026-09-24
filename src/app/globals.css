@@ -88,19 +88,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--accent);
   text-decoration: none;
 }
-.wordmark.splash {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 2.5rem;
-}
+.wordmark.splash { font-size: 2.15rem; gap: 10px; }
 .brand-mark {
-  height: 28px;
+  height: 32px;
   width: auto;
   flex: none;
   display: block;
 }
-.wordmark.splash .brand-mark { height: 64px; }
+.wordmark.splash .brand-mark { height: 56px; }
 .content {
   padding: 12px 20px 132px;
 }

@@ -1,9 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#ff3d6e"/>
-  <path fill="#fff7fb" transform="translate(0.6 10.2) scale(0.36)" d="M16 28C16 28 2 18.5 2 11 2 6.5 5.5 3 10 3 12.6 3 14.6 4.3 16 6.6 17.4 4.3 19.4 3 22 3 26.5 3 30 6.5 30 11 30 18.5 16 28 16 28Z"/>
-  <path fill="#fff7fb" transform="translate(21.1 10.2) scale(0.36)" d="M16 28C16 28 2 18.5 2 11 2 6.5 5.5 3 10 3 12.6 3 14.6 4.3 16 6.6 17.4 4.3 19.4 3 22 3 26.5 3 30 6.5 30 11 30 18.5 16 28 16 28Z"/>
-  <g stroke="#1e1024" stroke-width="1.35">
-    <rect x="12" y="13.7" width="5.6" height="5.2" rx="2.6"/>
-    <rect x="15.4" y="13.7" width="5.6" height="5.2" rx="2.6"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -15 64 64" fill="none">
+  <rect x="0" y="-15" width="64" height="64" rx="14" fill="#fff7fb"/>
+  <defs>
+    <clipPath id="bd-heart-left">
+      <path d="M 35.31 27.36 A 12.8 12.8 0 0 1 19.64 11.69 L 25.24 13.19 A 7 7 0 0 0 33.81 21.76 Z"/>
+    </clipPath>
+    <clipPath id="bd-heart-right">
+      <path d="M 28.69 2.64 A 12.8 12.8 0 0 1 44.36 18.31 L 38.76 16.81 A 7 7 0 0 0 30.19 8.24 Z"/>
+    </clipPath>
+  </defs>
+  <path fill="#ff3d6e" transform="translate(0 3)" d="M16 28C16 28 2 18.5 2 11 2 6.5 5.5 3 10 3 12.6 3 14.6 4.3 16 6.6 17.4 4.3 19.4 3 22 3 26.5 3 30 6.5 30 11 30 18.5 16 28 16 28Z"/>
+  <path fill="#ff4d94" transform="translate(32 3)" d="M16 28C16 28 2 18.5 2 11 2 6.5 5.5 3 10 3 12.6 3 14.6 4.3 16 6.6 17.4 4.3 19.4 3 22 3 26.5 3 30 6.5 30 11 30 18.5 16 28 16 28Z"/>
+  <circle cx="32" cy="15" r="10" fill="none" stroke="#d0004a" stroke-width="4.5"/>
+  <path fill="#ff3d6e" transform="translate(0 3)" clip-path="url(#bd-heart-left)" d="M16 28C16 28 2 18.5 2 11 2 6.5 5.5 3 10 3 12.6 3 14.6 4.3 16 6.6 17.4 4.3 19.4 3 22 3 26.5 3 30 6.5 30 11 30 18.5 16 28 16 28Z"/>
+  <path fill="#ff4d94" transform="translate(32 3)" clip-path="url(#bd-heart-right)" d="M16 28C16 28 2 18.5 2 11 2 6.5 5.5 3 10 3 12.6 3 14.6 4.3 16 6.6 17.4 4.3 19.4 3 22 3 26.5 3 30 6.5 30 11 30 18.5 16 28 16 28Z"/>
 </svg>
