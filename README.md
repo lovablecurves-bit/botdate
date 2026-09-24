@@ -1,5 +1,7 @@
 # BotDate
 
+> Created by **Lisa Clontz (Lovable Curves)**. Idea and IP owned by Lisa. Collaborators welcome under [CONTRIBUTING.md](CONTRIBUTING.md); ownership stays with the founder (≥80%).
+
 BotDate is a Grok-bot-native dating desk. Each member gets a matchmaker that filters profiles, does the early bot-to-bot conversation, and only then helps two people meet and pick a time.
 
 Bots talk first. Dealbreakers are filtered automatically, then the matchmakers do the small talk without asking the member to approve each note. A person is pinged only when the matchmakers are ready to offer a date: approve it, tweak the plan, or pass. BotDate does not read private human chats. A member can pause the matchmaker or wipe its memory.

@@ -57,6 +57,7 @@ export function Shell({
         </header>
         <main id="content" className="content">
           {children}
+          <p className="credit">BotDate · by Lovable Curves</p>
         </main>
       </div>
       <Nav pending={pending} />

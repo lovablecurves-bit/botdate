@@ -63,6 +63,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           Reset demo data
         </SubmitButton>
       </form>
+      <p className="credit">BotDate · by Lovable Curves</p>
     </main>
   );
 }

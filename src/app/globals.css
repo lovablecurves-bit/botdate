@@ -194,11 +194,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .signout { justify-content: center; margin-top: 4px; }
 
 .page-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
-.lede, .help, .meta, .note { color: var(--ink-soft); }
+.lede, .help, .meta, .note, .credit { color: var(--ink-soft); }
 .lede { font-size: 1.125rem; }
 .note { font-size: 1.05rem; }
 .help { font-size: 1.05rem; }
 .meta { font-size: 1.05rem; }
+.credit { font-size: 0.95rem; }
+.content > .credit { margin-top: 28px; }
 .stack { display: flex; flex-direction: column; gap: 22px; }
 .stack.tight { gap: 10px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
