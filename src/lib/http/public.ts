@@ -8,6 +8,9 @@ const OPEN = [
   /^\/api\/health\/?$/,
   /^\/privacy\/?$/,
   /^\/terms\/?$/,
+  /^\/video\/?$/,
+  /^\/video\/embed\/?$/,
+  /^\/video\/botdate-how-it-works\.(?:mp4|png)$/,
 ];
 
 /** Icons, manifest, and Next static files. Middleware must not send these to login. */
