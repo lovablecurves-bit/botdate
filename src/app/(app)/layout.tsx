@@ -1,13 +1,13 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Shell } from "@/components/shell";
-import { needsConnectPrompt, requireUser } from "@/lib/auth";
+import { needsConnectPrompt, requireSubscriber } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { countOpenOffers, listRoster } from "@/lib/domain";
 import { demoMode } from "@/lib/x/config";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const member = await requireUser();
+  const member = await requireSubscriber();
   const pathname = (await headers()).get("x-pathname") ?? "";
   if (needsConnectPrompt(member) && pathname && pathname !== "/connect") redirect("/connect");
   const showDemoSwitcher = demoMode();

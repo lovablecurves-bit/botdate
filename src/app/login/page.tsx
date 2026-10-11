@@ -10,6 +10,7 @@ import { withDb } from "@/lib/db/open";
 import { listRoster } from "@/lib/domain";
 import { appOrigin } from "@/lib/http/origin";
 import { waitlistIntent } from "@/lib/share";
+import { billingEnabled } from "@/lib/billing/config";
 import { coldStartNote, xAuthConfigured } from "@/lib/x/config";
 
 export const metadata = { title: "Enter" };
@@ -42,7 +43,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <a className="btn primary wide" href="/api/auth/x/start">
             Sign in with X
           </a>
-          <p className="help">Next you'll connect your Grok bot. The first person to sign in becomes member #1.</p>
+          <p className="help">
+            {billingEnabled()
+              ? "Next you'll join BotDate, then connect your Grok bot. The first person to sign in becomes member #1."
+              : "Next you'll connect your Grok bot. The first person to sign in becomes member #1."}
+          </p>
           {note ? <p className="help">{note}</p> : null}
         </section>
       ) : null}

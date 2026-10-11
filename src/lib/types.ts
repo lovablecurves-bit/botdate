@@ -58,6 +58,12 @@ export type Member = {
   memberNumber: number | null;
   /** First-login Connect your Grok Bot step has been dismissed. */
   connectSeen: boolean;
+  /** Stripe customer for this member. Null until Checkout creates one. */
+  stripeCustomerId: string | null;
+  /** Current Stripe subscription, when Checkout or a subscription event has stored one. */
+  stripeSubscriptionId: string | null;
+  /** Stripe subscription status: active, trialing, past_due, canceled, and the rest. */
+  subscriptionStatus: string | null;
 };
 
 export type MemberInput = {

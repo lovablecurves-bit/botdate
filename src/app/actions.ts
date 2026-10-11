@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { clearSession, requireOnboarded, requireUser, setSession } from "@/lib/auth";
+import { clearSession, requireOnboarded, requireSubscriber, setSession } from "@/lib/auth";
 import { markConnectSeen } from "@/lib/x/account";
 import { demoMode } from "@/lib/x/config";
 import { issueAgentToken, revokeAgentTokens } from "@/lib/agent/tokens";
@@ -83,7 +83,7 @@ export async function loginAction(formData: FormData) {
 const AGENT_REVEAL = "botdate_agent_token";
 
 export async function issueAgentTokenAction() {
-  const user = await requireUser();
+  const user = await requireSubscriber();
   const issued = await withDb((db) => issueAgentToken(db, user.id));
   if (!issued) redirect("/connect?error=Could+not+issue+a+token.");
   const jar = await cookies();
@@ -92,7 +92,7 @@ export async function issueAgentTokenAction() {
 }
 
 export async function revokeAgentTokenAction() {
-  const user = await requireUser();
+  const user = await requireSubscriber();
   await withDb((db) => revokeAgentTokens(db, user.id));
   const jar = await cookies();
   jar.set(AGENT_REVEAL, "", { path: "/connect", maxAge: 0 });
@@ -100,7 +100,7 @@ export async function revokeAgentTokenAction() {
 }
 
 export async function dismissAgentTokenAction() {
-  await requireUser();
+  await requireSubscriber();
   const jar = await cookies();
   jar.set(AGENT_REVEAL, "", { path: "/connect", maxAge: 0 });
   redirect("/connect");
@@ -112,7 +112,7 @@ export async function logoutAction() {
 }
 
 export async function continueFromConnectAction() {
-  const user = await requireUser();
+  const user = await requireSubscriber();
   await withDb((db) => markConnectSeen(db, user.id));
   redirect(user.prefs.locked ? "/shortlist" : "/onboarding");
 }
@@ -125,7 +125,7 @@ export async function resetDemoAction() {
 }
 
 export async function saveOnboardingAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser();
+  const user = await requireSubscriber();
   const result = await withDb((db) => saveMember(db, user.id, inputFromForm(formData)));
   if (!result.ok) return { ok: false, error: result.error, message: null };
   touch();
@@ -138,7 +138,7 @@ export async function saveOnboardingAction(_prev: FormState, formData: FormData)
 }
 
 export async function setPausedAction(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireSubscriber();
   const paused = String(formData.get("paused")) === "true";
   const result = await withDb((db) => setPaused(db, user.id, paused));
   if (!result.ok) redirect(`/onboarding?error=${encodeURIComponent(result.error)}`);
@@ -147,7 +147,7 @@ export async function setPausedAction(formData: FormData) {
 }
 
 export async function wipeMemoryAction() {
-  const user = await requireUser();
+  const user = await requireSubscriber();
   const result = await withDb((db) => wipeMemory(db, user.id));
   if (!result.ok) redirect(`/onboarding?error=${encodeURIComponent(result.error)}`);
   touch();
