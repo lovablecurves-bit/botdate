@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { test } from "node:test";
+import initSqlJs from "sql.js";
+import { openDatabase } from "./open";
 import { missingColumnStatements } from "./migrate";
 
 test("migrations add X profile columns and the held-offer flag only when they are missing", () => {
@@ -32,4 +37,28 @@ test("migrations add X profile columns and the held-offer flag only when they ar
   assert.match(legacy.join("\n"), /safety_status/);
   assert.match(legacy.join("\n"), /safety_reason/);
   assert.match(legacy.join("\n"), /referral_code/);
+});
+
+test("an older sqlite file gains referral_code before its unique index", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "botdate-legacy-"));
+  const file = path.join(dir, "legacy.sqlite");
+  const SQL = await initSqlJs();
+  const raw = new SQL.Database();
+  raw.run(`CREATE TABLE users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    bot_paused INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  )`);
+  fs.writeFileSync(file, Buffer.from(raw.export()));
+  raw.close();
+  const ctx = await openDatabase(file, { seed: false });
+  try {
+    ctx.sqlite.prepare("SELECT referral_code FROM users").get();
+    ctx.sqlite.prepare("SELECT member_id FROM private_prefs").get();
+    ctx.sqlite.prepare("SELECT id FROM match_check_hits").get();
+  } finally {
+    ctx.close();
+  }
 });

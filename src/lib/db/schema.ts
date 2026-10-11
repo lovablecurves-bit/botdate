@@ -296,7 +296,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS waitlist_handle_idx ON waitlist(x_handle COLLA
 CREATE UNIQUE INDEX IF NOT EXISTS reports_pair_idx ON reports(reporter_id, target_id);
 CREATE INDEX IF NOT EXISTS reports_target_idx ON reports(target_id);
 CREATE UNIQUE INDEX IF NOT EXISTS blocks_pair_idx ON blocks(blocker_id, blocked_id);
-CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_idx ON users(referral_code);
 CREATE TABLE IF NOT EXISTS private_prefs (
   member_id TEXT PRIMARY KEY REFERENCES users(id),
   ciphertext TEXT NOT NULL,
