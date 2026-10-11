@@ -29,6 +29,10 @@ test("agent routes, the X callback, and the legal pages are outside the demo ses
   assert.equal(isOpenPath("/privacy/"), true);
   assert.equal(isOpenPath("/terms"), true);
   assert.equal(isOpenPath("/terms/"), true);
+  assert.equal(isOpenPath("/api/waitlist/count"), true);
+  assert.equal(isOpenPath("/api/waitlist/count/"), true);
+  assert.equal(isOpenPath("/api/waitlist"), false);
+  assert.equal(isOpenPath("/admin/waitlist"), false);
   assert.equal(isOpenPath("/privacy-policy"), false);
   assert.equal(isOpenPath("/members"), false);
   assert.equal(isOpenPath("/shortlist"), false);

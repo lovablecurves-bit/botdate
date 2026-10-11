@@ -108,8 +108,8 @@ export default async function ConnectPage({ searchParams }: { searchParams: Prom
       ) : null}
 
       <p className="text-links">
-        <a href={waitlistIntent(origin)} target="_blank" rel="noopener noreferrer">
-          Share a waitlist invite
+        <a href={waitlistIntent()} target="_blank" rel="noopener noreferrer">
+          Share BotDate on X
         </a>
       </p>
     </div>

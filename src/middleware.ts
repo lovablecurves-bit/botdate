@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isOpenPath } from "@/lib/http/public";
+import { guestLoginUrl, isOpenPath } from "@/lib/http/public";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
   const loggedIn = Boolean(request.cookies.get("botdate_uid")?.value);
   if (isOpenPath(pathname)) return NextResponse.next({ request: { headers: requestHeaders } });
   if (!loggedIn && pathname !== "/login") {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(guestLoginUrl(request.url));
   }
   if (loggedIn && pathname === "/login") {
     return NextResponse.redirect(new URL("/shortlist", request.url));

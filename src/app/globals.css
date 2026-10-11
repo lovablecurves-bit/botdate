@@ -381,7 +381,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .field { display: flex; flex-direction: column; gap: 8px; font-weight: 600; }
 .field span, legend { font-size: 1.05rem; }
-input[type="text"], input[type="number"], input[type="datetime-local"], textarea, select {
+input[type="text"], input[type="email"], input[type="number"], input[type="datetime-local"], textarea, select {
   width: 100%;
   min-height: 52px;
   border-radius: 14px;
@@ -580,6 +580,28 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .legal { width: min(640px, 100%); }
 .legal section { display: flex; flex-direction: column; gap: 8px; }
 .legal h2 { font-size: 1.35rem; }
+.waitlist-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: white;
+  border-radius: 28px;
+  padding: 18px 16px 16px;
+  box-shadow: var(--shadow);
+}
+.waitlist-count {
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+.waitlist-position {
+  font-family: var(--serif);
+  font-size: 2.15rem;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+.optional { font-weight: 500; color: var(--ink-soft); }
 .login-foot { display: flex; flex-direction: column; gap: 4px; }
 .legal-links { flex-direction: row; flex-wrap: wrap; gap: 4px 18px; }
 .member-row {

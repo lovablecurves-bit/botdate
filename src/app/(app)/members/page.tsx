@@ -46,6 +46,11 @@ export default async function MembersPage() {
         </section>
       )}
       {note ? <p className="help">{note}</p> : null}
+      {member.founder ? (
+        <p className="text-links">
+          <a href="/admin/waitlist">Export waitlist</a>
+        </p>
+      ) : null}
     </div>
   );
 }
