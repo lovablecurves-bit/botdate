@@ -4,6 +4,10 @@ export type XProfile = {
   name: string;
   bio: string;
   avatarUrl: string;
+  /** ISO time from X. Empty when the payload omitted created_at. */
+  createdAt?: string;
+  followers?: number;
+  verified?: boolean;
 };
 
 const AVATAR_HOSTS = new Set(["pbs.twimg.com", "abs.twimg.com"]);
@@ -36,11 +40,22 @@ export function xProfileFromPayload(payload: unknown): XProfile | null {
   const bio = typeof row.description === "string" ? row.description.trim() : "";
   if (!/^\d{1,32}$/.test(xUserId)) return null;
   if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) return null;
+  const metrics = row.public_metrics;
+  const followers =
+    metrics && typeof metrics === "object" && typeof (metrics as { followers_count?: unknown }).followers_count === "number"
+      ? (metrics as { followers_count: number }).followers_count
+      : 0;
+  const verifiedType = typeof row.verified_type === "string" ? row.verified_type : "";
+  const verified = row.verified === true || verifiedType === "blue" || verifiedType === "business" || verifiedType === "government";
+  const createdAt = typeof row.created_at === "string" ? row.created_at : "";
   return {
     xUserId,
     handle,
     name: name || handle,
     bio,
     avatarUrl: safeAvatarUrl(row.profile_image_url),
+    createdAt,
+    followers,
+    verified,
   };
 }

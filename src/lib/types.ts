@@ -1,6 +1,16 @@
 export type KidsStance = "wants" | "open" | "doesnt";
 export type Intent = "serious" | "casual";
+export type LookingFor = "love" | "casual" | "friends";
 export type DatingGoal = "serious" | "marriage" | "casual";
+
+export const LOOKING_FOR = ["love", "casual", "friends"] as const;
+
+/** Badge copy. Love is the serious choice. */
+export const LOOKING_FOR_LABELS: Record<LookingFor, string> = {
+  love: "Love",
+  casual: "Casual/hookup",
+  friends: "Friends",
+};
 export type KidsHave = "yes" | "no";
 export type KidsWant = "yes" | "no" | "open";
 export type Drinking = "never" | "socially" | "often";
@@ -10,6 +20,8 @@ export type ValuesImportance = "low" | "medium" | "high";
 /** Answers from the conversational onboarding interview. Omitted fields are still unanswered. */
 export type OnboardingAnswers = {
   datingGoal?: DatingGoal;
+  /** One or more of love, casual, friends. Overlap is a hard match filter. */
+  lookingFor?: LookingFor[];
   mustHaves?: string[];
   dealbreakers?: string[];
   ageMin?: number;
@@ -84,6 +96,7 @@ export type XAccount = {
   userId: string;
   handle: string;
   avatarUrl: string;
+  verified?: boolean;
 };
 
 export type Member = {
@@ -107,6 +120,8 @@ export type Member = {
   stripeSubscriptionId: string | null;
   /** Stripe subscription status: active, trialing, canceled, and the rest. Empty until a webhook writes one. */
   subscriptionStatus: string | null;
+  /** Opt in to showing first name and first photo in other members' bot-activity logs. Default off. */
+  shareInActivity: boolean;
 };
 
 export type MemberInput = {

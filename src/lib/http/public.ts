@@ -4,6 +4,8 @@ const OPEN = [
   /^\/admin\/x\/connected\/?$/,
   /^\/api\/agent(?:\/|$)/,
   /^\/api\/mcp(?:\/|$)/,
+  /^\/api\/me\/private-prefs\/?$/,
+  /^\/api\/match\/check\/?$/,
   /^\/api\/stripe\/webhook\/?$/,
   /^\/api\/waitlist\/count\/?$/,
   /^\/api\/health\/?$/,

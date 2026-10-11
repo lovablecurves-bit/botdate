@@ -12,6 +12,7 @@ import { demoMode } from "@/lib/x/config";
 import { issueAgentToken, revokeAgentTokens } from "@/lib/agent/tokens";
 import { resetDatabase } from "@/lib/db/seed";
 import { withDb } from "@/lib/db/open";
+import { parseLookingFor } from "@/lib/onboarding";
 import { joinWaitlist, normalizeReferralCode } from "@/lib/waitlist";
 import {
   approveDraft,
@@ -27,10 +28,12 @@ import {
   respondToDate,
   tweakOffer,
   saveMember,
+  saveOnboardingAnswers,
   sendHuman,
   setPaused,
   wipeMemory,
 } from "@/lib/domain";
+import { blockMember, clearSafety, keepPaused, reportMember, setShareInActivity } from "@/lib/moderation";
 import type { ActionResult } from "@/lib/result";
 import type { ChannelChoice, Intent, IntentFilter, KidsFilter, KidsStance, MemberInput, SmokingFilter } from "@/lib/types";
 
@@ -64,6 +67,8 @@ function touch(matchId?: string) {
   revalidatePath("/desk");
   revalidatePath("/dates");
   revalidatePath("/onboarding");
+  revalidatePath("/activity");
+  revalidatePath("/admin/safety");
   if (matchId) {
     revalidatePath(`/desk/${matchId}`);
     revalidatePath(`/intro/${matchId}`);
@@ -207,10 +212,15 @@ export async function resetDemoAction() {
 }
 
 export async function saveOnboardingAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const lookingFor = parseLookingFor(formData.getAll("lookingFor").map(String));
+  if (!lookingFor) return { ok: false, error: "Pick at least one: Love, Casual/hookup, or Friends.", message: null };
   const user = await requireUser();
   const saved = await withDb((db) => {
     const result = saveMember(db, user.id, inputFromForm(formData));
-    return { result, member: result.ok ? getMember(db, user.id) : null };
+    if (!result.ok) return { result, member: null };
+    const interview = saveOnboardingAnswers(db, user.id, { lookingFor });
+    if (!interview.ok) return { result: { ok: false as const, error: interview.error }, member: null };
+    return { result, member: getMember(db, user.id) };
   });
   if (!saved.result.ok) return { ok: false, error: saved.result.error, message: null };
   if (saved.member) await setSession(saved.member);
@@ -230,6 +240,49 @@ export async function setPausedAction(formData: FormData) {
   if (!result.ok) redirect(`/onboarding?error=${encodeURIComponent(result.error)}`);
   touch();
   redirect(`/onboarding?notice=${paused ? "paused" : "unpaused"}`);
+}
+
+export async function setShareActivityAction(formData: FormData) {
+  const user = await requireUser();
+  const enabled = formData.get("enabled") === "on";
+  const result = await withDb((db) => setShareInActivity(db, user.id, enabled));
+  if (!result.ok) redirect(`/activity?error=${encodeURIComponent(result.error)}`);
+  touch();
+  redirect("/activity?notice=saved");
+}
+
+export async function reportMemberAction(targetId: string, matchId: string): Promise<ActionResult> {
+  const user = await requireOnboarded();
+  const result = await withDb((db) => reportMember(db, user.id, targetId, matchId));
+  touch(matchId);
+  return result;
+}
+
+export async function blockMemberAction(targetId: string, matchId: string): Promise<ActionResult> {
+  const user = await requireOnboarded();
+  const result = await withDb((db) => blockMember(db, user.id, targetId));
+  touch(matchId);
+  return result;
+}
+
+export async function clearSafetyAction(formData: FormData) {
+  const user = await requireUser();
+  if (!isFounderAccount(user)) redirect("/onboarding");
+  const userId = String(formData.get("userId") ?? "");
+  const result = await withDb((db) => clearSafety(db, userId));
+  if (!result.ok) redirect(`/admin/safety?error=${encodeURIComponent(result.error)}`);
+  touch();
+  redirect("/admin/safety?notice=cleared");
+}
+
+export async function keepPausedAction(formData: FormData) {
+  const user = await requireUser();
+  if (!isFounderAccount(user)) redirect("/onboarding");
+  const userId = String(formData.get("userId") ?? "");
+  const result = await withDb((db) => keepPaused(db, userId));
+  if (!result.ok) redirect(`/admin/safety?error=${encodeURIComponent(result.error)}`);
+  touch();
+  redirect("/admin/safety?notice=paused");
 }
 
 export async function wipeMemoryAction() {

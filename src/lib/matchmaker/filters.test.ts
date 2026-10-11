@@ -43,6 +43,16 @@ test("must-haves and dealbreakers are hard filters, and max distance can admit a
   assert.equal(primaryHold(tight, sam), "distance");
 });
 
+test("looking for only matches an overlap, and an empty list matches nobody", () => {
+  const jordan = demoMember("jordan");
+  assert.deepEqual(avery.onboarding.lookingFor, ["love"]);
+  assert.equal(primaryHold(avery, jordan), null);
+  assert.equal(primaryHold(avery, { ...jordan, onboarding: { ...jordan.onboarding, lookingFor: ["friends"] } }), "looking-for");
+  assert.equal(primaryHold(avery, { ...jordan, onboarding: { ...jordan.onboarding, lookingFor: ["friends", "love"] } }), null);
+  assert.equal(primaryHold(avery, { ...jordan, onboarding: { ...jordan.onboarding, lookingFor: [] } }), "looking-for");
+  assert.equal(primaryHold(avery, demoMember("morgan")), "smoking");
+});
+
 test("a high soft score cannot override a hard miss", () => {
   const alex = demoMember("alex");
   const jordan = demoMember("jordan");

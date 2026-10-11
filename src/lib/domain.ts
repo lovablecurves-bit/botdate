@@ -5,9 +5,12 @@ import { DEMO_ORDER } from "./demo/members";
 import { SCRIPTS } from "./demo/scripts";
 import { HOLD_LABELS, mutualPass, primaryHold } from "./matchmaker/filters";
 import { kidsWantToStance, mergeOnboarding, onboardingView, parseOnboardingJson, type OnboardingView } from "./onboarding";
+import { writePrivatePrefs } from "./private-prefs";
 import { matchmaker } from "./matchmaker/service";
 import { subscriptionBlocks } from "./billing/access";
+import { botMessagesSentToday, flagMember, pairBlocked } from "./moderation";
 import { created, fail, ok, type ActionResult, type CreatedResult } from "./result";
+import { BOT_MESSAGES_PER_DAY, RATE_LIMIT_ERROR, SCAM_MESSAGE_ERROR, impersonationError, scanBotMessage } from "./safety";
 import { formatPacific, isFutureIso, isoToPacificLocal, pacificLocalToIso } from "./time";
 import {
   CITIES,
@@ -20,6 +23,7 @@ import {
   type Intent,
   type IntentFilter,
   type KidsFilter,
+  type LookingFor,
   type KidsStance,
   type Member,
   type MemberInput,
@@ -39,9 +43,12 @@ export type PublicPerson = {
   interests: string[];
   accent: string;
   avatarUrl: string | null;
+  xHandle: string | null;
+  xVerified: boolean;
   smoking: boolean;
   kids: KidsStance;
   intent: Intent;
+  lookingFor: LookingFor[];
 };
 
 export type StageState = {
@@ -184,9 +191,12 @@ export function toPublic(member: Member): PublicPerson {
         interests: member.profile.interests,
         accent: member.profile.accent,
         avatarUrl: member.xAccount?.avatarUrl || null,
+        xHandle: member.xAccount?.handle || null,
+        xVerified: member.xAccount?.verified === true,
         smoking: member.profile.smoking,
     kids: member.profile.kids,
     intent: member.profile.intent,
+    lookingFor: member.onboarding.lookingFor ?? [],
   };
 }
 
@@ -212,6 +222,7 @@ export function listMembers(ctx: BotDateDb): Member[] {
             userId: user.xUserId,
             handle: user.xHandle ?? "",
             avatarUrl: user.xAvatarUrl ?? "",
+            verified: asBool(user.xVerified),
           }
         : null,
       profile: {
@@ -244,6 +255,7 @@ export function listMembers(ctx: BotDateDb): Member[] {
       stripeCustomerId: user.stripeCustomerId || null,
       stripeSubscriptionId: user.stripeSubscriptionId || null,
       subscriptionStatus: user.stripeSubscriptionStatus || null,
+      shareInActivity: asBool(user.shareInActivity),
     });
   }
   return members;
@@ -307,7 +319,7 @@ function ensureMutualMatches(ctx: BotDateDb, userId: string) {
   if (!viewer?.prefs.locked) return;
   const now = new Date().toISOString();
   for (const other of listMembers(ctx)) {
-    if (other.id === userId || !mutualPass(viewer, other)) continue;
+    if (other.id === userId || !mutualPass(viewer, other) || pairBlocked(ctx, userId, other.id)) continue;
     const id = matchIdFor(userId, other.id);
     const existing = ctx.db.select().from(matches).where(eq(matches.id, id)).get();
     if (existing) continue;
@@ -355,7 +367,7 @@ function loadPair(ctx: BotDateDb, userId: string, matchId: string) {
   if (!match || (match.userAId !== userId && match.userBId !== userId)) return null;
   const viewer = getMember(ctx, userId);
   const other = getMember(ctx, match.userAId === userId ? match.userBId : match.userAId);
-  if (!viewer || !other || !mutualPass(viewer, other)) return null;
+  if (!viewer || !other || !mutualPass(viewer, other) || pairBlocked(ctx, userId, other.id)) return null;
   return { match, viewer, other };
 }
 
@@ -402,6 +414,7 @@ export function listShortlist(ctx: BotDateDb, userId: string): Shortlist {
       inactive += 1;
       continue;
     }
+    if (pairBlocked(ctx, userId, other.id)) continue;
     const reason = primaryHold(viewer, other);
     if (reason) {
       holds.set(reason, (holds.get(reason) ?? 0) + 1);
@@ -657,6 +670,17 @@ function cleanBody(body: string): string {
   return body.replace(/\s+/g, " ").trim();
 }
 
+/** Scam copy is flagged and not sent. Volume is capped per UTC day. */
+function rejectUnsafeBotMessage(ctx: BotDateDb, userId: string, body: string): { ok: false; error: string } | null {
+  const hit = scanBotMessage(body);
+  if (hit) {
+    flagMember(ctx, userId, hit.reason);
+    return fail(SCAM_MESSAGE_ERROR);
+  }
+  if (botMessagesSentToday(ctx, userId) >= BOT_MESSAGES_PER_DAY) return fail(RATE_LIMIT_ERROR);
+  return null;
+}
+
 export function approveDraft(ctx: BotDateDb, userId: string, messageId: string, body?: string): ActionResult {
   return ctx.sqlite.transaction(() => {
     const message = ctx.db.select().from(messages).where(eq(messages.id, messageId)).get();
@@ -671,6 +695,8 @@ export function approveDraft(ctx: BotDateDb, userId: string, messageId: string, 
     const nextBody = cleanBody(body ?? message.body);
     if (!nextBody) return fail("Write something before sending.");
     if (nextBody.length > 800) return fail("Keep a draft under 800 characters.");
+    const unsafe = rejectUnsafeBotMessage(ctx, userId, nextBody);
+    if (unsafe) return unsafe;
     ctx.db
       .update(messages)
       .set({
@@ -964,6 +990,8 @@ export function sendBotNote(ctx: BotDateDb, userId: string, matchId: string, bod
   const nextBody = cleanBody(body);
   if (!nextBody) return fail("Write a message first.");
   if (nextBody.length > 800) return fail("Keep a message under 800 characters.");
+  const unsafe = rejectUnsafeBotMessage(ctx, userId, nextBody);
+  if (unsafe) return unsafe;
   const id = `msg_${crypto.randomUUID()}`;
   ctx.db
     .insert(messages)
@@ -1139,6 +1167,8 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
   if (patch.displayName !== undefined) {
     const displayName = cleanFreeText(patch.displayName, 60);
     if (!displayName) return fail("Use a name under 60 characters.");
+    const impersonation = impersonationError(displayName, existing.xAccount?.handle, existing.xAccount?.verified === true);
+    if (impersonation) return fail(impersonation);
     next.displayName = displayName;
   }
   if (patch.pronouns !== undefined) {
@@ -1244,6 +1274,8 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
   if (!existing) return fail("Member not found.");
   const displayName = input.displayName.trim();
   if (displayName.length < 1 || displayName.length > 60) return fail("Use a name under 60 characters.");
+  const impersonation = impersonationError(displayName, existing.xAccount?.handle, existing.xAccount?.verified === true);
+  if (impersonation) return fail(impersonation);
   if (!oneOf(input.pronouns, PRONOUNS)) return fail("Choose pronouns.");
   if (!Number.isInteger(input.age) || input.age < 18 || input.age > 99) return fail("Age needs to be between 18 and 99.");
   if (!oneOf(input.city, CITIES)) return fail("Choose a city.");
@@ -1308,6 +1340,8 @@ export function saveOnboardingAnswers(
   if (!existing) return { ok: false, error: "Member not found." };
   const merged = mergeOnboarding(existing.onboarding, patch);
   if ("error" in merged) return { ok: false, error: merged.error };
+  const sealed = writePrivatePrefs(ctx, userId, merged.answers);
+  if (!sealed.ok) return { ok: false, error: sealed.error };
   ctx.db.update(prefs).set({ onboarding: JSON.stringify(merged.answers) }).where(eq(prefs.userId, userId)).run();
   const answers = merged.answers;
   const profileUpdate: { intent?: Intent; city?: string; smoking?: boolean; kids?: KidsStance } = {};

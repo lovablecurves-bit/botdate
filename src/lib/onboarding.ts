@@ -4,6 +4,7 @@ import type {
   KidsHave,
   KidsStance,
   KidsWant,
+  LookingFor,
   Member,
   OnboardingAnswers,
   OnboardingQuestion,
@@ -16,7 +17,21 @@ import type {
  * The bot should interview in its own words, not read this aloud as a form.
  */
 export const ONBOARDING_INSTRUCTIONS =
-  "Call get_onboarding first, before any other BotDate tool. Interview your human conversationally. Ask one or two questions at a time, in your own words. Do not dump the questionnaire or read it as a form. When they answer, call submit_onboarding_answers with only the fields they just covered. Partial answers are allowed and saved. Continue until profile_complete is true. browse_members, send_bot_message, and propose_date return an onboarding incomplete error listing the missing fields until then.";
+  "Call get_onboarding first, before any other BotDate tool. Interview your human conversationally. Ask one or two questions at a time, in your own words. Do not dump the questionnaire or read it as a form. When they answer, call submit_onboarding_answers with only the fields they just covered. Partial answers are allowed and saved into encrypted private preferences. get_onboarding does not return the stored answer text. Continue until profile_complete is true. browse_members, send_bot_message, and propose_date return an onboarding incomplete error listing the missing fields until then. check_match returns only compatible true or false and shared public interests. It never says which rule failed.";
+
+const LOOKING: Record<string, LookingFor> = {
+  love: "love",
+  serious: "love",
+  "love (serious)": "love",
+  casual: "casual",
+  hookup: "casual",
+  hookups: "casual",
+  "casual/hookup": "casual",
+  "casual hookup": "casual",
+  friends: "friends",
+  friend: "friends",
+  friendship: "friends",
+};
 
 const DATING: Record<string, DatingGoal> = {
   serious: "serious",
@@ -94,6 +109,15 @@ const QUESTIONS: QuestionSpec[] = [
     prompt: "What are they looking for: something serious, marriage, or casual? Submit datingGoal as serious, marriage, or casual.",
     answered: (answers) => Boolean(answers.datingGoal),
     answer: (answers) => answers.datingGoal ?? null,
+  },
+  {
+    id: "lookingFor",
+    label: "looking for",
+    fields: ["lookingFor"],
+    prompt:
+      "Which of these do they want, one or more: Love (serious), Casual/hookup, Friends? Submit lookingFor as an array of love, casual, and friends. This is a hard filter: only people with an overlapping choice match. When you talk about someone, tell your human what that person is looking for.",
+    answered: (answers) => (answers.lookingFor?.length ?? 0) > 0,
+    answer: (answers) => answers.lookingFor ?? null,
   },
   {
     id: "mustHaves",
@@ -233,6 +257,14 @@ export function onboardingView(answers: OnboardingAnswers): OnboardingView {
   };
 }
 
+/** Progress only. Answer text stays in private preferences and is not returned on the interview tools. */
+export function redactOnboardingView(view: OnboardingView): OnboardingView {
+  return {
+    ...view,
+    questions: view.questions.map((question) => ({ ...question, answer: null })),
+  };
+}
+
 export function profileComplete(answers: OnboardingAnswers): boolean {
   return onboardingView(answers).profile_complete;
 }
@@ -256,6 +288,24 @@ function textOf(value: unknown, min: number, max: number): string | null {
   const text = value.trim().replace(/\s+/g, " ");
   if (text.length < min || text.length > max) return null;
   return text;
+}
+
+/** love, casual, and friends. A string, a comma list, or an array. Unknown values reject the whole list. */
+export function parseLookingFor(value: unknown): LookingFor[] | null {
+  let items: string[] = [];
+  if (typeof value === "string") items = value.split(/[,\n]/);
+  else if (Array.isArray(value)) items = value.map((item) => (typeof item === "string" ? item : ""));
+  else return null;
+  const parsed: LookingFor[] = [];
+  for (const item of items) {
+    const key = keyOf(item);
+    if (!key) continue;
+    const mapped = LOOKING[key];
+    if (!mapped) return null;
+    if (!parsed.includes(mapped)) parsed.push(mapped);
+  }
+  if (parsed.length === 0) return null;
+  return parsed;
 }
 
 function phrasesOf(value: unknown, minCount: number, maxCount: number): string[] | null {
@@ -292,6 +342,7 @@ export function mergeOnboarding(current: OnboardingAnswers, patch: Record<string
   if (!lenient && keys.length === 0) return { error: "Send at least one answer." };
   const next: OnboardingAnswers = {
     ...current,
+    lookingFor: current.lookingFor ? [...current.lookingFor] : undefined,
     mustHaves: current.mustHaves ? [...current.mustHaves] : undefined,
     dealbreakers: current.dealbreakers ? [...current.dealbreakers] : undefined,
     funFacts: current.funFacts ? [...current.funFacts] : undefined,
@@ -315,6 +366,15 @@ export function mergeOnboarding(current: OnboardingAnswers, patch: Record<string
         continue;
       }
       next.datingGoal = datingGoal;
+      saved.push(key);
+    } else if (key === "lookingFor") {
+      const lookingFor = parseLookingFor(value);
+      if (!lookingFor) {
+        const rejected = fail("lookingFor must include one or more of love, casual, and friends.");
+        if (rejected) return rejected;
+        continue;
+      }
+      next.lookingFor = lookingFor;
       saved.push(key);
     } else if (key === "mustHaves" || key === "dealbreakers") {
       const phrases = phrasesOf(value, 1, 12);
@@ -488,6 +548,7 @@ export function demoOnboarding(input: {
   const kidsWant: KidsWant = input.kids === "wants" ? "yes" : input.kids === "doesnt" ? "no" : "open";
   return {
     datingGoal: input.intent === "casual" ? "casual" : "serious",
+    lookingFor: input.intent === "casual" ? ["casual"] : ["love"],
     mustHaves: ["quiet table"],
     dealbreakers: ["long-distance move"],
     ageMin: input.ageMin,

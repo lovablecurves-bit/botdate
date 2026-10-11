@@ -18,6 +18,7 @@ import {
 import { upsertXMember } from "@/lib/x/account";
 import { xCredentials } from "@/lib/x/config";
 import { finishBotOAuthCallback, isBotOAuthCallback } from "@/lib/x/bot-callback";
+import { rejectXSignup } from "@/lib/safety";
 import { XAuthError, exchangeAuthorizationCode, fetchXProfile, logOAuthCallbackError, readOAuthCallbackError } from "@/lib/x/oauth";
 import type { XProfile } from "@/lib/x/profile";
 
@@ -69,6 +70,8 @@ export async function GET(request: Request) {
   try {
     const accessToken = await exchangeAuthorizationCode(credentials, code, verifier);
     const profile = await fetchXProfile(accessToken);
+    const rejection = rejectXSignup(profile);
+    if (rejection) throw new XAuthError(rejection);
     const member = await memberFromSignIn(profile);
     const dest = new URL(safePostLoginPath(memberHome(member)), request.url);
     const response = NextResponse.redirect(dest);
@@ -131,6 +134,7 @@ async function memberFromSignIn(profile: XProfile) {
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       subscriptionStatus: null,
+      shareInActivity: false,
     }),
   );
 }

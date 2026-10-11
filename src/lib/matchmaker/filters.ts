@@ -26,6 +26,7 @@ export const HOLD_LABELS: Record<string, string> = {
   "their-must-have": "You don't meet a must-have of theirs",
   "their-dealbreaker": "You hit one of their dealbreakers",
   "their-distance": "You are outside their max distance",
+  "looking-for": "Looking for doesn't overlap",
   inactive: "Hasn't locked dealbreakers",
 };
 
@@ -132,6 +133,13 @@ function firstStructuredMiss(viewer: Member, candidate: Member): FilterKey | nul
   return null;
 }
 
+function lookingOverlaps(viewer: Member, candidate: Member): boolean {
+  const mine = viewer.onboarding.lookingFor ?? [];
+  const theirs = candidate.onboarding.lookingFor ?? [];
+  if (mine.length === 0 || theirs.length === 0) return false;
+  return mine.some((choice) => theirs.includes(choice));
+}
+
 function phraseHold(viewer: Member, candidate: Member): "must-have" | "dealbreaker" | null {
   const corpus = profileSearchText(candidate);
   for (const phrase of viewer.onboarding.mustHaves ?? []) {
@@ -155,6 +163,7 @@ export function primaryHold(viewer: Member, candidate: Member): string | null {
   if (mine) return mine;
   const theirs = firstStructuredMiss(candidate, viewer);
   if (theirs) return `their-${theirs}`;
+  if (!lookingOverlaps(viewer, candidate)) return "looking-for";
   const phrase = phraseHold(viewer, candidate);
   if (phrase) return phrase;
   const theirPhrase = phraseHold(candidate, viewer);

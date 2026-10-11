@@ -143,6 +143,10 @@ export function resetDatabase(ctx: BotDateDb) {
   try {
     ctx.sqlite.exec(`
       DELETE FROM agent_tokens;
+      DELETE FROM match_check_hits;
+      DELETE FROM private_prefs;
+      DELETE FROM blocks;
+      DELETE FROM reports;
       DELETE FROM date_proposals;
       DELETE FROM messages;
       DELETE FROM bot_threads;

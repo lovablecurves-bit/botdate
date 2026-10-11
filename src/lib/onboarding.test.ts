@@ -6,11 +6,12 @@ import { callTool } from "./agent/tools";
 import { openDatabase } from "./db/open";
 import { demoMember } from "./demo/members";
 import { getMember } from "./domain";
-import { mergeOnboarding, onboardingBlock, onboardingView, phraseHits, profileComplete } from "./onboarding";
+import { mergeOnboarding, onboardingBlock, onboardingView, parseLookingFor, phraseHits, profileComplete } from "./onboarding";
 import { upsertXMember } from "./x/account";
 
 const FULL = {
   datingGoal: "marriage",
+  lookingFor: ["love", "friends"],
   mustHaves: ["kind"],
   dealbreakers: ["smokes"],
   ageMin: 28,
@@ -45,6 +46,7 @@ test("the interview lists every required topic and accepts a partial answer", ()
   assert.match(empty.instructions, /in your own words/);
   assert.deepEqual(empty.missing, [
     "dating goal",
+    "looking for",
     "must-haves",
     "dealbreakers",
     "age range wanted",
@@ -82,7 +84,17 @@ test("a bad answer is rejected and a finished interview is profile_complete", ()
   const block = onboardingBlock({});
   assert.equal(block?.error, "onboarding incomplete");
   assert.equal(block?.missing.includes("must-haves"), true);
-  assert.match(block?.message ?? "", /Missing: dating goal, must-haves/);
+  assert.match(block?.message ?? "", /Missing: dating goal, looking for, must-haves/);
+});
+
+test("looking for accepts the badge names and rejects an unknown choice", () => {
+  assert.deepEqual(parseLookingFor("Love, hookup, friends"), ["love", "casual", "friends"]);
+  assert.equal(parseLookingFor("marriage"), null);
+  const saved = mergeOnboarding({}, { lookingFor: ["friends"] });
+  assert.ok(!("error" in saved));
+  if ("error" in saved) return;
+  assert.deepEqual(saved.answers.lookingFor, ["friends"]);
+  assert.equal(onboardingView(saved.answers).missing.includes("looking for"), false);
 });
 
 test("dealbreaker phrases match a profile and miss a negation", () => {
@@ -98,6 +110,8 @@ test("demo members are already interviewed", () => {
 });
 
 test("MCP initialize and get_my_profile point at get_onboarding, and gated tools list the missing fields", async () => {
+  const previousKey = process.env.PREFS_KEY;
+  process.env.PREFS_KEY = "ab".repeat(32);
   const ctx = await openDatabase(":memory:", { seed: false });
   try {
     const created = upsertXMember(ctx, {
@@ -178,7 +192,14 @@ test("MCP initialize and get_my_profile point at get_onboarding, and gated tools
     const open = callTool(ctx, updated!, "browse_members", {});
     assert.equal(open?.status, 200);
     assert.ok(!("error" in (open?.body as object)));
+    assert.equal(finishedBody.profile_complete, true);
+    assert.equal(toolText(finished.body).includes("Knows every bakery"), false);
+    const questions = (finishedBody as { questions?: { answer: unknown }[] }).questions ?? [];
+    assert.ok(questions.length > 0);
+    assert.ok(questions.every((question) => question.answer == null));
   } finally {
     ctx.close();
+    if (previousKey === undefined) delete process.env.PREFS_KEY;
+    else process.env.PREFS_KEY = previousKey;
   }
 });

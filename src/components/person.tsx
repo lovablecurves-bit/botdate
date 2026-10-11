@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/avatar";
+import { LookingForBadges } from "@/components/looking-for";
 import { intentLabel, kidsLabel, smokingLabel, titleWord, initials } from "@/lib/labels";
 import type { PublicPerson } from "@/lib/domain";
 
@@ -27,6 +28,7 @@ export function PersonStrip({ person }: { person: PublicPerson }) {
         <p className="meta">
           {person.pronouns} · {person.age} · {person.city}
         </p>
+        <LookingForBadges lookingFor={person.lookingFor} />
       </div>
     </div>
   );

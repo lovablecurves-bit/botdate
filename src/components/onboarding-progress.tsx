@@ -1,24 +1,11 @@
 import { onboardingView } from "@/lib/onboarding";
 import type { OnboardingAnswers, OnboardingQuestion } from "@/lib/types";
 
-function summary(answer: unknown): string {
-  if (answer == null) return "";
-  if (Array.isArray(answer)) return answer.map(String).join(", ");
-  if (typeof answer === "object") {
-    return Object.values(answer)
-      .filter((value) => value != null && value !== "")
-      .map(String)
-      .join(" · ");
-  }
-  return String(answer);
-}
-
 function row(question: OnboardingQuestion) {
-  const text = summary(question.answer);
   return (
     <li key={question.id} data-testid={`onboarding-${question.id}`} data-answered={question.answered ? "true" : "false"}>
       <span>{question.label}</span>
-      <span className={question.answered ? "done" : "todo"}>{question.answered ? text || "Answered" : "Missing"}</span>
+      <span className={question.answered ? "done" : "todo"}>{question.answered ? "Answered" : "Missing"}</span>
     </li>
   );
 }

@@ -89,6 +89,9 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
       .set({
         xHandle: profile.handle,
         xAvatarUrl: profile.avatarUrl,
+        xCreatedAt: profile.createdAt || null,
+        xFollowers: profile.followers ?? 0,
+        xVerified: profile.verified === true,
         ...(locked ? {} : { displayName: name }),
       })
       .where(eq(users.id, existing.id))
@@ -114,6 +117,9 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
       xUserId: profile.xUserId,
       xHandle: profile.handle,
       xAvatarUrl: profile.avatarUrl,
+      xCreatedAt: profile.createdAt || null,
+      xFollowers: profile.followers ?? 0,
+      xVerified: profile.verified === true,
       founder: false,
       memberNumber: null,
       connectSeen: false,

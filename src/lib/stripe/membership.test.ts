@@ -54,6 +54,7 @@ function member(overrides: Partial<Member> = {}): Member {
     stripeCustomerId: null,
     stripeSubscriptionId: null,
     subscriptionStatus: null,
+    shareInActivity: false,
     ...overrides,
   };
 }

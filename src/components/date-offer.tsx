@@ -3,6 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { approveOfferAction, passOfferAction, tweakOfferAction } from "@/app/actions";
+import { LookingForBadges } from "@/components/looking-for";
+import { ReportBlock } from "@/components/report-block";
+import { SafetyTip } from "@/components/safety-tip";
+import { XIdentity } from "@/components/x-identity";
+import type { LookingFor } from "@/lib/types";
 
 export function DateOffer({
   matchId,
@@ -14,6 +19,10 @@ export function DateOffer({
   note,
   why = [],
   shareHref,
+  lookingFor = [],
+  targetId,
+  xHandle = null,
+  xVerified = false,
 }: {
   matchId: string;
   proposalId: string;
@@ -24,6 +33,10 @@ export function DateOffer({
   note: string;
   why?: string[];
   shareHref?: string;
+  lookingFor?: LookingFor[];
+  targetId?: string;
+  xHandle?: string | null;
+  xVerified?: boolean;
 }) {
   const router = useRouter();
   const [tweaking, setTweaking] = useState(false);
@@ -51,6 +64,8 @@ export function DateOffer({
       <div className="stack tight">
         <p className="draft-flag">Date offer</p>
         <h2>{personName}</h2>
+        <XIdentity handle={xHandle} verified={xVerified} />
+        <LookingForBadges lookingFor={lookingFor} />
       </div>
       {tweaking ? (
         <div className="stack tight">
@@ -82,6 +97,7 @@ export function DateOffer({
         </div>
       )}
       <p className="help">Your bots agreed it is time. Accept or decline. The conversation that got here stays with them.</p>
+      <SafetyTip />
       {error ? (
         <p className="banner bad" role="alert">
           {error}
@@ -110,6 +126,7 @@ export function DateOffer({
           Decline
         </button>
       </div>
+      {targetId ? <ReportBlock targetId={targetId} matchId={matchId} /> : null}
       {shareHref ? (
         <p className="text-links">
           <a href={shareHref} target="_blank" rel="noopener noreferrer">

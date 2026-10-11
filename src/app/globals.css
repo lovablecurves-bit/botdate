@@ -118,7 +118,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   width: min(480px, 100%);
   z-index: 6;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 2px;
   padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--bg) 92%, white);
@@ -134,7 +134,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--ink-soft);
   text-decoration: none;
   font-weight: 500;
-  font-size: 0.92rem;
+  font-size: 0.72rem;
 }
 .tabbar a.active {
   color: var(--ink);
@@ -233,6 +233,38 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-weight: 600;
   font-size: 0.98rem;
 }
+.looking-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
+.looking-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.looking-love { background: var(--pop); color: white; }
+.looking-casual { background: var(--heart-bubble); color: var(--ink); }
+.looking-friends { background: var(--ink); color: white; }
+.connector-box {
+  background: #ffe4f2;
+  border: 3px solid var(--pop);
+  border-radius: 18px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.connector-box pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  background: transparent;
+}
+.connector-box .btn { min-height: 56px; font-size: 1.2rem; }
 .connect-card {
   background: white;
   border-radius: 24px;
@@ -493,6 +525,33 @@ fieldset { border: 0; margin: 0; padding: 0; }
 }
 .match-nav a.active { background: white; color: var(--ink); }
 
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #1d9bf0;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.safety-tip {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff4f8;
+  border: 1px solid #ffd0e4;
+}
+.activity-entry { border-top: 1px solid #ffd6e8; padding-top: 12px; }
+.activity-entry summary {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  min-height: 48px;
+}
+.activity-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .thread { display: flex; flex-direction: column; gap: 12px; }
 .bubble {
   max-width: 92%;

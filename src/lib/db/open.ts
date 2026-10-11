@@ -5,7 +5,7 @@ import { createClient, type Client, type InValue } from "@libsql/client/web";
 import { drizzle, type SQLJsDatabase } from "drizzle-orm/sql-js";
 import initSqlJs from "sql.js";
 import * as schema from "./schema";
-import { ADDED_COLUMNS, STRIPE_CUSTOMER_INDEX, X_USER_INDEX, isBenignMigrationError } from "./migrate";
+import { ADDED_COLUMNS, REFERRAL_INDEX, STRIPE_CUSTOMER_INDEX, X_USER_INDEX, isBenignMigrationError } from "./migrate";
 import { SCHEMA_SQL } from "./schema";
 import { seedIfEmpty } from "./seed";
 import { demoMode, logColdStartNote } from "../x/config";
@@ -124,6 +124,7 @@ export async function applyRemoteSchema(client: Client): Promise<void> {
   }
   await client.execute(X_USER_INDEX);
   await client.execute(STRIPE_CUSTOMER_INDEX);
+  await client.execute(REFERRAL_INDEX);
 }
 
 function errorText(error: unknown): string {
@@ -217,7 +218,7 @@ function toArgs(values: unknown): InValue[] {
 }
 
 /** Tables copied to and from Turso. A missing name here is invisible after a cold start. */
-export const SYNCED_TABLES = ["users", "profiles", "prefs", "matches", "bot_threads", "messages", "date_proposals", "agent_tokens", "waitlist", "x_bot_credentials"] as const;
+export const SYNCED_TABLES = ["users", "profiles", "prefs", "matches", "bot_threads", "messages", "date_proposals", "reports", "blocks", "private_prefs", "match_check_hits", "agent_tokens", "waitlist", "x_bot_credentials"] as const;
 
 const TABLE_ORDER = SYNCED_TABLES;
 
@@ -301,6 +302,7 @@ async function createSqlDatabase(options: { filePath: string | null; client: Cli
   }
   raw.run(X_USER_INDEX);
   raw.run(STRIPE_CUSTOMER_INDEX);
+  raw.run(REFERRAL_INDEX);
   persist();
   const db = drizzle(raw, { schema });
 

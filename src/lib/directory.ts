@@ -3,7 +3,7 @@ import type { BotDateDb } from "./db/open";
 import { getMember, listMembers } from "./domain";
 import { mutualPass, softRank } from "./matchmaker/filters";
 import { matchmaker } from "./matchmaker/service";
-import type { Member } from "./types";
+import type { LookingFor, Member } from "./types";
 import { ensureRealMemberNumbers } from "./x/account";
 
 export type DirectoryEntry = {
@@ -16,6 +16,7 @@ export type DirectoryEntry = {
   city: string;
   founder: boolean;
   memberNumber: number;
+  lookingFor: LookingFor[];
 };
 
 export type MemberProfileView = DirectoryEntry & {
@@ -74,6 +75,7 @@ function toEntry(member: Member): DirectoryEntry | null {
     city: member.profile.city,
     founder: member.founder,
     memberNumber: member.memberNumber,
+    lookingFor: member.onboarding.lookingFor ?? [],
   };
 }
 

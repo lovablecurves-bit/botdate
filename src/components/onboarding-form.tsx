@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { saveOnboardingAction, type FormState } from "@/app/actions";
 import { Avatar } from "@/components/avatar";
 import { SubmitButton } from "@/components/submit-button";
-import { CITIES, INTERESTS, PRONOUNS, type Member } from "@/lib/types";
+import { CITIES, INTERESTS, LOOKING_FOR, LOOKING_FOR_LABELS, PRONOUNS, type Member } from "@/lib/types";
 import { titleWord } from "@/lib/labels";
 
 const initial: FormState = { ok: false, error: null, message: null };
@@ -68,6 +68,18 @@ export function OnboardingForm({ member }: { member: Member }) {
           <span>Bio</span>
           <textarea name="bio" defaultValue={member.profile.bio} required maxLength={500} />
         </label>
+        <fieldset className="stack tight" data-testid="looking-for-edit">
+          <legend>Looking for</legend>
+          <p className="help">Pick one or more. Only people who share one of these can match.</p>
+          <div className="chips">
+            {LOOKING_FOR.map((id) => (
+              <label className="chip" key={id}>
+                <input type="checkbox" name="lookingFor" value={id} defaultChecked={member.onboarding.lookingFor?.includes(id)} />
+                <span>{LOOKING_FOR_LABELS[id]}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div className="grid-2">
           <label className="field">
             <span>Kids</span>

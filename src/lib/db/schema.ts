@@ -15,6 +15,13 @@ export const users = sqliteTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripeSubscriptionStatus: text("stripe_subscription_status"),
+  xCreatedAt: text("x_created_at"),
+  xFollowers: integer("x_followers").notNull().default(0),
+  xVerified: integer("x_verified", { mode: "boolean" }).notNull().default(false),
+  shareInActivity: integer("share_in_activity", { mode: "boolean" }).notNull().default(false),
+  safetyStatus: text("safety_status").notNull().default(""),
+  safetyReason: text("safety_reason").notNull().default(""),
+  referralCode: text("referral_code"),
 });
 
 export const profiles = sqliteTable("profiles", {
@@ -88,6 +95,37 @@ export const dateProposals = sqliteTable("date_proposals", {
   createdAt: text("created_at").notNull(),
 });
 
+export const reports = sqliteTable("reports", {
+  id: text("id").primaryKey(),
+  reporterId: text("reporter_id").notNull(),
+  targetId: text("target_id").notNull(),
+  matchId: text("match_id").notNull().default(""),
+  reason: text("reason").notNull().default(""),
+  createdAt: text("created_at").notNull(),
+});
+
+export const blocks = sqliteTable("blocks", {
+  id: text("id").primaryKey(),
+  blockerId: text("blocker_id").notNull(),
+  blockedId: text("blocked_id").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+/** Encrypted interview. The key lives in PREFS_KEY, never in this table. */
+export const privatePrefs = sqliteTable("private_prefs", {
+  memberId: text("member_id").primaryKey(),
+  ciphertext: text("ciphertext").notNull(),
+  iv: text("iv").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/** One row per match check. No other member id and no result, so the log cannot leak a miss. */
+export const matchCheckHits = sqliteTable("match_check_hits", {
+  id: text("id").primaryKey(),
+  memberId: text("member_id").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
 export const agentTokens = sqliteTable("agent_tokens", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
@@ -134,7 +172,14 @@ CREATE TABLE IF NOT EXISTS users (
   connect_seen INTEGER NOT NULL DEFAULT 0,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,
-  stripe_subscription_status TEXT
+  stripe_subscription_status TEXT,
+  x_created_at TEXT,
+  x_followers INTEGER NOT NULL DEFAULT 0,
+  x_verified INTEGER NOT NULL DEFAULT 0,
+  share_in_activity INTEGER NOT NULL DEFAULT 0,
+  safety_status TEXT NOT NULL DEFAULT '',
+  safety_reason TEXT NOT NULL DEFAULT '',
+  referral_code TEXT
 );
 CREATE TABLE IF NOT EXISTS profiles (
   user_id TEXT PRIMARY KEY REFERENCES users(id),
@@ -202,6 +247,20 @@ CREATE TABLE IF NOT EXISTS date_proposals (
   released INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS reports (
+  id TEXT PRIMARY KEY,
+  reporter_id TEXT NOT NULL REFERENCES users(id),
+  target_id TEXT NOT NULL REFERENCES users(id),
+  match_id TEXT NOT NULL DEFAULT '',
+  reason TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS blocks (
+  id TEXT PRIMARY KEY,
+  blocker_id TEXT NOT NULL REFERENCES users(id),
+  blocked_id TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS agent_tokens (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
@@ -234,4 +293,20 @@ CREATE INDEX IF NOT EXISTS proposals_match_idx ON date_proposals(match_id);
 CREATE INDEX IF NOT EXISTS agent_tokens_user_idx ON agent_tokens(user_id);
 CREATE INDEX IF NOT EXISTS waitlist_referred_idx ON waitlist(referred_by);
 CREATE UNIQUE INDEX IF NOT EXISTS waitlist_handle_idx ON waitlist(x_handle COLLATE NOCASE);
+CREATE UNIQUE INDEX IF NOT EXISTS reports_pair_idx ON reports(reporter_id, target_id);
+CREATE INDEX IF NOT EXISTS reports_target_idx ON reports(target_id);
+CREATE UNIQUE INDEX IF NOT EXISTS blocks_pair_idx ON blocks(blocker_id, blocked_id);
+CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_idx ON users(referral_code);
+CREATE TABLE IF NOT EXISTS private_prefs (
+  member_id TEXT PRIMARY KEY REFERENCES users(id),
+  ciphertext TEXT NOT NULL,
+  iv TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS match_check_hits (
+  id TEXT PRIMARY KEY,
+  member_id TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS match_check_hits_member_idx ON match_check_hits(member_id, created_at);
 `;

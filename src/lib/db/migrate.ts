@@ -12,7 +12,16 @@ export const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "users", column: "stripe_subscription_status", ddl: "TEXT" },
   { table: "agent_tokens", column: "last_used_at", ddl: "TEXT" },
   { table: "prefs", column: "onboarding", ddl: "TEXT NOT NULL DEFAULT '{}'" },
+  { table: "users", column: "x_created_at", ddl: "TEXT" },
+  { table: "users", column: "x_followers", ddl: "INTEGER NOT NULL DEFAULT 0" },
+  { table: "users", column: "x_verified", ddl: "INTEGER NOT NULL DEFAULT 0" },
+  { table: "users", column: "share_in_activity", ddl: "INTEGER NOT NULL DEFAULT 0" },
+  { table: "users", column: "safety_status", ddl: "TEXT NOT NULL DEFAULT ''" },
+  { table: "users", column: "safety_reason", ddl: "TEXT NOT NULL DEFAULT ''" },
+  { table: "users", column: "referral_code", ddl: "TEXT" },
 ];
+
+export const REFERRAL_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_idx ON users(referral_code)";
 
 export const X_USER_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_x_user_idx ON users(x_user_id)";
 export const STRIPE_CUSTOMER_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_customer_idx ON users(stripe_customer_id)";

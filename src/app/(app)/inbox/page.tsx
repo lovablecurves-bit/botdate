@@ -42,6 +42,10 @@ export default async function InboxPage() {
                 note={card.offer.note}
                 why={card.why}
                 shareHref={shareHref}
+                lookingFor={card.person.lookingFor}
+                targetId={card.person.id}
+                xHandle={card.person.xHandle}
+                xVerified={card.person.xVerified}
               />
             </div>
           ) : null,

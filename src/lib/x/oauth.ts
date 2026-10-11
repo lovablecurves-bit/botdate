@@ -134,7 +134,7 @@ export async function refreshBotAccessToken(
 
 export async function fetchXProfile(accessToken: string, fetchImpl: FetchLike = fetch): Promise<XProfile> {
   const url = new URL(X_ME_URL);
-  url.searchParams.set("user.fields", "description,profile_image_url");
+  url.searchParams.set("user.fields", "description,profile_image_url,created_at,public_metrics,verified,verified_type");
   const response = await fetchImpl(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
     signal: AbortSignal.timeout(10000),

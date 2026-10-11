@@ -59,6 +59,7 @@ function member(seed: Seed): Member {
     stripeCustomerId: null,
     stripeSubscriptionId: null,
     subscriptionStatus: null,
+    shareInActivity: false,
   };
 }
 

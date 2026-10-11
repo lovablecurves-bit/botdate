@@ -1,4 +1,4 @@
-import type { Member } from "../types";
+import { LOOKING_FOR_LABELS, type Member } from "../types";
 import { upcomingSaturdayLocal } from "../time";
 import { evaluateHardFilters, softRank } from "./filters";
 
@@ -23,6 +23,11 @@ export class MatchmakerBotService {
     why.push("Clears their dealbreakers too");
     if ((viewer.onboarding.mustHaves ?? []).length) why.push("Meets your must-haves");
     if ((viewer.onboarding.dealbreakers ?? []).length) why.push("Clears your written dealbreakers");
+    const shared = (viewer.onboarding.lookingFor ?? []).filter((choice) => (candidate.onboarding.lookingFor ?? []).includes(choice));
+    if (shared.length) {
+      const labels = shared.map((choice) => LOOKING_FOR_LABELS[choice]);
+      why.push(`Looking for ${labels.join(", ")}`);
+    }
     const soft = softRank(viewer, candidate);
     return { score: soft.score, why, rankNotes: soft.notes };
   }

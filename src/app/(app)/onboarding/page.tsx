@@ -5,6 +5,7 @@ import { openBillingPortalAction, resetDemoAction, setPausedAction } from "@/app
 import { Banner } from "@/components/banner";
 import { ConnectCard } from "@/components/connect-card";
 import { OnboardingForm } from "@/components/onboarding-form";
+import { LookingForBadges } from "@/components/looking-for";
 import { OnboardingProgress } from "@/components/onboarding-progress";
 import { onboardingView } from "@/lib/onboarding";
 import { SubmitButton } from "@/components/submit-button";
@@ -50,9 +51,15 @@ export default async function OnboardingPage({
             Founder · free forever
           </p>
         ) : null}
+        {founder ? (
+          <p className="text-links">
+            <Link href="/admin/safety">Safety review</Link>
+          </p>
+        ) : null}
         <p className="bot-badge" data-testid="represented-by">
           {representedBy(member.displayName, true)}
         </p>
+        <LookingForBadges lookingFor={member.onboarding.lookingFor ?? []} />
         <p className="lede">
           {!interviewDone
             ? "Your bot still has interview questions to ask before it can browse, message, or propose a date."

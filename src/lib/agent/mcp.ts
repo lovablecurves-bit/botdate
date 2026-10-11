@@ -12,50 +12,74 @@ type JsonRpc = {
 
 const PROTOCOL = "2025-03-26";
 
+const ONBOARDING_INPUT = {
+  type: "object",
+  properties: {
+    datingGoal: { type: "string", enum: ["serious", "marriage", "casual"], description: "What they are looking for." },
+    lookingFor: {
+      type: "array",
+      items: { type: "string", enum: ["love", "casual", "friends"] },
+      description: "One or more of love (Love, serious), casual (Casual/hookup), and friends. Hard filter: only overlapping choices match. Tell your human these labels.",
+    },
+    mustHaves: {
+      type: "array",
+      items: { type: "string" },
+      description: "Phrases that must appear in the other person's profile. Hard filters.",
+    },
+    dealbreakers: {
+      type: "array",
+      items: { type: "string" },
+      description: "Phrases that hide the other person if they appear in their profile. Hard filters.",
+    },
+    ageMin: { type: "integer", description: "Youngest age they want to meet." },
+    ageMax: { type: "integer", description: "Oldest age they want to meet." },
+    location: { type: "string", description: "Where they are based." },
+    maxDistanceMiles: { type: "integer", description: "Farthest they will travel, in miles." },
+    gender: { type: "string" },
+    orientation: { type: "string" },
+    seeking: { type: "string", description: "Who they want to meet." },
+    kidsHave: { type: "string", enum: ["yes", "no"] },
+    kidsWant: { type: "string", enum: ["yes", "no", "open"] },
+    drinking: { type: "string", enum: ["never", "socially", "often"] },
+    smoking: { type: "string", enum: ["no", "sometimes", "yes"], description: "Their own smoking habit, not a filter." },
+    faith: { type: "string" },
+    fitness: { type: "string" },
+    pets: { type: "string" },
+    valuesPolitics: { type: "string", enum: ["low", "medium", "high"], description: "How important shared values and politics are." },
+    loveLanguage: { type: "string" },
+    communicationStyle: { type: "string" },
+    funFacts: { type: "array", items: { type: "string" }, description: "At least two short facts for small talk." },
+  },
+  additionalProperties: false,
+} as const;
+
 const TOOLS = [
   {
     name: "get_onboarding",
     description:
-      "Call this first. Returns the interview questions, which are answered, the profile_complete flag, and instructions. Interview your human conversationally, one or two questions at a time, in your own words. Do not browse, message, or propose a date until profile_complete is true.",
+      "Call this first. Returns the interview questions, which are answered, the profile_complete flag, and instructions. It does not return stored answer text. Interview your human conversationally, one or two questions at a time, in your own words. Do not browse, message, or propose a date until profile_complete is true.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "submit_onboarding_answers",
     description:
-      "Save onboarding answers. Partial answers are allowed: omit anything the human has not answered yet. Omitted fields stay as they are. Sending a field replaces that field. Ask one or two questions at a time, then submit only those fields.",
+      "Save onboarding answers into encrypted private preferences. Partial answers are allowed: omit anything the human has not answered yet. Omitted fields stay as they are. Sending a field replaces that field. Ask one or two questions at a time, then submit only those fields. The response does not echo the answer text.",
+    inputSchema: ONBOARDING_INPUT,
+  },
+  {
+    name: "set_private_prefs",
+    description:
+      "Store this member's interview in encrypted private preferences. Same fields as submit_onboarding_answers. Only this member's bot key can read them back from GET /api/me/private-prefs. The tool response does not echo the answer text.",
+    inputSchema: ONBOARDING_INPUT,
+  },
+  {
+    name: "check_match",
+    description:
+      "Ask whether this member and other_member_id pass each other's hard dealbreakers, using encrypted private preferences. Returns only compatible (true or false) and shared public interests. It never says which rule failed. Missing preferences are not a match.",
     inputSchema: {
       type: "object",
-      properties: {
-        datingGoal: { type: "string", enum: ["serious", "marriage", "casual"], description: "What they are looking for." },
-        mustHaves: {
-          type: "array",
-          items: { type: "string" },
-          description: "Phrases that must appear in the other person's profile. Hard filters.",
-        },
-        dealbreakers: {
-          type: "array",
-          items: { type: "string" },
-          description: "Phrases that hide the other person if they appear in their profile. Hard filters.",
-        },
-        ageMin: { type: "integer", description: "Youngest age they want to meet." },
-        ageMax: { type: "integer", description: "Oldest age they want to meet." },
-        location: { type: "string", description: "Where they are based." },
-        maxDistanceMiles: { type: "integer", description: "Farthest they will travel, in miles." },
-        gender: { type: "string" },
-        orientation: { type: "string" },
-        seeking: { type: "string", description: "Who they want to meet." },
-        kidsHave: { type: "string", enum: ["yes", "no"] },
-        kidsWant: { type: "string", enum: ["yes", "no", "open"] },
-        drinking: { type: "string", enum: ["never", "socially", "often"] },
-        smoking: { type: "string", enum: ["no", "sometimes", "yes"], description: "Their own smoking habit, not a filter." },
-        faith: { type: "string" },
-        fitness: { type: "string" },
-        pets: { type: "string" },
-        valuesPolitics: { type: "string", enum: ["low", "medium", "high"], description: "How important shared values and politics are." },
-        loveLanguage: { type: "string" },
-        communicationStyle: { type: "string" },
-        funFacts: { type: "array", items: { type: "string" }, description: "At least two short facts for small talk." },
-      },
+      properties: { other_member_id: { type: "string", description: "The other member's id." } },
+      required: ["other_member_id"],
       additionalProperties: false,
     },
   },
@@ -79,6 +103,11 @@ const TOOLS = [
         smokes: { type: "boolean" },
         kidsStance: { type: "string", enum: ["wants", "open", "doesnt"] },
         datingIntent: { type: "string", enum: ["serious", "casual"] },
+        lookingFor: {
+          type: "array",
+          items: { type: "string", enum: ["love", "casual", "friends"] },
+          description: "Replaces looking for. love is Love (serious), casual is Casual/hookup, friends is Friends.",
+        },
         interests: { type: "array", items: { type: "string" } },
         ageMin: { type: "integer" },
         ageMax: { type: "integer" },
@@ -94,7 +123,8 @@ const TOOLS = [
   },
   {
     name: "browse_members",
-    description: "Browse members who can be contacted. Filter by query, city, age, intent, kids, or smoking. Inactive subscriptions are hidden.",
+    description:
+      "Browse members who can be contacted. Filter by query, city, age, intent, kids, smoking, or lookingFor (love, casual, friends; a member must overlap). Each profile includes lookingFor. Tell your human what they are looking for. Inactive subscriptions are hidden.",
     inputSchema: {
       type: "object",
       properties: {
@@ -105,6 +135,11 @@ const TOOLS = [
         intent: { type: "string", enum: ["serious", "casual", "any"] },
         kids: { type: "string", enum: ["wants", "open", "doesnt", "any"] },
         smoking: { type: "string", enum: ["no", "any"] },
+        lookingFor: {
+          type: "array",
+          items: { type: "string", enum: ["love", "casual", "friends"] },
+          description: "Keep members whose lookingFor overlaps this list.",
+        },
         limit: { type: "integer" },
       },
       additionalProperties: false,
@@ -152,6 +187,20 @@ const TOOLS = [
         note: { type: "string" },
       },
       required: ["local", "place"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "draft_shot",
+    description:
+      "Draft a Shoot your shot post for an X handle the member is crushing on. Returns text and an https://x.com/intent/post URL. Does not call the X API. The member presses Post. The text always includes @BotDateApp and their referral link. Omit message to use the default template.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        handle: { type: "string", description: "X handle, with or without @." },
+        message: { type: "string", description: "Optional cute line from you. The template is used when this is omitted." },
+      },
+      required: ["handle"],
       additionalProperties: false,
     },
   },

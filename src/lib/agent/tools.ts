@@ -13,9 +13,11 @@ import {
   sendBotNote,
   type BotProfilePatch,
 } from "../domain";
-import { onboardingBlock, onboardingView } from "../onboarding";
+import { checkMatch } from "../match-check";
+import { onboardingBlock, onboardingView, parseLookingFor, redactOnboardingView } from "../onboarding";
 import { representedBy } from "../labels";
-import { matchIdFor, type Intent, type KidsStance, type Member, type SmokingFilter } from "../types";
+import { draftShot } from "../shot";
+import { matchIdFor, type Intent, type KidsStance, type LookingFor, type Member, type SmokingFilter } from "../types";
 import type { AgentResponse } from "./dispatch";
 
 function text(value: unknown): string | undefined {
@@ -58,6 +60,7 @@ function profileBody(member: Member, self: boolean) {
       kids: member.profile.kids,
       intent: member.profile.intent,
       interests: member.profile.interests,
+      lookingFor: member.onboarding.lookingFor ?? [],
     },
     preferences: {
       ageMin: member.prefs.ageMin,
@@ -80,6 +83,7 @@ export type BrowseFilters = {
   intent?: string;
   kids?: string;
   smoking?: string;
+  lookingFor?: LookingFor[];
   limit?: number;
 };
 
@@ -95,6 +99,10 @@ export function browseMembers(ctx: BotDateDb, viewerId: string, filters: BrowseF
     if (filters.intent && filters.intent !== "any" && other.profile.intent !== filters.intent) return false;
     if (filters.kids && filters.kids !== "any" && other.profile.kids !== filters.kids) return false;
     if (filters.smoking === "no" && other.profile.smoking) return false;
+    if (filters.lookingFor?.length) {
+      const theirs = other.onboarding.lookingFor ?? [];
+      if (!theirs.some((choice) => filters.lookingFor?.includes(choice))) return false;
+    }
     if (query) {
       const hay = [other.displayName, other.xAccount?.handle ?? "", other.profile.bio, other.profile.city, other.profile.occupation, other.profile.interests.join(" ")]
         .join(" ")
@@ -217,12 +225,17 @@ function onboardingError(member: Member): AgentResponse | null {
 
 export function callTool(ctx: BotDateDb, member: Member, name: string, args: Record<string, unknown>): AgentResponse | null {
   if (name === "get_onboarding") {
-    return { status: 200, body: onboardingView(member.onboarding) };
+    return { status: 200, body: redactOnboardingView(onboardingView(member.onboarding)) };
   }
-  if (name === "submit_onboarding_answers") {
+  if (name === "submit_onboarding_answers" || name === "set_private_prefs") {
     const result = saveOnboardingAnswers(ctx, member.id, args);
     if (!result.ok) return { status: 400, body: { error: result.error } };
-    return { status: 200, body: { saved: result.saved, ...result.view } };
+    return { status: 200, body: { saved: result.saved, ...redactOnboardingView(result.view) } };
+  }
+  if (name === "check_match") {
+    const other = text(args.other_member_id) ?? "";
+    const result = checkMatch(ctx, member.id, other);
+    return { status: result.status, body: result.body };
   }
   if (name === "get_my_profile") {
     const view = onboardingView(member.onboarding);
@@ -237,10 +250,18 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
     };
   }
   if (name === "update_my_profile" || name === "update_preferences") {
+    const lookingFor = args.lookingFor === undefined ? undefined : parseLookingFor(args.lookingFor);
+    if (args.lookingFor !== undefined && !lookingFor) {
+      return { status: 400, body: { error: "lookingFor must include one or more of love, casual, and friends." } };
+    }
     const patch = profilePatch(args);
     if ("error" in patch) return { status: 400, body: { error: patch.error } };
     const result = applyBotProfile(ctx, member.id, patch);
     if (!result.ok) return { status: 400, body: { error: result.error } };
+    if (lookingFor) {
+      const saved = saveOnboardingAnswers(ctx, member.id, { lookingFor });
+      if (!saved.ok) return { status: 400, body: { error: saved.error } };
+    }
     const updated = getMember(ctx, member.id);
     return { status: 200, body: { member: updated ? profileBody(updated, true) : null } };
   }
@@ -262,11 +283,16 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
             age: card.person.age,
             city: card.person.city,
             why: card.why,
+            lookingFor: card.person.lookingFor,
             dateStatus: card.dateStatus,
             offerWaiting: card.offerWaiting,
           })),
         },
       };
+    }
+    const lookingFor = args.lookingFor === undefined ? undefined : parseLookingFor(args.lookingFor);
+    if (args.lookingFor !== undefined && !lookingFor) {
+      return { status: 400, body: { error: "lookingFor must include one or more of love, casual, and friends." } };
     }
     const filters: BrowseFilters = {
       query: text(args.query),
@@ -276,6 +302,7 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
       intent: text(args.intent),
       kids: text(args.kids),
       smoking: text(args.smoking),
+      lookingFor: lookingFor ?? undefined,
       limit: int(args.limit),
     };
     return { status: 200, body: { members: browseMembers(ctx, member.id, filters) } };
@@ -332,6 +359,13 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
         message: "Your member is pinged in BotDate with this date. It is not offered to the other person until they accept. Bot chat stays private.",
       },
     };
+  }
+  if (name === "draft_shot") {
+    const handle = text(args.handle) ?? "";
+    const message = text(args.message);
+    const shot = draftShot(ctx, member, handle, message);
+    if (!shot.ok) return { status: 400, body: { error: shot.error } };
+    return { status: 200, body: { handle: shot.handle, text: shot.text, intentUrl: shot.intentUrl } };
   }
   if (name === "respond_to_date") {
     const proposalId = text(args.proposalId) ?? "";

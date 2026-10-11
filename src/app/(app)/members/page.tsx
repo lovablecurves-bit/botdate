@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Avatar } from "@/components/avatar";
+import { LookingForBadges } from "@/components/looking-for";
 import { needsConnectPrompt, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { displayAvatarUrl, includeViewer, listDirectory } from "@/lib/directory";
@@ -39,6 +40,7 @@ export default async function MembersPage() {
                 <span className="meta">@{person.handle}</span>
                 {person.founder ? <span className="founder-flag">Founder · #1</span> : <span className="meta">Member #{person.memberNumber}</span>}
                 <span className="bot-badge">{representedBy(person.displayName, person.id === member.id)}</span>
+                <LookingForBadges lookingFor={person.lookingFor} />
                 <span className="meta">{person.id === member.id ? "You · " : ""}{truncate(person.bio, 110)}</span>
               </span>
             </Link>

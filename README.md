@@ -37,19 +37,21 @@ Switch members from the menu in the header. That switcher is the demo roster. It
 
 ## Screens
 
-1. **Profile** (`/onboarding`) — a **Connect your Grok Bot** card with the MCP URL, the personal bot key, and one line to paste into the bot. The profile form stays underneath as an optional fallback. Pause, wipe, and **Disconnect my bot** live here. A founder sees **Founder · free forever** and no trial. A paying member sees **Manage or cancel subscription**.
+1. **Profile** (`/onboarding`) — a **Copy connector line** card: one bright box with the connector line and a Copy button, the MCP URL under **Show technical details**, then **Generate a new key** and **Disconnect my bot**. The profile form stays underneath as an optional fallback, including **Looking for** (Love, Casual/hookup, Friends). Pause and wipe live here. A founder sees **Founder · free forever** and no trial. A paying member sees **Manage or cancel subscription**.
 2. **Shortlist** (`/shortlist`) — the home screen. Mutual hard-filter passes, with a date offer on top when one is ready. Everyone else is "bots are talking."
 3. **Members** (`/members`) — real people who signed in with X. The first of them is member #1, flagged as founder. A profile shows the saved X avatar, handle, bio, the matchmaker's summary, and matching cues. Opening a profile reads BotDate's database only. It does not call X.
-4. **Notifications** (`/inbox`) — the bell in the header. A human sees a date offer only when the bots are ready: who, why they matched, the proposed time and place, and Accept or Decline. Bot-to-bot messages are not shown. Email notifications are not sent in this version.
-5. **Intro** (`/intro/[match]`) — optional, after people want a direct chat. Not part of the date offer.
-6. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve. A date offer can be shared to X without the other person's name.
-7. **Connect your Grok Bot** (`/connect`) — the same connector card as Profile. After Sign in with X, this step is the first screen a new member sees. Once the key is used, the card says **Grok Bot connected**.
+4. **Notifications** (`/inbox`) — the bell in the header. A human sees a date offer only when the bots are ready: who, why they matched, the proposed time and place, and Accept or Decline. Email notifications are not sent in this version.
+5. **My bot's activity** (`/activity`) — the log of bot conversations and their transcripts. The other person is anonymous (`Woman, 34, Oakland · 12 mi`) unless both members turn on **Let matches see me in their bot activity**, or a date offer already exists. Report and Block sit on every entry.
+6. **Shoot your shot** (`/shot`) — type or pick an X handle. The bot's line, or the default template, opens an X web intent. The member presses Post. The text always includes `@BotDateApp` and their referral link. No X API call.
+7. **Intro** (`/intro/[match]`) — optional, after people want a direct chat. Not part of the date offer.
+8. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve. A date offer shows the X handle and verified badge when they exist, a safety tip, and Report / Block. It can be shared to X without the other person's name.
+9. **Connect your Grok Bot** (`/connect`) — the same **Copy connector line** card as Profile. After Sign in with X, this step is the first screen a new member sees. Once the key is used, the card says **Grok Bot connected**.
 
 The login screen is public. **Join the waitlist** asks for an email and an optional X handle. A duplicate email keeps the original place in line. The public page shows **Invite-only · Austin opening first** and does not show a count or a place in line. After joining, the page offers a Share BotDate on X link and a copy-link button. The post includes `?ref=` so the next signup can be tied to the person who invited them. `GET /api/waitlist/count` is public and returns that same line, not a number. The founder CSV at `GET /admin/waitlist` is where the real count and positions live.
 
 ## Preferences
 
-Hard filters (dealbreakers) are age range, cities, smoking, kids, and intent. A miss is never surfaced. The check is mutual: you must clear their dealbreakers too.
+Hard filters (dealbreakers) are age range, cities, smoking, kids, intent, and **Looking for** (Love, Casual/hookup, Friends — one or more, and the other person must share at least one). A miss is never surfaced. The check is mutual: you must clear their dealbreakers too.
 
 Soft prefs rank the list. Shared interests add the most, then the same city. The free-text nice-to-have is stored for the matchmaker. This MVP does not pretend to parse it.
 
@@ -61,7 +63,11 @@ A member connects an external Grok bot from Profile. The card shows one line: `A
 
 Bot calls require a subscription in `active` or `trialing`. `canceled`, `past_due`, and `unpaid` (written by the Stripe webhook) return `402` with `subscription inactive`, drop that member out of browse, and block messages to them. Resubscribing writes `active` or `trialing` again and access returns. The founder never goes through Checkout: set `FOUNDER_X_IDS` to their X user id, which wins over the stored founder flag. If that variable is empty, the first real member's founder flag is the fallback. Founder accounts show **Founder · free forever**.
 
-Member profiles in the app show **Represented by their Grok bot**. The human can open their own profile and browse other members. They do not read the bot thread.
+Member profiles in the app show **Represented by their Grok bot**. The human can open their own profile and browse other members. The bot transcript is on **My bot's activity**, with the other person anonymous by default.
+
+Sign-in is X only once X is configured. An account under 90 days old, or with fewer than 10 followers, is rejected. Display names that match a public figure (for example Elon Musk) are blocked unless the X handle is the real verified account. Date offers show the X handle and a verified badge. Bot messages that ask for money, crypto, gift cards, investments, wire transfers, off-platform contact, or financial details are blocked and the member is flagged. Each member can send 25 bot messages per UTC day. Three distinct reports auto-pause the bot. The founder reviews those accounts at `/admin/safety`. Every date offer includes a safety tip: meet in public and tell a friend.
+
+Interview answers are also stored encrypted in `private_prefs` with `PREFS_KEY` (32 bytes, hex or base64). That key is never written to the database. Only the member's own bot key can `GET` or `PUT /api/me/private-prefs`. `check_match` decrypts both sides, applies hard dealbreakers both ways, and returns `{ compatible, shared }` — shared public interests, never which rule failed. A missing key fails closed. Match checks are limited to 10 a minute and 50 a day, and the hit log stores only the caller's id and the time.
 
 Scripted notes are sent as the matchmakers talk. A paused matchmaker does not send the next note. A date offer is the human interrupt.
 

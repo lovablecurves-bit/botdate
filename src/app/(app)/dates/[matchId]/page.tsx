@@ -5,6 +5,9 @@ import { Banner } from "@/components/banner";
 import { DateOffer } from "@/components/date-offer";
 import { MatchNav } from "@/components/match-nav";
 import { PersonStrip } from "@/components/person";
+import { ReportBlock } from "@/components/report-block";
+import { SafetyTip } from "@/components/safety-tip";
+import { XIdentity } from "@/components/x-identity";
 import { requireOnboarded } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { getDate } from "@/lib/domain";
@@ -53,9 +56,14 @@ export default async function DatePage({
             place={proposal.place}
             note={proposal.note}
             shareHref={shareHref}
+            targetId={date.person.id}
+            xHandle={date.person.xHandle}
+            xVerified={date.person.xVerified}
           />
         ) : (
           <article key={proposal.id} className={proposal.status === "confirmed" ? "confirm-card" : "stack tight"} data-testid={`proposal-${proposal.status}`}>
+            <XIdentity handle={date.person.xHandle} verified={date.person.xVerified} />
+            <SafetyTip />
             <p className="meta">
               {proposal.status === "confirmed"
                 ? "You're set"
@@ -70,6 +78,7 @@ export default async function DatePage({
             {proposal.note ? <p>{proposal.note}</p> : null}
             <p className="help">Suggested by your matchmakers. Times are Pacific.</p>
             {proposal.status === "confirmed" ? <p className="banner good">Both of you approved this plan.</p> : null}
+            <ReportBlock targetId={date.person.id} matchId={matchId} />
           </article>
         ),
       )}

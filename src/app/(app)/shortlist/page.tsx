@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { DateOffer } from "@/components/date-offer";
+import { LookingForBadges } from "@/components/looking-for";
 import { Portrait, Facts } from "@/components/person";
 import { requireOnboarded } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
@@ -60,6 +61,10 @@ export default async function ShortlistPage() {
                 note={card.offer.note}
                 why={card.why}
                 shareHref={shareHref}
+                lookingFor={card.person.lookingFor}
+                targetId={card.person.id}
+                xHandle={card.person.xHandle}
+                xVerified={card.person.xVerified}
               />
             ) : null,
           )}
@@ -72,6 +77,7 @@ export default async function ShortlistPage() {
                     <Portrait name={card.person.displayName} accent={card.person.accent} imageUrl={card.person.avatarUrl} />
                     <div className="person-copy">
                       <h2>{card.person.displayName}</h2>
+                      <LookingForBadges lookingFor={card.person.lookingFor} />
                       <p className="meta">
                         {card.person.age} · {card.person.occupation}
                       </p>

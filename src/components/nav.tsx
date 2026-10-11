@@ -7,6 +7,8 @@ const LINKS = [
   { href: "/shortlist", label: "Shortlist" },
   { href: "/members", label: "Members" },
   { href: "/dates", label: "Dates" },
+  { href: "/activity", label: "Activity" },
+  { href: "/shot", label: "Shot" },
   { href: "/onboarding", label: "Profile" },
 ];
 

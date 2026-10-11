@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { LookingForBadges } from "@/components/looking-for";
 import { Portrait } from "@/components/person";
 import { needsConnectPrompt, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
@@ -46,6 +47,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
       <Portrait name={profile.displayName} accent={profile.accent} imageUrl={displayAvatarUrl(profile.avatarUrl)} />
       <header className="page-head">
         <h1>{profile.displayName}</h1>
+        <LookingForBadges lookingFor={profile.lookingFor} />
         <p className="handle-line">@{profile.handle}</p>
         <p className="bot-badge" data-testid="represented-by">
           {representedBy(profile.displayName, profile.self)}

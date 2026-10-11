@@ -108,7 +108,8 @@ export default async function LoginPage({
           <p className="help">
             {billing
               ? `${paywallCopy(trialDays())} The first person to sign in is the founder and joins free. Next you'll connect your Grok bot.`
-              : "Next you'll connect your Grok bot. The first person to sign in becomes member #1."}
+              : "Next you'll connect your Grok bot. The first person to sign in becomes member #1."}{" "}
+            Sign-in is X only. The account must be at least 90 days old and have some followers.
           </p>
         </section>
       ) : null}

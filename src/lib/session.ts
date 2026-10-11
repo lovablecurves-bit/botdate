@@ -180,6 +180,7 @@ export function memberFromClaims(claims: SessionClaims): Member {
     stripeCustomerId: claims.stripeCustomerId,
     stripeSubscriptionId: null,
     subscriptionStatus: claims.subscriptionStatus,
+    shareInActivity: false,
   };
 }
 

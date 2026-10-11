@@ -298,6 +298,9 @@ test("X sign-in survives a second instance that does not share the database", as
             username: "ada_bot",
             description: "Analytical.",
             profile_image_url: "https://pbs.twimg.com/profile_images/a/b_normal.jpg",
+            created_at: "2020-01-15T00:00:00.000Z",
+            public_metrics: { followers_count: 40 },
+            verified: false,
           },
         }),
         { status: 200 },
@@ -356,6 +359,9 @@ test("X sign-in survives a second instance that does not share the database", as
     assert.equal(calls.length, 2);
     assert.equal(calls[0], X_TOKEN_URL);
     assert.ok(calls[1]?.startsWith(X_ME_URL));
+  assert.match(calls[1] ?? "", /created_at/);
+  assert.match(calls[1] ?? "", /public_metrics/);
+  assert.match(calls[1] ?? "", /verified/);
 
     const other = await openDatabase(":memory:", { seed: false });
     assert.equal(getMember(other, claims.id), null);

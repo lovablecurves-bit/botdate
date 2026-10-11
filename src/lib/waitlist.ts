@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import type { BotDateDb } from "./db/open";
-import { waitlistSignups } from "./db/schema";
+import { users, waitlistSignups } from "./db/schema";
 
 export type WaitlistEntry = {
   id: string;
@@ -120,7 +120,9 @@ function isDuplicateHandle(error: unknown): boolean {
 function referrerCode(ctx: BotDateDb, ref: string | null): string | null {
   if (!ref) return null;
   const row = ctx.db.select().from(waitlistSignups).where(eq(waitlistSignups.referralCode, ref)).get();
-  return row?.referralCode ?? null;
+  if (row) return row.referralCode;
+  const member = ctx.db.select().from(users).where(eq(users.referralCode, ref)).get();
+  return member?.referralCode ?? null;
 }
 
 export function joinWaitlist(
