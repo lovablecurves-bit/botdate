@@ -6,6 +6,9 @@ export const users = sqliteTable("users", {
   displayName: text("display_name").notNull(),
   botPaused: integer("bot_paused", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull(),
+  xUserId: text("x_user_id"),
+  xHandle: text("x_handle"),
+  xAvatarUrl: text("x_avatar_url"),
 });
 
 export const profiles = sqliteTable("profiles", {
@@ -74,7 +77,17 @@ export const dateProposals = sqliteTable("date_proposals", {
   status: text("status").notNull(),
   aDecision: text("a_decision").notNull().default("pending"),
   bDecision: text("b_decision").notNull().default("pending"),
+  released: integer("released", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull(),
+});
+
+export const agentTokens = sqliteTable("agent_tokens", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  tokenPrefix: text("token_prefix").notNull(),
+  createdAt: text("created_at").notNull(),
+  revokedAt: text("revoked_at"),
 });
 
 export const SCHEMA_SQL = `
@@ -83,7 +96,10 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   display_name TEXT NOT NULL,
   bot_paused INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  x_user_id TEXT,
+  x_handle TEXT,
+  x_avatar_url TEXT
 );
 CREATE TABLE IF NOT EXISTS profiles (
   user_id TEXT PRIMARY KEY REFERENCES users(id),
@@ -147,8 +163,18 @@ CREATE TABLE IF NOT EXISTS date_proposals (
   status TEXT NOT NULL,
   a_decision TEXT NOT NULL DEFAULT 'pending',
   b_decision TEXT NOT NULL DEFAULT 'pending',
+  released INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS agent_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  token_hash TEXT NOT NULL UNIQUE,
+  token_prefix TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  revoked_at TEXT
 );
 CREATE INDEX IF NOT EXISTS messages_match_idx ON messages(match_id);
 CREATE INDEX IF NOT EXISTS proposals_match_idx ON date_proposals(match_id);
+CREATE INDEX IF NOT EXISTS agent_tokens_user_idx ON agent_tokens(user_id);
 `;

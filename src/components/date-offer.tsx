@@ -12,6 +12,7 @@ export function DateOffer({
   local,
   place,
   note,
+  shareHref,
 }: {
   matchId: string;
   proposalId: string;
@@ -20,6 +21,7 @@ export function DateOffer({
   local: string;
   place: string;
   note: string;
+  shareHref?: string;
 }) {
   const router = useRouter();
   const [tweaking, setTweaking] = useState(false);
@@ -99,6 +101,13 @@ export function DateOffer({
           Pass
         </button>
       </div>
+      {shareHref ? (
+        <p className="text-links">
+          <a href={shareHref} target="_blank" rel="noopener noreferrer">
+            Share on X
+          </a>
+        </p>
+      ) : null}
     </section>
   );
 }

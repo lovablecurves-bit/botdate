@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { resetDemoAction, setPausedAction } from "@/app/actions";
 import { Banner } from "@/components/banner";
 import { OnboardingForm } from "@/components/onboarding-form";
@@ -38,6 +39,9 @@ export default async function OnboardingPage({
           <h2>Matchmaker</h2>
           <p className="help">Pause stops your matchmaker from saying anything new. Wipe clears bot-to-bot notes. You are only asked when there is a date.</p>
         </div>
+        <Link className="btn primary wide" href="/connect">
+          Connect your Grok Bot
+        </Link>
         <form action={setPausedAction}>
           <input type="hidden" name="paused" value={member.botPaused ? "false" : "true"} />
           <SubmitButton className="btn ghost wide" pendingLabel="Saving…" testId="toggle-pause">

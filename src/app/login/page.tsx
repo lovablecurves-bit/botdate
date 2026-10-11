@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { loginAction, resetDemoAction } from "@/app/actions";
 import { Portrait } from "@/components/person";
 import { Wordmark } from "@/components/wordmark";
@@ -6,13 +7,20 @@ import { SubmitButton } from "@/components/submit-button";
 import { DEMO_NOTES, DEMO_ORDER } from "@/lib/demo/members";
 import { withDb } from "@/lib/db/open";
 import { listRoster } from "@/lib/domain";
+import { appOrigin } from "@/lib/http/origin";
+import { waitlistIntent } from "@/lib/share";
+import { xAuthConfigured } from "@/lib/x/config";
 
 export const metadata = { title: "Enter" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
-  const roster = (await withDb((db) => listRoster(db))).sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
+  const xReady = xAuthConfigured();
+  const invite = waitlistIntent(appOrigin(await headers()));
+  const roster = (await withDb((db) => listRoster(db)))
+    .filter((person) => order.has(person.id))
+    .sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
   const [featured, ...rest] = roster;
 
   return (
@@ -25,6 +33,16 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <p className="lede">The bots do the small talk. You only step in when there is a date to approve, tweak, or pass.</p>
       </header>
       <Banner>{error}</Banner>
+      {xReady ? (
+        <a className="btn primary wide" href="/api/auth/x/start">
+          Sign in with X
+        </a>
+      ) : null}
+      <p className="text-links">
+        <a href={invite} target="_blank" rel="noopener noreferrer">
+          Share a waitlist invite
+        </a>
+      </p>
       {featured ? (
         <section className="featured">
           <Portrait name={featured.displayName} accent={featured.accent} />

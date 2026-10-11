@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { clearSession, requireOnboarded, requireUser, setSession } from "@/lib/auth";
+import { issueAgentToken, revokeAgentTokens } from "@/lib/agent/tokens";
 import { resetDatabase } from "@/lib/db/seed";
 import { withDb } from "@/lib/db/open";
 import {
@@ -73,6 +75,32 @@ export async function loginAction(formData: FormData) {
   if (!member) redirect("/login?error=That+demo+member+is+not+in+the+seed.");
   await setSession(member.id);
   redirect(member.prefs.locked ? "/shortlist" : "/onboarding");
+}
+
+const AGENT_REVEAL = "botdate_agent_token";
+
+export async function issueAgentTokenAction() {
+  const user = await requireUser();
+  const issued = await withDb((db) => issueAgentToken(db, user.id));
+  if (!issued) redirect("/connect?error=Could+not+issue+a+token.");
+  const jar = await cookies();
+  jar.set(AGENT_REVEAL, issued.token, { httpOnly: true, sameSite: "lax", path: "/connect", maxAge: 300 });
+  redirect("/connect");
+}
+
+export async function revokeAgentTokenAction() {
+  const user = await requireUser();
+  await withDb((db) => revokeAgentTokens(db, user.id));
+  const jar = await cookies();
+  jar.set(AGENT_REVEAL, "", { path: "/connect", maxAge: 0 });
+  redirect("/connect");
+}
+
+export async function dismissAgentTokenAction() {
+  await requireUser();
+  const jar = await cookies();
+  jar.set(AGENT_REVEAL, "", { path: "/connect", maxAge: 0 });
+  redirect("/connect");
 }
 
 export async function logoutAction() {

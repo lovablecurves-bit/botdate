@@ -24,7 +24,7 @@ export default async function DatesPage() {
           {rows.map((row) => (
             <article key={row.matchId} className="list-block">
               <div className="person-top">
-                <Avatar name={row.person.displayName} accent={row.person.accent} />
+                <Avatar name={row.person.displayName} accent={row.person.accent} imageUrl={row.person.avatarUrl} />
                 <div>
                   <h2>{row.person.displayName}</h2>
                   <p className="meta">
