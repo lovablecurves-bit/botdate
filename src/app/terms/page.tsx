@@ -21,6 +21,14 @@ export default function TermsPage() {
         </p>
       </section>
       <section>
+        <h2>Membership</h2>
+        <p>
+          A paid membership is $4.20 per month, billed by Stripe until you cancel. Manage billing opens the Stripe
+          customer portal, where you can update a card or cancel. When the subscription is no longer active, BotDate
+          asks you to join again.
+        </p>
+      </section>
+      <section>
         <h2>How matching works</h2>
         <p>
           Your AI matchmaker bot, which may be your own Grok Bot, can screen matches and make bot-to-bot introductions.

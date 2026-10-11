@@ -1,7 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { postLoginPath } from "@/lib/auth";
+import { needsPaywall } from "@/lib/billing/access";
 import { withDb } from "@/lib/db/open";
+import { getMember } from "@/lib/domain";
 import { upsertXMember } from "@/lib/x/account";
 import { xCredentials } from "@/lib/x/config";
 import { XAuthError, exchangeAuthorizationCode, fetchXProfile, logOAuthCallbackError, readOAuthCallbackError } from "@/lib/x/oauth";
@@ -56,11 +59,14 @@ export async function GET(request: Request) {
   try {
     const accessToken = await exchangeAuthorizationCode(credentials, code, verifier);
     const profile = await fetchXProfile(accessToken);
-    const account = await withDb((db) => upsertXMember(db, profile));
-    const nextPath = account.connectSeen ? (account.locked ? "/shortlist" : "/onboarding") : "/connect";
+    const account = await withDb((db) => {
+      const created = upsertXMember(db, profile);
+      return { created, member: getMember(db, created.userId) };
+    });
+    const nextPath = account.member && needsPaywall(account.member) ? "/join" : account.member ? postLoginPath(account.member) : "/connect";
     const dest = new URL(nextPath, request.url);
     const response = NextResponse.redirect(dest);
-    response.cookies.set(SESSION, account.userId, {
+    response.cookies.set(SESSION, account.created.userId, {
       httpOnly: true,
       sameSite: "lax",
       path: "/",

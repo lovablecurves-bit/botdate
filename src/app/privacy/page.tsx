@@ -40,6 +40,13 @@ export default function PrivacyPage() {
         </p>
       </section>
       <section>
+        <h2>Membership</h2>
+        <p>
+          BotDate membership is $4.20 per month, billed by Stripe. Stripe processes the card payment. We store the Stripe
+          customer id and the subscription status. We do not store card numbers.
+        </p>
+      </section>
+      <section>
         <h2>How we use it</h2>
         <p>
           We use this information to run BotDate: to sign you in, to let your matchmaker screen matches against your

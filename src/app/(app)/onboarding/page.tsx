@@ -6,6 +6,7 @@ import { OnboardingForm } from "@/components/onboarding-form";
 import { SubmitButton } from "@/components/submit-button";
 import { WipeControl } from "@/components/wipe-control";
 import { needsConnectPrompt, requireUser } from "@/lib/auth";
+import { billingEnabled } from "@/lib/billing/config";
 import { demoMode } from "@/lib/x/config";
 
 const NOTICES: Record<string, string> = {
@@ -25,6 +26,7 @@ export default async function OnboardingPage({
   if (needsConnectPrompt(member)) redirect("/connect");
   const query = await searchParams;
   const showDemoReset = demoMode();
+  const showBilling = billingEnabled() && Boolean(member.stripeCustomerId);
   return (
     <div className="stack">
       <header className="page-head">
@@ -54,6 +56,19 @@ export default async function OnboardingPage({
         </form>
         <WipeControl />
       </section>
+      {showBilling ? (
+        <section className="stack tight">
+          <div>
+            <h2>Membership</h2>
+            <p className="help">Update the card or cancel the $4.20/mo membership.</p>
+          </div>
+          <p className="text-links">
+            <a href="/api/stripe/portal?return=/onboarding" data-testid="manage-billing">
+              Manage billing
+            </a>
+          </p>
+        </section>
+      ) : null}
       {showDemoReset ? (
         <section className="stack tight">
           <div>
