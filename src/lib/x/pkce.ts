@@ -37,15 +37,23 @@ export function codeChallenge(verifier: string): string {
 export const X_AUTHORIZE_URL = "https://x.com/i/oauth2/authorize";
 export const X_TOKEN_URL = "https://api.x.com/2/oauth2/token";
 export const X_ME_URL = "https://api.x.com/2/users/me";
+/** Member sign-in. BotDateApp auto-posting uses X_BOT_SCOPES instead. */
 export const X_SCOPES = "users.read tweet.read";
+export const X_BOT_SCOPES = "tweet.read tweet.write users.read offline.access";
 
-export function authorizeUrl(input: { clientId: string; redirectUri: string; state: string; verifier: string }): string {
+export function authorizeUrl(input: {
+  clientId: string;
+  redirectUri: string;
+  state: string;
+  verifier: string;
+  scopes?: string;
+}): string {
   assertVerifierLength(input.verifier);
   const params: Array<[string, string]> = [
     ["response_type", "code"],
     ["client_id", input.clientId],
     ["redirect_uri", input.redirectUri],
-    ["scope", X_SCOPES],
+    ["scope", input.scopes ?? X_SCOPES],
     ["state", input.state],
     ["code_challenge", codeChallenge(input.verifier)],
     ["code_challenge_method", "S256"],

@@ -6,6 +6,9 @@ export const SESSION_COOKIE = "botdate_session";
 export const LEGACY_SESSION_COOKIE = "botdate_uid";
 export const OAUTH_STATE_COOKIE = "botdate_x_state";
 export const OAUTH_VERIFIER_COOKIE = "botdate_x_verifier";
+/** Separate from member sign-in so connecting @BotDateApp does not clobber a login in progress. */
+export const BOT_OAUTH_STATE_COOKIE = "botdate_x_bot_state";
+export const BOT_OAUTH_VERIFIER_COOKIE = "botdate_x_bot_verifier";
 
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const DEMO_SECRET = "botdate-demo-session-v1";

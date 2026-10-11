@@ -107,6 +107,17 @@ export const waitlistSignups = sqliteTable("waitlist", {
   createdAt: text("created_at").notNull(),
 });
 
+/** Singleton row `botdateapp`. Tokens are AES-GCM ciphertext, never plaintext. */
+export const xBotCredentials = sqliteTable("x_bot_credentials", {
+  id: text("id").primaryKey(),
+  xUserId: text("x_user_id").notNull(),
+  username: text("username").notNull(),
+  accessTokenCiphertext: text("access_token_ciphertext").notNull(),
+  refreshTokenCiphertext: text("refresh_token_ciphertext").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -206,6 +217,15 @@ CREATE TABLE IF NOT EXISTS waitlist (
   referral_code TEXT NOT NULL UNIQUE,
   referred_by TEXT,
   created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS x_bot_credentials (
+  id TEXT PRIMARY KEY,
+  x_user_id TEXT NOT NULL,
+  username TEXT NOT NULL,
+  access_token_ciphertext TEXT NOT NULL,
+  refresh_token_ciphertext TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS messages_match_idx ON messages(match_id);
 CREATE INDEX IF NOT EXISTS proposals_match_idx ON date_proposals(match_id);

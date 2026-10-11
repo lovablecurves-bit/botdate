@@ -17,6 +17,7 @@ import {
 } from "@/lib/session";
 import { upsertXMember } from "@/lib/x/account";
 import { xCredentials } from "@/lib/x/config";
+import { finishBotOAuthCallback, isBotOAuthCallback } from "@/lib/x/bot-callback";
 import { XAuthError, exchangeAuthorizationCode, fetchXProfile, logOAuthCallbackError, readOAuthCallbackError } from "@/lib/x/oauth";
 import type { XProfile } from "@/lib/x/profile";
 
@@ -38,6 +39,7 @@ function clearOauth(response: NextResponse, secure: boolean) {
 }
 
 export async function GET(request: Request) {
+  if (isBotOAuthCallback(request)) return finishBotOAuthCallback(request);
   const url = new URL(request.url);
   const secure = requestIsSecureSync(request.url, request.headers.get("x-forwarded-proto"));
   const login = new URL("/login", request.url);

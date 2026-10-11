@@ -1,5 +1,7 @@
 const OPEN = [
   /^\/api\/auth\/x(?:\/|$)/,
+  /^\/api\/admin\/x\/(?:connect|post|mentions)\/?$/,
+  /^\/admin\/x\/connected\/?$/,
   /^\/api\/agent(?:\/|$)/,
   /^\/api\/mcp(?:\/|$)/,
   /^\/api\/stripe\/webhook\/?$/,
