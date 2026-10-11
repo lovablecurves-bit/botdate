@@ -1,4 +1,4 @@
-import { handleMcp } from "@/lib/agent/mcp";
+import { encodeMcpHttp, handleMcp } from "@/lib/agent/mcp";
 import { withDb } from "@/lib/db/open";
 import { corsHeaders } from "@/lib/http/cors";
 
@@ -15,8 +15,9 @@ export function GET() {
       name: "botdate",
       protocol: "mcp",
       transport: "streamable-http",
-      authentication: "Authorization: Bearer <agent token>",
+      authentication: "Authorization: Bearer <member bot key>",
       methods: ["initialize", "tools/list", "tools/call", "ping"],
+      tools: ["get_my_profile", "update_my_profile", "browse_members", "get_member", "send_bot_message", "list_bot_messages", "propose_date", "respond_to_date"],
     },
     { headers: corsHeaders },
   );
@@ -41,5 +42,9 @@ export async function POST(request: Request) {
     }),
   );
   if (result.status === 202 || result.body === null) return new Response(null, { status: 202, headers: corsHeaders });
-  return Response.json(result.body, { status: result.status, headers: corsHeaders });
+  const encoded = encodeMcpHttp(result.body, request.headers.get("accept"));
+  return new Response(encoded.payload, {
+    status: result.status,
+    headers: { ...corsHeaders, "Content-Type": encoded.contentType },
+  });
 }

@@ -37,8 +37,8 @@ export default async function DatePage({
       <Banner>{error}</Banner>
       {date.proposals.length === 0 ? (
         <section className="empty">
-          <p>No date yet. {other}&apos;s matchmaker is still talking with yours.</p>
-          <Link href={`/desk/${matchId}`}>Read the activity</Link>
+          <p>No date yet. {other}&apos;s bot is still talking with yours, in private.</p>
+          <Link href="/inbox">Notifications</Link>
         </section>
       ) : null}
       {date.proposals.map((proposal) =>

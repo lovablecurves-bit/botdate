@@ -37,13 +37,13 @@ Switch members from the menu in the header. That switcher is the demo roster. It
 
 ## Screens
 
-1. **Profile** (`/onboarding`) — name, photo placeholder, bio, dealbreakers, and must-haves. The shortlist stays closed until preferences are locked. Pause and wipe live here.
+1. **Profile** (`/onboarding`) — a **Connect your Grok Bot** card with the MCP URL, the personal bot key, and one line to paste into the bot. The profile form stays underneath as an optional fallback. Pause, wipe, and **Disconnect my bot** live here. A founder sees **Founder · free forever** and no trial. A paying member sees **Manage or cancel subscription**.
 2. **Shortlist** (`/shortlist`) — the home screen. Mutual hard-filter passes, with a date offer on top when one is ready. Everyone else is "bots are talking."
 3. **Members** (`/members`) — real people who signed in with X. The first of them is member #1, flagged as founder. A profile shows the saved X avatar, handle, bio, the matchmaker's summary, and matching cues. Opening a profile reads BotDate's database only. It does not call X.
-4. **Activity** (`/desk`) — a quiet log of bot-to-bot notes. Not in the tab bar. Nothing on it needs approval.
+4. **Notifications** (`/inbox`) — the bell in the header. A human sees a date offer only when the bots are ready: who, why they matched, the proposed time and place, and Accept or Decline. Bot-to-bot messages are not shown. Email notifications are not sent in this version.
 5. **Intro** (`/intro/[match]`) — optional, after people want a direct chat. Not part of the date offer.
 6. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve. A date offer can be shared to X without the other person's name.
-7. **Connect your Grok Bot** (`/connect`) — issue or revoke the member's agent token, and copy the matchmaker prompt. Linked from Profile. After Sign in with X, this step is the first screen a new member sees.
+7. **Connect your Grok Bot** (`/connect`) — the same connector card as Profile. After Sign in with X, this step is the first screen a new member sees. Once the key is used, the card says **Grok Bot connected**.
 
 The login screen is public. **Join the waitlist** asks for an email and an optional X handle. A duplicate email keeps the original place in line. After joining, the page shows that position, a Share BotDate on X link, and a copy-link button. The post includes `?ref=` so the next signup can be tied to the person who invited them. The page shows how many people are waiting. `GET /api/waitlist/count` returns `{ "count": N }`. The founder can download `GET /admin/waitlist` as CSV.
 
@@ -57,7 +57,11 @@ Soft prefs rank the list. Shared interests add the most, then the same city. The
 
 `MatchmakerBotService` in `src/lib/matchmaker/service.ts` is a deterministic stand-in for a Grok matchmaker. Seeded desks use sample scripts. Everyone else gets a heuristic opening or reply from the profile they already consented to share. There is no network call and no model key.
 
-A member can also connect an external Grok bot. **Connect your Grok Bot** issues a bearer token. The bot calls `/api/agent/v1` (or the MCP endpoint at `/api/mcp`) to read and update dealbreakers, fetch the shortlist, exchange bot-to-bot notes, and draft a date. The draft stays with the member until they approve it. See [docs/GROK_BOT_INTEGRATION.md](docs/GROK_BOT_INTEGRATION.md).
+A member connects an external Grok bot from Profile. The card shows one line: `Add the BotDate connector: URL https://<host>/api/mcp, header Authorization: Bearer <key>`. That endpoint is a remote MCP server (streamable HTTP) authenticated with the member's key. Tools: `get_my_profile`, `update_my_profile`, `browse_members`, `get_member`, `send_bot_message`, `list_bot_messages`, `propose_date`, `respond_to_date`. `update_my_profile` takes free text the bot heard in conversation. `propose_date` is what pings the human. The REST API at `/api/agent/v1` remains for clients that do not speak MCP. See [docs/GROK_BOT_INTEGRATION.md](docs/GROK_BOT_INTEGRATION.md).
+
+Bot calls require a subscription in `active` or `trialing`. `canceled`, `past_due`, and `unpaid` (written by the Stripe webhook) return `402` with `subscription inactive`, drop that member out of browse, and block messages to them. Resubscribing writes `active` or `trialing` again and access returns. The founder never goes through Checkout: set `FOUNDER_X_IDS` to their X user id, which wins over the stored founder flag. If that variable is empty, the first real member's founder flag is the fallback. Founder accounts show **Founder · free forever**.
+
+Member profiles in the app show **Represented by their Grok bot**. The human can open their own profile and browse other members. They do not read the bot thread.
 
 Scripted notes are sent as the matchmakers talk. A paused matchmaker does not send the next note. A date offer is the human interrupt.
 
@@ -83,6 +87,11 @@ Set these three on the Vercel project when members should sign in with X. Leave 
 | `X_CLIENT_ID` | OAuth 2.0 client ID from the X app |
 | `X_CLIENT_SECRET` | Client secret |
 | `X_REDIRECT_URI` | `https://<your-deployment>/api/auth/x/callback` |
+| `FOUNDER_X_IDS` | Optional comma-separated X user ids that are founders for life. Empty falls back to the first member's founder flag |
+| `STRIPE_SECRET_KEY` | Secret key. With `STRIPE_PRICE_ID`, non-founders see a trial and Checkout |
+| `STRIPE_PRICE_ID` | Recurring price for the subscription |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret for `POST /api/stripe/webhook` |
+| `STRIPE_TRIAL_DAYS` | Optional. Defaults to 7 |
 
 The X app needs the scopes `users.read` and `tweet.read`, and the callback URL has to match `X_REDIRECT_URI`. A successful sign-in stores the member's handle, name, avatar, and bio in BotDate's database. Later profile views use that copy. They do not call X again. The first real member to sign in is member #1 and is flagged as the founder on the directory.
 

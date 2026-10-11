@@ -225,6 +225,31 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-weight: 600;
   font-size: 0.95rem;
 }
+.founder-chip { min-height: 28px; font-size: 0.8rem; padding: 0 8px; }
+.bot-badge {
+  display: inline-flex;
+  width: fit-content;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+.connect-card {
+  background: white;
+  border-radius: 24px;
+  padding: 18px 16px;
+  box-shadow: var(--shadow);
+}
+.header-tools { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.bell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+  text-decoration: none;
+}
+.topbar-inner { gap: 8px; }
 .handle-line { font-weight: 600; color: var(--ink); }
 .summary-card {
   background: white;

@@ -12,7 +12,7 @@ import { joinedWaitlistIntent, waitlistIntent, waitlistReferralUrl } from "@/lib
 import { paywallCopy } from "@/lib/stripe/access";
 import { stripeConfig, trialDays } from "@/lib/stripe/config";
 import { findWaitlistByCode, normalizeReferralCode, peopleWaitingLabel, waitlistCount } from "@/lib/waitlist";
-import { logColdStartNote, xAuthConfigured } from "@/lib/x/config";
+import { xAuthConfigured } from "@/lib/x/config";
 import { loginErrorText } from "@/lib/x/oauth";
 
 export const metadata = { title: "Enter" };
@@ -27,7 +27,6 @@ export default async function LoginPage({
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
   const xReady = xAuthConfigured();
   const billing = stripeConfig() !== null;
-  logColdStartNote();
   const invite = waitlistIntent();
   const ref = normalizeReferralCode(refParam);
   const joinedCode = normalizeReferralCode(joinedParam);

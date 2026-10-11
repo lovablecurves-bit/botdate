@@ -26,13 +26,18 @@ export function demoMode(): boolean {
  * On Vercel the database is memory unless Turso is set, so a cold start drops rows.
  * Sign-in still works from the signed session cookie. This note is for the server log only.
  */
-export function coldStartNote(): string | null {
+export function coldStartLogLine(): string | null {
   if (demoMode()) return null;
   const url = process.env.TURSO_DATABASE_URL?.trim() ?? "";
   const token = process.env.TURSO_AUTH_TOKEN?.trim() ?? "";
   if (url && token) return null;
   if (!process.env.VERCEL) return null;
   return "Member data won't survive cold starts without Turso.";
+}
+
+/** Same server log line. Pages must not render it. */
+export function coldStartNote(): string | null {
+  return coldStartLogLine();
 }
 
 let coldStartLogged = false;
@@ -43,4 +48,8 @@ export function logColdStartNote(): void {
   coldStartLogged = true;
   const note = coldStartNote();
   if (note) console.warn(`[botdate] ${note}`);
+}
+
+export function logColdStartLimitation(): void {
+  logColdStartNote();
 }

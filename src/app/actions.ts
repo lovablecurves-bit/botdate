@@ -2,8 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { checkoutAllowed, isFounderAccount, needsPaywall } from "@/lib/billing/access";
+import { createBillingPortalSession, createCheckoutSession } from "@/lib/billing/stripe";
 import { clearSession, memberHome, requireOnboarded, requireUser, setSession } from "@/lib/auth";
+import { appOrigin } from "@/lib/http/origin";
 import { markConnectSeen } from "@/lib/x/account";
 import { demoMode } from "@/lib/x/config";
 import { issueAgentToken, revokeAgentTokens } from "@/lib/agent/tokens";
@@ -78,6 +81,7 @@ export async function loginAction(formData: FormData) {
   const member = await withDb((db) => getMember(db, userId));
   if (!member) redirect("/login?error=That+demo+member+is+not+in+the+seed.");
   await setSession(member);
+  if (needsPaywall(member)) redirect("/subscribe");
   redirect(memberHome(member));
 }
 
@@ -103,27 +107,72 @@ export async function joinWaitlistAction(formData: FormData) {
 
 const AGENT_REVEAL = "botdate_agent_token";
 
-export async function issueAgentTokenAction() {
-  const user = await requireUser();
-  const issued = await withDb((db) => issueAgentToken(db, user.id));
-  if (!issued) redirect("/connect?error=Could+not+issue+a+token.");
-  const jar = await cookies();
-  jar.set(AGENT_REVEAL, issued.token, { httpOnly: true, sameSite: "lax", path: "/connect", maxAge: 300 });
-  redirect("/connect");
+function nextPath(formData: FormData): string {
+  return String(formData.get("next") ?? "") === "profile" ? "/onboarding" : "/connect";
 }
 
-export async function revokeAgentTokenAction() {
+function rethrowRedirect(error: unknown): void {
+  if (typeof error === "object" && error && "digest" in error && String((error as { digest: unknown }).digest).startsWith("NEXT_REDIRECT")) {
+    throw error;
+  }
+}
+
+export async function issueAgentTokenAction(formData: FormData) {
+  const user = await requireUser();
+  const issued = await withDb((db) => issueAgentToken(db, user.id));
+  const dest = nextPath(formData);
+  if (!issued) redirect(`${dest}?error=Could+not+issue+a+token.`);
+  const jar = await cookies();
+  jar.set(AGENT_REVEAL, issued.token, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 7 });
+  redirect(dest);
+}
+
+export async function revokeAgentTokenAction(formData: FormData) {
   const user = await requireUser();
   await withDb((db) => revokeAgentTokens(db, user.id));
   const jar = await cookies();
-  jar.set(AGENT_REVEAL, "", { path: "/connect", maxAge: 0 });
-  redirect("/connect");
+  jar.set(AGENT_REVEAL, "", { path: "/", maxAge: 0 });
+  redirect(nextPath(formData));
+}
+
+export async function startCheckoutAction() {
+  const user = await requireUser();
+  if (!checkoutAllowed(user) || isFounderAccount(user)) redirect("/onboarding");
+  const origin = appOrigin(await headers());
+  try {
+    const url = await createCheckoutSession({
+      userId: user.id,
+      email: user.email,
+      customerId: user.stripeCustomerId,
+      origin,
+    });
+    redirect(url);
+  } catch (error) {
+    rethrowRedirect(error);
+    const message = error instanceof Error ? error.message : "Checkout failed.";
+    redirect(`/subscribe?error=${encodeURIComponent(message)}`);
+  }
+}
+
+export async function openBillingPortalAction() {
+  const user = await requireUser();
+  if (isFounderAccount(user)) redirect("/onboarding");
+  if (!user.stripeCustomerId) redirect("/onboarding?error=No+subscription+to+manage.");
+  const origin = appOrigin(await headers());
+  try {
+    const url = await createBillingPortalSession(user.stripeCustomerId, origin);
+    redirect(url);
+  } catch (error) {
+    rethrowRedirect(error);
+    const message = error instanceof Error ? error.message : "Billing portal failed.";
+    redirect(`/onboarding?error=${encodeURIComponent(message)}`);
+  }
 }
 
 export async function dismissAgentTokenAction() {
   await requireUser();
   const jar = await cookies();
-  jar.set(AGENT_REVEAL, "", { path: "/connect", maxAge: 0 });
+  jar.set(AGENT_REVEAL, "", { path: "/", maxAge: 0 });
   redirect("/connect");
 }
 

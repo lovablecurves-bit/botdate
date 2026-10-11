@@ -27,6 +27,13 @@ export function initials(name: string): string {
     .join("");
 }
 
+/** Human-facing badge. Bot-to-bot chat is not shown; the bot stands in for the member. */
+export function representedBy(displayName: string, self: boolean): string {
+  if (self) return "Represented by your Grok bot";
+  const first = displayName.split(" ")[0] || displayName;
+  return `Represented by ${first}'s Grok bot`;
+}
+
 export function truncate(text: string, max = 140): string {
   const clean = text.replace(/\s+/g, " ").trim();
   if (clean.length <= max) return clean;

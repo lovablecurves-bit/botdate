@@ -1,3 +1,4 @@
+import { isFounderAccount } from "../billing/access";
 import type { Member } from "../types";
 import { DEFAULT_TRIAL_DAYS, stripeConfig, type StripeEnv } from "./config";
 
@@ -31,12 +32,12 @@ export function hasActiveSubscription(status: string | null | undefined): boolea
   return ACTIVE_SUBSCRIPTION_STATUSES.has((status ?? "").trim().toLowerCase());
 }
 
-/** Founder (member #1), @lovablecurves, or a handle listed in FREE_X_HANDLES. */
+/** Founder (flag, FOUNDER_X_IDS, or member #1), @lovablecurves, or a handle listed in FREE_X_HANDLES. */
 export function isComplimentary(
   member: Pick<Member, "founder" | "memberNumber" | "xAccount">,
   env: StripeEnv = process.env,
 ): boolean {
-  if (member.founder || member.memberNumber === 1) return true;
+  if (isFounderAccount(member) || member.memberNumber === 1) return true;
   const handle = member.xAccount?.handle ? normalizeHandle(member.xAccount.handle) : "";
   return Boolean(handle && complimentaryHandles(env).has(handle));
 }

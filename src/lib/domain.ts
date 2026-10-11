@@ -5,6 +5,7 @@ import { DEMO_ORDER } from "./demo/members";
 import { SCRIPTS } from "./demo/scripts";
 import { HOLD_LABELS, mutualPass, primaryHold } from "./matchmaker/filters";
 import { matchmaker } from "./matchmaker/service";
+import { subscriptionBlocks } from "./billing/access";
 import { created, fail, ok, type ActionResult, type CreatedResult } from "./result";
 import { formatPacific, isFutureIso, isoToPacificLocal, pacificLocalToIso } from "./time";
 import {
@@ -394,6 +395,7 @@ export function listShortlist(ctx: BotDateDb, userId: string): Shortlist {
   let inactive = 0;
   for (const other of listMembers(ctx)) {
     if (other.id === userId) continue;
+    if (subscriptionBlocks(other)) continue;
     if (!other.prefs.locked) {
       inactive += 1;
       continue;
@@ -925,6 +927,7 @@ export function proposeHeldDate(
   if (member.botPaused) return fail("Your matchmaker is paused.");
   const pair = loadPair(ctx, userId, matchId);
   if (!pair) return fail("That date desk is not on your shortlist.");
+  if (subscriptionBlocks(pair.other)) return fail("That member isn't available.");
   const blocked = openProposalBlock(ctx, matchId);
   if (blocked) return blocked;
   const when = parseWhen(input);
@@ -955,6 +958,7 @@ export function sendBotNote(ctx: BotDateDb, userId: string, matchId: string, bod
   if (member.botPaused) return fail("Your matchmaker is paused.");
   const pair = loadPair(ctx, userId, matchId);
   if (!pair) return fail("That desk is not on your shortlist.");
+  if (subscriptionBlocks(pair.other)) return fail("That member isn't available.");
   const nextBody = cleanBody(body);
   if (!nextBody) return fail("Write a message first.");
   if (nextBody.length > 800) return fail("Keep a message under 800 characters.");
@@ -1098,6 +1102,139 @@ export function respondToDate(
 
 function oneOf<T extends string>(value: string, allowed: readonly T[]): value is T {
   return (allowed as readonly string[]).includes(value);
+}
+
+export type BotProfilePatch = {
+  displayName?: string;
+  bio?: string;
+  occupation?: string;
+  city?: string;
+  age?: number;
+  pronouns?: string;
+  interests?: string[];
+  niceToHaves?: string;
+  kids?: KidsStance;
+  intent?: Intent;
+  smoking?: boolean;
+  ageMin?: number;
+  ageMax?: number;
+  cities?: string[];
+  smokingFilter?: SmokingFilter;
+  kidsFilter?: KidsFilter;
+  intentFilter?: IntentFilter;
+  locked?: boolean;
+};
+
+function cleanFreeText(value: string, max: number): string {
+  return value.trim().slice(0, max);
+}
+
+/** Fields a bot fills from conversation. City and interests are free text, not the form lists. */
+export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfilePatch): ActionResult {
+  const existing = getMember(ctx, userId);
+  if (!existing) return fail("Member not found.");
+  const next = memberToInput(existing);
+  if (patch.displayName !== undefined) {
+    const displayName = cleanFreeText(patch.displayName, 60);
+    if (!displayName) return fail("Use a name under 60 characters.");
+    next.displayName = displayName;
+  }
+  if (patch.pronouns !== undefined) {
+    if (!oneOf(patch.pronouns, PRONOUNS)) return fail("pronouns must be she/her, he/him, or they/them.");
+    next.pronouns = patch.pronouns;
+  }
+  if (patch.age !== undefined) {
+    if (!Number.isInteger(patch.age) || patch.age < 18 || patch.age > 99) return fail("Age needs to be between 18 and 99.");
+    next.age = patch.age;
+  }
+  if (patch.city !== undefined) {
+    const city = cleanFreeText(patch.city, 80);
+    if (city.length < 2) return fail("Add a city.");
+    next.city = city;
+  }
+  if (patch.occupation !== undefined) {
+    const occupation = cleanFreeText(patch.occupation, 80);
+    if (occupation.length < 2) return fail("Add an occupation.");
+    next.occupation = occupation;
+  }
+  if (patch.bio !== undefined) {
+    const bio = cleanFreeText(patch.bio, 500);
+    if (!bio) return fail("Keep the bio under 500 characters.");
+    next.bio = bio;
+  }
+  if (patch.smoking !== undefined) next.smoking = patch.smoking;
+  if (patch.kids !== undefined) {
+    if (!oneOf(patch.kids, ["wants", "open", "doesnt"] as const)) return fail("kids must be wants, open, or doesnt.");
+    next.kids = patch.kids;
+  }
+  if (patch.intent !== undefined) {
+    if (!oneOf(patch.intent, ["serious", "casual"] as const)) return fail("intent must be serious or casual.");
+    next.intent = patch.intent;
+  }
+  if (patch.interests !== undefined) {
+    const interests = [...new Set(patch.interests.map((item) => cleanFreeText(item, 40)).filter(Boolean))].slice(0, 12);
+    next.interests = interests;
+  }
+  if (patch.ageMin !== undefined) next.ageMin = patch.ageMin;
+  if (patch.ageMax !== undefined) next.ageMax = patch.ageMax;
+  if (!Number.isInteger(next.ageMin) || !Number.isInteger(next.ageMax) || next.ageMin < 18 || next.ageMax > 99 || next.ageMin > next.ageMax) {
+    return fail("Fix the age range.");
+  }
+  if (patch.cities !== undefined) {
+    const cities = [...new Set(patch.cities.map((item) => cleanFreeText(item, 80)).filter((item) => item.length >= 2))].slice(0, 8);
+    if (!cities.length) return fail("Pick at least one city.");
+    next.cities = cities;
+  }
+  if (patch.smokingFilter !== undefined) {
+    if (!oneOf(patch.smokingFilter, ["no", "any"] as const)) return fail("smoking must be no or any.");
+    next.smokingFilter = patch.smokingFilter;
+  }
+  if (patch.kidsFilter !== undefined) {
+    if (!oneOf(patch.kidsFilter, ["wants", "doesnt", "any"] as const)) return fail("kids filter must be wants, doesnt, or any.");
+    next.kidsFilter = patch.kidsFilter;
+  }
+  if (patch.intentFilter !== undefined) {
+    if (!oneOf(patch.intentFilter, ["serious", "casual", "any"] as const)) return fail("intent filter must be serious, casual, or any.");
+    next.intentFilter = patch.intentFilter;
+  }
+  if (patch.niceToHaves !== undefined) {
+    const niceToHaves = cleanFreeText(patch.niceToHaves, 400);
+    next.niceToHaves = niceToHaves;
+  }
+  if (patch.locked !== undefined) next.locked = patch.locked;
+  const voice = voiceForPronouns(next.pronouns);
+  ctx.db.update(users).set({ displayName: next.displayName }).where(eq(users.id, userId)).run();
+  ctx.db
+    .update(profiles)
+    .set({
+      age: next.age,
+      city: next.city,
+      occupation: next.occupation,
+      bio: next.bio,
+      pronouns: next.pronouns,
+      smoking: next.smoking,
+      kids: next.kids,
+      intent: next.intent,
+      interests: JSON.stringify(next.interests),
+      voice: JSON.stringify(voice),
+    })
+    .where(eq(profiles.userId, userId))
+    .run();
+  ctx.db
+    .update(prefs)
+    .set({
+      ageMin: next.ageMin,
+      ageMax: next.ageMax,
+      cities: JSON.stringify(next.cities),
+      smoking: next.smokingFilter,
+      kids: next.kidsFilter,
+      intent: next.intentFilter,
+      niceToHaves: next.niceToHaves,
+      locked: next.locked,
+    })
+    .where(eq(prefs.userId, userId))
+    .run();
+  return ok();
 }
 
 export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): ActionResult {

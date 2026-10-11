@@ -12,6 +12,7 @@ export function DateOffer({
   local,
   place,
   note,
+  why = [],
   shareHref,
 }: {
   matchId: string;
@@ -21,6 +22,7 @@ export function DateOffer({
   local: string;
   place: string;
   note: string;
+  why?: string[];
   shareHref?: string;
 }) {
   const router = useRouter();
@@ -70,9 +72,16 @@ export function DateOffer({
           <p className="when">{whenLabel}</p>
           <p className="place">{place}</p>
           {note ? <p>{note}</p> : null}
+          {why.length > 0 ? (
+            <ul className="why" data-testid="why-matched">
+              {why.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       )}
-      <p className="help">Your matchmakers agreed it is time. This is the only thing that needs you.</p>
+      <p className="help">Your bots agreed it is time. Accept or decline. The conversation that got here stays with them.</p>
       {error ? (
         <p className="banner bad" role="alert">
           {error}
@@ -85,7 +94,7 @@ export function DateOffer({
           </button>
         ) : (
           <button className="btn primary" type="button" disabled={pending} data-testid="approve-offer" onClick={() => run(() => approveOfferAction(matchId, proposalId))}>
-            Approve
+            Accept
           </button>
         )}
         {tweaking ? (
@@ -98,7 +107,7 @@ export function DateOffer({
           </button>
         )}
         <button className="btn danger" type="button" disabled={pending} data-testid="pass-offer" onClick={() => run(() => passOfferAction(matchId, proposalId))}>
-          Pass
+          Decline
         </button>
       </div>
       {shareHref ? (

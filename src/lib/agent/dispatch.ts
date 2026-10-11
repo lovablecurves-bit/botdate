@@ -2,6 +2,7 @@ import type { BotDateDb } from "../db/open";
 import {
   getDate,
   getDesk,
+  getMember,
   listDesk,
   listShortlist,
   memberToInput,
@@ -10,16 +11,9 @@ import {
   sendBotNote,
 } from "../domain";
 import { PRONOUNS, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
-import { needsPaywall } from "../stripe/access";
-import { memberForAgentToken } from "./tokens";
+import { authenticateAgent } from "./tokens";
 
 export type AgentResponse = { status: number; body: unknown };
-
-function bearer(authorization: string | null): string | null {
-  if (!authorization) return null;
-  const match = /^Bearer\s+(\S+)$/i.exec(authorization.trim());
-  return match?.[1] ?? null;
-}
 
 function text(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -49,13 +43,9 @@ export function dispatchAgent(input: {
   pathname: string;
   body: unknown;
 }): AgentResponse {
-  const token = bearer(input.authorization);
-  if (!token) return { status: 401, body: { error: "Send the agent token as Authorization: Bearer." } };
-  const member = memberForAgentToken(input.ctx, token);
-  if (!member) return { status: 401, body: { error: "That agent token is not active." } };
-  if (needsPaywall(member)) {
-    return { status: 402, body: { error: "Join BotDate to use the matchmaker. Membership is $4.20/mo." } };
-  }
+  const auth = authenticateAgent(input.ctx, input.authorization);
+  if (!auth.ok) return { status: auth.status, body: auth.body };
+  const member = auth.member;
 
   const path = input.pathname.replace(/\/+$/, "") || "/";
   const method = input.method.toUpperCase();
@@ -171,7 +161,7 @@ export function dispatchAgent(input: {
       locked: bool(patch.locked) ?? current.locked,
     });
     if (!result.ok) return { status: 400, body: { error: result.error } };
-    const updated = memberForAgentToken(input.ctx, token);
+    const updated = getMember(input.ctx, member.id);
     return {
       status: 200,
       body: {

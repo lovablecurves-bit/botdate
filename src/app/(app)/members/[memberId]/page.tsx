@@ -4,6 +4,7 @@ import { Portrait } from "@/components/person";
 import { needsConnectPrompt, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { displayAvatarUrl, memberProfile, profileView } from "@/lib/directory";
+import { representedBy } from "@/lib/labels";
 import type { Member } from "@/lib/types";
 
 async function loadProfile(viewer: Member, memberId: string) {
@@ -46,7 +47,14 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
       <header className="page-head">
         <h1>{profile.displayName}</h1>
         <p className="handle-line">@{profile.handle}</p>
-        {profile.founder ? (
+        <p className="bot-badge" data-testid="represented-by">
+          {representedBy(profile.displayName, profile.self)}
+        </p>
+        {profile.founder && profile.self ? (
+          <p className="founder-flag" data-testid="founder-free">
+            Founder · free forever
+          </p>
+        ) : profile.founder ? (
           <p className="founder-flag" data-testid="founder-flag">
             Founder · Member #1
           </p>

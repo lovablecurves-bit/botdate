@@ -61,7 +61,7 @@ export type Member = {
   /** Stripe Customer id, once Checkout has created one. */
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
-  /** Stripe subscription status: active, trialing, canceled, and the rest. */
+  /** Stripe subscription status: active, trialing, canceled, and the rest. Empty until a webhook writes one. */
   subscriptionStatus: string | null;
 };
 

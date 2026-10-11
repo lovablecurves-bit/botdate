@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
+import { subscriptionBlocks } from "../billing/access";
 import type { BotDateDb } from "../db/open";
 import { agentTokens } from "../db/schema";
 import { getMember } from "../domain";
@@ -27,6 +28,8 @@ export type TokenStatus = {
   active: boolean;
   prefix: string | null;
   createdAt: string | null;
+  lastUsedAt: string | null;
+  connected: boolean;
 };
 
 export function issueAgentToken(ctx: BotDateDb, userId: string): IssuedToken | null {
@@ -66,8 +69,33 @@ export function agentTokenStatus(ctx: BotDateDb, userId: string): TokenStatus {
     .from(agentTokens)
     .where(and(eq(agentTokens.userId, userId), isNull(agentTokens.revokedAt)))
     .get();
-  if (!row) return { active: false, prefix: null, createdAt: null };
-  return { active: true, prefix: row.tokenPrefix, createdAt: row.createdAt };
+  if (!row) return { active: false, prefix: null, createdAt: null, lastUsedAt: null, connected: false };
+  return {
+    active: true,
+    prefix: row.tokenPrefix,
+    createdAt: row.createdAt,
+    lastUsedAt: row.lastUsedAt,
+    connected: Boolean(row.lastUsedAt),
+  };
+}
+
+function bearer(authorization: string | null): string | null {
+  if (!authorization) return null;
+  const match = /^Bearer\s+(\S+)$/i.exec(authorization.trim());
+  return match?.[1] ?? null;
+}
+
+/** Authenticate a bot key, record first use, and reject an inactive subscription. Founders pass. */
+export function authenticateAgent(
+  ctx: BotDateDb,
+  authorization: string | null,
+): { ok: true; member: Member } | { ok: false; status: number; body: { error: string } } {
+  const token = bearer(authorization);
+  if (!token) return { ok: false, status: 401, body: { error: "Send the agent token as Authorization: Bearer." } };
+  const member = memberForAgentToken(ctx, token);
+  if (!member) return { ok: false, status: 401, body: { error: "That agent token is not active." } };
+  if (subscriptionBlocks(member)) return { ok: false, status: 402, body: { error: "subscription inactive" } };
+  return { ok: true, member };
 }
 
 export function memberForAgentToken(ctx: BotDateDb, token: string): Member | null {
@@ -75,5 +103,6 @@ export function memberForAgentToken(ctx: BotDateDb, token: string): Member | nul
   const row = ctx.db.select().from(agentTokens).where(eq(agentTokens.tokenHash, hashAgentToken(token))).get();
   if (!row || row.revokedAt) return null;
   if (!hashesEqual(row.tokenHash, hashAgentToken(token))) return null;
+  ctx.db.update(agentTokens).set({ lastUsedAt: new Date().toISOString() }).where(eq(agentTokens.id, row.id)).run();
   return getMember(ctx, row.userId);
 }

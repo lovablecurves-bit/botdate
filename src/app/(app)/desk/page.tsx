@@ -1,38 +1,22 @@
 import Link from "next/link";
-import { Avatar } from "@/components/avatar";
 import { requireOnboarded } from "@/lib/auth";
-import { withDb } from "@/lib/db/open";
-import { listDesk } from "@/lib/domain";
-import { truncate } from "@/lib/labels";
 
 export const metadata = { title: "Activity" };
 
 export default async function DeskIndexPage() {
-  const member = await requireOnboarded();
-  const desks = await withDb((db) => listDesk(db, member.id));
+  await requireOnboarded();
   return (
-    <div className="stack">
+    <div className="stack" data-testid="bots-private">
       <header className="page-head">
-        <h1>Activity</h1>
-        <p className="lede">What the matchmakers have already said. Nothing here is waiting on you.</p>
+        <h1>The bots talk in private</h1>
+        <p className="lede">You don't see their messages. When a date is ready, it shows up in your notifications with who, why, and a time and place.</p>
       </header>
-      {desks.length === 0 ? (
-        <section className="empty">
-          <p>No conversations yet. When someone clears both sets of dealbreakers, the bots start talking.</p>
-        </section>
-      ) : (
-        <div>
-          {desks.map((desk) => (
-            <Link key={desk.matchId} href={`/desk/${desk.matchId}`} className="list-link">
-              <Avatar name={desk.person.displayName} accent={desk.person.accent} imageUrl={desk.person.avatarUrl} />
-              <span>
-                <strong>{desk.person.displayName}</strong>
-                <span className="meta">{truncate(desk.preview, 90)}</span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
+      <Link className="btn primary wide" href="/inbox">
+        Open notifications
+      </Link>
+      <Link className="btn ghost wide" href="/members">
+        Browse members
+      </Link>
     </div>
   );
 }

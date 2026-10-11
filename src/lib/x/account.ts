@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { founderXIds } from "../billing/access";
 import type { BotDateDb } from "../db/open";
 import { prefs, profiles, users } from "../db/schema";
 import { getMember } from "../domain";
@@ -37,28 +38,38 @@ export function ensureRealMemberNumbers(ctx: BotDateDb) {
   const ordered = [...rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
   const needsNumber = ordered.some((row) => row.memberNumber == null);
   const needsFounder = !ordered.some((row) => flagged(row.founder));
-  if (!needsNumber && !needsFounder) return;
-
-  let max = 0;
-  for (const row of ordered) {
-    if (row.memberNumber != null) max = Math.max(max, Number(row.memberNumber));
-  }
-  if (needsNumber) {
+  if (needsNumber || needsFounder) {
+    let max = 0;
     for (const row of ordered) {
-      if (row.memberNumber != null) continue;
-      max += 1;
-      ctx.db
-        .update(users)
-        .set({ memberNumber: max, founder: max === 1 })
-        .where(eq(users.id, row.id))
-        .run();
-      row.memberNumber = max;
-      row.founder = max === 1;
+      if (row.memberNumber != null) max = Math.max(max, Number(row.memberNumber));
+    }
+    if (needsNumber) {
+      for (const row of ordered) {
+        if (row.memberNumber != null) continue;
+        max += 1;
+        ctx.db
+          .update(users)
+          .set({ memberNumber: max, founder: max === 1 || flagged(row.founder) })
+          .where(eq(users.id, row.id))
+          .run();
+        row.memberNumber = max;
+        row.founder = max === 1 || flagged(row.founder);
+      }
+    }
+    if (!ordered.some((row) => flagged(row.founder))) {
+      const first = ordered.find((row) => Number(row.memberNumber) === 1) ?? ordered[0];
+      if (first) {
+        ctx.db.update(users).set({ founder: true }).where(eq(users.id, first.id)).run();
+        first.founder = true;
+      }
     }
   }
-  if (!ordered.some((row) => flagged(row.founder))) {
-    const first = ordered.find((row) => Number(row.memberNumber) === 1) ?? ordered[0];
-    if (first) ctx.db.update(users).set({ founder: true }).where(eq(users.id, first.id)).run();
+  const configured = new Set(founderXIds());
+  if (configured.size === 0) return;
+  for (const row of ordered) {
+    if (!row.xUserId || !configured.has(row.xUserId) || flagged(row.founder)) continue;
+    ctx.db.update(users).set({ founder: true }).where(eq(users.id, row.id)).run();
+    row.founder = true;
   }
 }
 
@@ -106,6 +117,9 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
       founder: false,
       memberNumber: null,
       connectSeen: false,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      stripeSubscriptionStatus: null,
     })
     .run();
   ctx.db

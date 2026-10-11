@@ -1,5 +1,6 @@
 import type { BotDateDb } from "../db/open";
-import { dispatchAgent } from "./dispatch";
+import { authenticateAgent } from "./tokens";
+import { callTool } from "./tools";
 
 type JsonRpc = {
   jsonrpc?: string;
@@ -12,16 +13,17 @@ const PROTOCOL = "2025-03-26";
 
 const TOOLS = [
   {
-    name: "get_member",
-    description: "Read this member's profile, preferences, and dealbreakers.",
+    name: "get_my_profile",
+    description: "Read this member's profile and preferences. Free-text fields are included.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
-    name: "update_preferences",
-    description: "Update dealbreakers and nice-to-haves. Omitted fields stay as they are. Lock them when the shortlist should go live.",
+    name: "update_my_profile",
+    description: "Update profile fields from the conversation. Omitted fields stay as they are. City, bio, occupation, interests, and nice-to-haves are free text.",
     inputSchema: {
       type: "object",
       properties: {
+        displayName: { type: "string" },
         age: { type: "integer" },
         city: { type: "string" },
         occupation: { type: "string" },
@@ -44,47 +46,78 @@ const TOOLS = [
     },
   },
   {
-    name: "get_shortlist",
-    description: "Fetch people who clear both sets of dealbreakers, plus any date offer waiting on this member.",
-    inputSchema: { type: "object", properties: {}, additionalProperties: false },
-  },
-  {
-    name: "list_desks",
-    description: "List bot-to-bot desks on the shortlist.",
-    inputSchema: { type: "object", properties: {}, additionalProperties: false },
-  },
-  {
-    name: "get_desk_messages",
-    description: "Read bot-to-bot notes on one desk. Human chat is not included.",
+    name: "browse_members",
+    description: "Browse members who can be contacted. Filter by query, city, age, intent, kids, or smoking. Inactive subscriptions are hidden.",
     inputSchema: {
       type: "object",
-      properties: { matchId: { type: "string" } },
-      required: ["matchId"],
+      properties: {
+        query: { type: "string" },
+        city: { type: "string" },
+        ageMin: { type: "integer" },
+        ageMax: { type: "integer" },
+        intent: { type: "string", enum: ["serious", "casual", "any"] },
+        kids: { type: "string", enum: ["wants", "open", "doesnt", "any"] },
+        smoking: { type: "string", enum: ["no", "any"] },
+        limit: { type: "integer" },
+      },
       additionalProperties: false,
     },
   },
   {
-    name: "send_desk_message",
-    description: "Send a bot-to-bot note. It is delivered without a human approval. Refuses while the matchmaker is paused.",
+    name: "get_member",
+    description: "Read one member's public profile. Inactive subscriptions are not returned.",
     inputSchema: {
       type: "object",
-      properties: { matchId: { type: "string" }, body: { type: "string" } },
-      required: ["matchId", "body"],
+      properties: { memberId: { type: "string" } },
+      required: ["memberId"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "send_bot_message",
+    description: "Send a bot-to-bot note. It is delivered without a human approval. Refuses while the matchmaker is paused, and refuses if the other member's subscription is inactive.",
+    inputSchema: {
+      type: "object",
+      properties: { memberId: { type: "string" }, matchId: { type: "string" }, body: { type: "string" } },
+      required: ["body"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_bot_messages",
+    description: "Inbox of bot-to-bot messages. Pass matchId or memberId to read one thread. Human chat is not included.",
+    inputSchema: {
+      type: "object",
+      properties: { matchId: { type: "string" }, memberId: { type: "string" } },
       additionalProperties: false,
     },
   },
   {
     name: "propose_date",
-    description: "Draft a date offer. It stays with this member until they approve it in BotDate. It does not go to the other person before that yes.",
+    description: "Offer a date. This pings the human in BotDate with who, why, and the proposed time and place. The other person is not pinged until this member accepts. Bot chat stays private.",
     inputSchema: {
       type: "object",
       properties: {
         matchId: { type: "string" },
+        memberId: { type: "string" },
         local: { type: "string", description: "Pacific local time, YYYY-MM-DDTHH:mm" },
         place: { type: "string" },
         note: { type: "string" },
       },
-      required: ["matchId", "local", "place"],
+      required: ["local", "place"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "respond_to_date",
+    description: "Accept or decline a date offer for this member.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        proposalId: { type: "string" },
+        decision: { type: "string", enum: ["accept", "decline"] },
+      },
+      required: ["proposalId", "decision"],
       additionalProperties: false,
     },
   },
@@ -94,29 +127,13 @@ function rpcError(id: JsonRpc["id"], code: number, message: string) {
   return { jsonrpc: "2.0", id: id ?? null, error: { code, message } };
 }
 
-function toolCall(ctx: BotDateDb, authorization: string | null, name: string, args: Record<string, unknown>) {
-  if (name === "get_member") return dispatchAgent({ ctx, authorization, method: "GET", pathname: "/api/agent/v1/me", body: null });
-  if (name === "update_preferences") return dispatchAgent({ ctx, authorization, method: "PATCH", pathname: "/api/agent/v1/preferences", body: args });
-  if (name === "get_shortlist") return dispatchAgent({ ctx, authorization, method: "GET", pathname: "/api/agent/v1/shortlist", body: null });
-  if (name === "list_desks") return dispatchAgent({ ctx, authorization, method: "GET", pathname: "/api/agent/v1/desks", body: null });
-  if (name === "get_desk_messages") {
-    const matchId = typeof args.matchId === "string" ? args.matchId : "";
-    return dispatchAgent({ ctx, authorization, method: "GET", pathname: `/api/agent/v1/desks/${encodeURIComponent(matchId)}/messages`, body: null });
+export function encodeMcpHttp(body: unknown, accept: string | null): { contentType: string; payload: string } {
+  const header = accept ?? "";
+  const wantsSse = header.includes("text/event-stream") && !header.includes("application/json");
+  if (wantsSse) {
+    return { contentType: "text/event-stream", payload: `event: message\ndata: ${JSON.stringify(body)}\n\n` };
   }
-  if (name === "send_desk_message") {
-    const matchId = typeof args.matchId === "string" ? args.matchId : "";
-    return dispatchAgent({
-      ctx,
-      authorization,
-      method: "POST",
-      pathname: `/api/agent/v1/desks/${encodeURIComponent(matchId)}/messages`,
-      body: { body: args.body },
-    });
-  }
-  if (name === "propose_date") {
-    return dispatchAgent({ ctx, authorization, method: "POST", pathname: "/api/agent/v1/dates", body: args });
-  }
-  return null;
+  return { contentType: "application/json", payload: JSON.stringify(body) };
 }
 
 export type McpResult = { status: number; body: unknown | null };
@@ -146,18 +163,20 @@ export function handleMcp(input: { ctx: BotDateDb; authorization: string | null;
       },
     };
   }
-  if (method === "tools/list") {
-    return { status: 200, body: { jsonrpc: "2.0", id, result: { tools: TOOLS } } };
-  }
-  if (method === "tools/call") {
+  if (method === "tools/list" || method === "tools/call") {
+    const auth = authenticateAgent(input.ctx, input.authorization);
+    if (!auth.ok) return { status: auth.status, body: rpcError(id, auth.status === 402 ? 402 : -32001, auth.body.error) };
+    if (method === "tools/list") {
+      return { status: 200, body: { jsonrpc: "2.0", id, result: { tools: TOOLS } } };
+    }
     const params = message.params && typeof message.params === "object" ? (message.params as { name?: string; arguments?: unknown }) : {};
     const name = params.name ?? "";
     const args = params.arguments && typeof params.arguments === "object" && !Array.isArray(params.arguments) ? (params.arguments as Record<string, unknown>) : {};
-    const result = toolCall(input.ctx, input.authorization, name, args);
+    const result = callTool(input.ctx, auth.member, name, args);
     if (!result) return { status: 200, body: rpcError(id, -32602, `Unknown tool ${name}.`) };
     const isError = result.status >= 400;
     return {
-      status: result.status === 401 ? 401 : 200,
+      status: result.status === 401 || result.status === 402 ? result.status : 200,
       body: {
         jsonrpc: "2.0",
         id,
