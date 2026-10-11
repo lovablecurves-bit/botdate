@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test src/lib/time.test.ts src/lib/matchmaker/filters.test.ts src/lib/matchmaker/service.test.ts src/lib/domain.test.ts src/lib/db/migrate.test.ts src/lib/share.test.ts src/lib/session.test.ts src/lib/x/oauth.test.ts src/lib/agent/service.test.ts src/lib/directory.test.ts src/lib/stripe/membership.test.ts"
+    "test": "tsx --test src/lib/time.test.ts src/lib/matchmaker/filters.test.ts src/lib/matchmaker/service.test.ts src/lib/domain.test.ts src/lib/db/migrate.test.ts src/lib/share.test.ts src/lib/session.test.ts src/lib/x/oauth.test.ts src/lib/agent/service.test.ts src/lib/directory.test.ts src/lib/stripe/membership.test.ts src/lib/waitlist.test.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

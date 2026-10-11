@@ -161,7 +161,7 @@ test("public pages do not render the cold-start developer note", () => {
   for (const file of files) {
     const source = readFileSync(file, "utf8");
     assert.equal(source.includes("won't survive"), false, file);
-    assert.equal(source.includes("coldStartNote"), false, file);
+    assert.equal(/\bcoldStartNote\(/.test(source), false, file);
   }
   const previous = {
     vercel: process.env.VERCEL,

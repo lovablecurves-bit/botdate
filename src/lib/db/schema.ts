@@ -96,6 +96,16 @@ export const agentTokens = sqliteTable("agent_tokens", {
   revokedAt: text("revoked_at"),
 });
 
+export const waitlistSignups = sqliteTable("waitlist", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  xHandle: text("x_handle"),
+  position: integer("position").notNull().unique(),
+  referralCode: text("referral_code").notNull().unique(),
+  referredBy: text("referred_by"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -186,7 +196,18 @@ CREATE TABLE IF NOT EXISTS agent_tokens (
   created_at TEXT NOT NULL,
   revoked_at TEXT
 );
+CREATE TABLE IF NOT EXISTS waitlist (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  x_handle TEXT,
+  position INTEGER NOT NULL UNIQUE,
+  referral_code TEXT NOT NULL UNIQUE,
+  referred_by TEXT,
+  created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS messages_match_idx ON messages(match_id);
 CREATE INDEX IF NOT EXISTS proposals_match_idx ON date_proposals(match_id);
 CREATE INDEX IF NOT EXISTS agent_tokens_user_idx ON agent_tokens(user_id);
+CREATE INDEX IF NOT EXISTS waitlist_referred_idx ON waitlist(referred_by);
+CREATE UNIQUE INDEX IF NOT EXISTS waitlist_handle_idx ON waitlist(x_handle COLLATE NOCASE);
 `;

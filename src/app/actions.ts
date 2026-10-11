@@ -9,6 +9,7 @@ import { demoMode } from "@/lib/x/config";
 import { issueAgentToken, revokeAgentTokens } from "@/lib/agent/tokens";
 import { resetDatabase } from "@/lib/db/seed";
 import { withDb } from "@/lib/db/open";
+import { joinWaitlist, normalizeReferralCode } from "@/lib/waitlist";
 import {
   approveDraft,
   approveOffer,
@@ -78,6 +79,26 @@ export async function loginAction(formData: FormData) {
   if (!member) redirect("/login?error=That+demo+member+is+not+in+the+seed.");
   await setSession(member);
   redirect(memberHome(member));
+}
+
+export async function joinWaitlistAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "");
+  const xHandle = String(formData.get("xHandle") ?? "");
+  const ref = String(formData.get("ref") ?? "");
+  const result = await withDb((db) => joinWaitlist(db, { email, xHandle, ref }));
+  if (!result.ok) {
+    const search = new URLSearchParams();
+    search.set("error", result.error);
+    const safeRef = normalizeReferralCode(ref);
+    if (safeRef) search.set("ref", safeRef);
+    redirect(`/login?${search.toString()}`);
+  }
+  const search = new URLSearchParams();
+  search.set("joined", result.entry.referralCode);
+  if (result.already) search.set("already", "1");
+  const safeRef = normalizeReferralCode(ref);
+  if (safeRef) search.set("ref", safeRef);
+  redirect(`/login?${search.toString()}`);
 }
 
 const AGENT_REVEAL = "botdate_agent_token";

@@ -161,7 +161,10 @@ function toArgs(values: unknown): InValue[] {
   });
 }
 
-const TABLE_ORDER = ["users", "profiles", "prefs", "matches", "bot_threads", "messages", "date_proposals", "agent_tokens"] as const;
+/** Tables copied to and from Turso. A missing name here is invisible after a cold start. */
+export const SYNCED_TABLES = ["users", "profiles", "prefs", "matches", "bot_threads", "messages", "date_proposals", "agent_tokens", "waitlist"] as const;
+
+const TABLE_ORDER = SYNCED_TABLES;
 
 async function createSqlDatabase(options: { filePath: string | null; client: Client | null; seed: boolean }): Promise<BotDateDb> {
   const SQL = await loadSqlJs();
