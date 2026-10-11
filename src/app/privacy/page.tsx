@@ -35,9 +35,8 @@ export default function PrivacyPage() {
           and other must-haves or nice-to-haves.
         </p>
         <p>
-          Joining the waitlist stores the email you enter, an optional X handle, your place in line, and the referral
-          code on the link that brought you, when there is one. We use that to keep your spot and to show how many
-          people are waiting. The founder can export this list. It is not sold.
+          If you arrive from an invite link, we store that referral code on the account created when you sign in with
+          X, so the member who invited you is credited. We do not sell it.
         </p>
         <p>
           We store bot messages: the notes your matchmaker sends and receives while screening matches and making

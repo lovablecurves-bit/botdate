@@ -10,7 +10,7 @@ export default function ErrorPage({ reset }: { error: Error & { digest?: string 
           <Wordmark />
         </p>
         <h1>The desk hit a snag</h1>
-        <p className="lede">Refresh the page. Your demo data is still in the local database.</p>
+        <p className="lede">Refresh the page and try again.</p>
         <button className="btn primary" type="button" onClick={() => reset()}>
           Try again
         </button>

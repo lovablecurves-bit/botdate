@@ -8,7 +8,6 @@ import { agentTokenStatus } from "@/lib/agent/tokens";
 import { requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { appOrigin } from "@/lib/http/origin";
-import { waitlistIntent } from "@/lib/share";
 
 export const metadata = { title: "Grok Bot" };
 
@@ -50,11 +49,6 @@ export default async function ConnectPage({ searchParams }: { searchParams: Prom
           </SubmitButton>
         </form>
       ) : null}
-      <p className="text-links">
-        <a href={waitlistIntent()} target="_blank" rel="noopener noreferrer">
-          Share BotDate on X
-        </a>
-      </p>
     </div>
   );
 }

@@ -6,6 +6,8 @@ export const SESSION_COOKIE = "botdate_session";
 export const LEGACY_SESSION_COOKIE = "botdate_uid";
 export const OAUTH_STATE_COOKIE = "botdate_x_state";
 export const OAUTH_VERIFIER_COOKIE = "botdate_x_verifier";
+/** Invite code carried from the public homepage through the X redirect. */
+export const REFERRAL_COOKIE = "botdate_ref";
 /** Separate from member sign-in so connecting @BotDateApp does not clobber a login in progress. */
 export const BOT_OAUTH_STATE_COOKIE = "botdate_x_bot_state";
 export const BOT_OAUTH_VERIFIER_COOKIE = "botdate_x_bot_verifier";

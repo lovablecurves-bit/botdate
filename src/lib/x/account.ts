@@ -3,6 +3,7 @@ import { founderXIds } from "../billing/access";
 import type { BotDateDb } from "../db/open";
 import { prefs, profiles, users } from "../db/schema";
 import { getMember } from "../domain";
+import { referralCode } from "../http/public";
 import { voiceForPronouns } from "../types";
 import type { XProfile } from "./profile";
 
@@ -77,7 +78,38 @@ export function markConnectSeen(ctx: BotDateDb, userId: string) {
   ctx.db.update(users).set({ connectSeen: true }).where(eq(users.id, userId)).run();
 }
 
-export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: string; locked: boolean; connectSeen: boolean } {
+const REFERRAL_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+function newReferralCode(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  let code = "";
+  for (const byte of bytes) code += REFERRAL_ALPHABET[byte % REFERRAL_ALPHABET.length];
+  return code;
+}
+
+function unusedReferralCode(ctx: BotDateDb): string {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const code = newReferralCode();
+    const taken = ctx.db.select({ id: users.id }).from(users).where(eq(users.referralCode, code)).get();
+    if (!taken) return code;
+  }
+  throw new Error("Could not allocate a referral code.");
+}
+
+/** The member who owns this invite code, if the code is real. */
+function referrerUserId(ctx: BotDateDb, ref: string | null | undefined): string | null {
+  const code = referralCode(ref);
+  if (!code) return null;
+  const row = ctx.db.select({ id: users.id }).from(users).where(eq(users.referralCode, code)).get();
+  return row?.id ?? null;
+}
+
+export function upsertXMember(
+  ctx: BotDateDb,
+  profile: XProfile,
+  ref?: string | null,
+): { userId: string; locked: boolean; connectSeen: boolean } {
   const existing = ctx.db.select().from(users).where(eq(users.xUserId, profile.xUserId)).get();
   const name = clip(profile.name, 60) || profile.handle;
   const bio = clip(profile.bio, 500);
@@ -90,6 +122,7 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
         xHandle: profile.handle,
         xAvatarUrl: profile.avatarUrl,
         ...(locked ? {} : { displayName: name }),
+        ...(existing.referralCode ? {} : { referralCode: unusedReferralCode(ctx) }),
       })
       .where(eq(users.id, existing.id))
       .run();
@@ -120,6 +153,8 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       stripeSubscriptionStatus: null,
+      referralCode: unusedReferralCode(ctx),
+      referredBy: referrerUserId(ctx, ref),
     })
     .run();
   ctx.db

@@ -15,6 +15,8 @@ export const users = sqliteTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripeSubscriptionStatus: text("stripe_subscription_status"),
+  referralCode: text("referral_code"),
+  referredBy: text("referred_by"),
 });
 
 export const profiles = sqliteTable("profiles", {
@@ -133,7 +135,9 @@ CREATE TABLE IF NOT EXISTS users (
   connect_seen INTEGER NOT NULL DEFAULT 0,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,
-  stripe_subscription_status TEXT
+  stripe_subscription_status TEXT,
+  referral_code TEXT,
+  referred_by TEXT
 );
 CREATE TABLE IF NOT EXISTS profiles (
   user_id TEXT PRIMARY KEY REFERENCES users(id),

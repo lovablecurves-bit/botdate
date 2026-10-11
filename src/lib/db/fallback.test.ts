@@ -3,7 +3,6 @@ import { test } from "node:test";
 import type { Client } from "@libsql/client/web";
 import { listRoster } from "../domain";
 import { isOpenPath } from "../http/public";
-import { waitlistCount } from "../waitlist";
 import { bootPersistence } from "./boot";
 import {
   databaseHealth,
@@ -99,17 +98,13 @@ test("an invalid Turso token falls back to memory so login data still loads", as
     delete process.env.X_CLIENT_SECRET;
     delete process.env.X_REDIRECT_URI;
 
-    const snapshot = await withDb((db) => ({
-      count: waitlistCount(db),
-      roster: listRoster(db),
-    }));
-    assert.equal(typeof snapshot.count, "number");
-    assert.ok(snapshot.roster.length > 0);
+    const snapshot = await withDb((db) => listRoster(db));
+    assert.ok(snapshot.length > 0);
     assert.equal(databaseMode(), "error");
     assert.equal(opens, 1);
 
-    const again = await withDb((db) => waitlistCount(db));
-    assert.equal(again, snapshot.count);
+    const again = await withDb((db) => listRoster(db));
+    assert.equal(again.length, snapshot.length);
     assert.equal(opens, 1);
 
     const { GET } = await import("../../app/api/health/route");
@@ -160,8 +155,8 @@ test("health reports memory when Turso is unset and turso when the remote accept
     delete process.env.TURSO_AUTH_TOKEN;
     const memory = await databaseHealth();
     assert.deepEqual(memory, { status: 200, body: { ok: true, db: "memory" } });
-    const count = await withDb((db) => waitlistCount(db));
-    assert.equal(typeof count, "number");
+    const roster = await withDb((db) => listRoster(db));
+    assert.ok(Array.isArray(roster));
   });
 
   await withIsolatedApp(async (logs) => {

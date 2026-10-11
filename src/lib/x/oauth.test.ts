@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
+import { eq } from "drizzle-orm";
 import { memberHome } from "../auth";
 import { openDatabase, useAppDatabaseForTests } from "../db/open";
+import { users } from "../db/schema";
 import { getMember } from "../domain";
 import { memberFromClaims, verifySession } from "../session";
 import { upsertXMember } from "./account";
@@ -333,7 +337,7 @@ test("X sign-in survives a second instance that does not share the database", as
     );
     assert.equal(finished.status, 307);
     const dest = new URL(finished.headers.get("location") ?? "");
-    assert.equal(dest.pathname, "/connect");
+    assert.equal(dest.pathname, "/profile");
     assert.notEqual(dest.pathname, "/");
     assert.notEqual(dest.pathname, "/login");
     const sessionCookies = finished.headers.getSetCookie();
@@ -379,6 +383,156 @@ test("X sign-in survives a second instance that does not share the database", as
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+  }
+});
+
+test("a new X sign-in creates one member and a return visit keeps that same profile", async () => {
+  const previous = {
+    id: process.env.X_CLIENT_ID,
+    secret: process.env.X_CLIENT_SECRET,
+    redirect: process.env.X_REDIRECT_URI,
+    session: process.env.SESSION_SECRET,
+  };
+  process.env.X_CLIENT_ID = "id";
+  process.env.X_CLIENT_SECRET = "secret";
+  process.env.X_REDIRECT_URI = "https://botdate.vercel.app/api/auth/x/callback";
+  delete process.env.SESSION_SECRET;
+  const db = await openDatabase(":memory:", { seed: false });
+  useAppDatabaseForTests(db);
+  const calls: string[] = [];
+  const originalFetch = globalThis.fetch;
+  let meName = "Ada Lovelace";
+  let meHandle = "ada_bot";
+  let meAvatar = "https://pbs.twimg.com/profile_images/a/b_normal.jpg";
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.startsWith(X_TOKEN_URL)) return new Response(JSON.stringify({ access_token: "access" }), { status: 200 });
+    if (url.startsWith(X_ME_URL)) {
+      return new Response(
+        JSON.stringify({
+          data: {
+            id: "42",
+            name: meName,
+            username: meHandle,
+            description: "Analytical.",
+            profile_image_url: meAvatar,
+          },
+        }),
+        { status: 200 },
+      );
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+  try {
+    const referrer = upsertXMember(db, {
+      xUserId: "7",
+      handle: "grace",
+      name: "Grace",
+      bio: "Invites friends.",
+      avatarUrl: "https://pbs.twimg.com/profile_images/a/grace_400x400.jpg",
+    });
+    const referrerRow = db.db.select().from(users).where(eq(users.id, referrer.userId)).get();
+    assert.ok(referrerRow?.referralCode);
+
+    const { GET: start } = await import("../../app/api/auth/x/start/route");
+    const started = await start(new Request(`https://botdate.vercel.app/api/auth/x/start?ref=${referrerRow.referralCode}`));
+    const state = cookieValue(started.headers.getSetCookie(), "botdate_x_state");
+    const verifier = cookieValue(started.headers.getSetCookie(), "botdate_x_verifier");
+    const refCookie = cookieValue(started.headers.getSetCookie(), "botdate_ref");
+    assert.equal(refCookie, referrerRow.referralCode);
+
+    const { GET: callback } = await import("../../app/api/auth/x/callback/route");
+    const created = await callback(
+      new Request(`https://botdate.vercel.app/api/auth/x/callback?code=abc&state=${encodeURIComponent(state)}`, {
+        headers: { cookie: `botdate_x_state=${state}; botdate_x_verifier=${verifier}; botdate_ref=${refCookie}` },
+      }),
+    );
+    assert.equal(created.status, 307);
+    assert.equal(new URL(created.headers.get("location") ?? "").pathname, "/profile");
+    const session = cookieValue(created.headers.getSetCookie(), "botdate_session");
+    const claims = verifySession(session);
+    assert.ok(claims);
+    assert.equal(claims.id, "x_42");
+    assert.equal(claims.name, "Ada Lovelace");
+    assert.equal(claims.handle, "ada_bot");
+    assert.equal(claims.avatar, "https://pbs.twimg.com/profile_images/a/b_400x400.jpg");
+    const createdRow = db.db.select().from(users).where(eq(users.xUserId, "42")).all();
+    assert.equal(createdRow.length, 1);
+    assert.equal(createdRow[0]?.id, "x_42");
+    assert.equal(createdRow[0]?.displayName, "Ada Lovelace");
+    assert.equal(createdRow[0]?.xHandle, "ada_bot");
+    assert.equal(createdRow[0]?.xAvatarUrl, "https://pbs.twimg.com/profile_images/a/b_400x400.jpg");
+    assert.equal(createdRow[0]?.referredBy, referrer.userId);
+    assert.equal(calls.filter((url) => url.startsWith(X_ME_URL)).length, 1);
+
+    meName = "Ada";
+    meHandle = "ada";
+    meAvatar = "https://pbs.twimg.com/profile_images/a/c_normal.jpg";
+    const againStart = await start(new Request("https://botdate.vercel.app/api/auth/x/start"));
+    const state2 = cookieValue(againStart.headers.getSetCookie(), "botdate_x_state");
+    const verifier2 = cookieValue(againStart.headers.getSetCookie(), "botdate_x_verifier");
+    const returned = await callback(
+      new Request(`https://botdate.vercel.app/api/auth/x/callback?code=def&state=${encodeURIComponent(state2)}`, {
+        headers: { cookie: `botdate_x_state=${state2}; botdate_x_verifier=${verifier2}` },
+      }),
+    );
+    assert.equal(new URL(returned.headers.get("location") ?? "").pathname, "/profile");
+    const returnedClaims = verifySession(cookieValue(returned.headers.getSetCookie(), "botdate_session"));
+    assert.equal(returnedClaims?.id, "x_42");
+    assert.equal(returnedClaims?.name, "Ada");
+    assert.equal(returnedClaims?.handle, "ada");
+    const rows = db.db.select().from(users).where(eq(users.xUserId, "42")).all();
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.displayName, "Ada");
+    assert.equal(rows[0]?.xHandle, "ada");
+    assert.equal(rows[0]?.xAvatarUrl, "https://pbs.twimg.com/profile_images/a/c_400x400.jpg");
+    assert.equal(rows[0]?.referredBy, referrer.userId);
+    assert.equal(getMember(db, "x_42")?.displayName, "Ada");
+    assert.equal(calls.filter((url) => url.startsWith(X_ME_URL)).length, 2);
+
+    const before = calls.length;
+    assert.equal(getMember(db, "x_42")?.xAccount?.handle, "ada");
+    assert.equal(memberFromClaims(returnedClaims!).displayName, "Ada");
+    assert.equal(calls.length, before);
+  } finally {
+    globalThis.fetch = originalFetch;
+    useAppDatabaseForTests(null);
+    db.close();
+    for (const [key, value] of Object.entries({
+      X_CLIENT_ID: previous.id,
+      X_CLIENT_SECRET: previous.secret,
+      X_REDIRECT_URI: previous.redirect,
+      SESSION_SECRET: previous.session,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test("member pages do not call X users/me", () => {
+  const root = path.resolve(import.meta.dirname, "../../app");
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) files.push(full);
+    }
+  };
+  walk(root);
+  const callback = path.join(root, "api/auth/x/callback/route.ts");
+  assert.equal(files.includes(callback), true);
+  for (const file of files) {
+    const source = fs.readFileSync(file, "utf8");
+    if (file === callback) {
+      assert.match(source, /fetchXProfile/);
+      continue;
+    }
+    assert.equal(source.includes("fetchXProfile"), false, file);
+    assert.equal(source.includes("users/me"), false, file);
+    assert.equal(source.includes("X_ME_URL"), false, file);
   }
 });
 
