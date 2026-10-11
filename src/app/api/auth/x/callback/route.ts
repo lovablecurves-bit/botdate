@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
   const credentials = xCredentials();
   if (!credentials) return fail("Sign in with X is not configured yet. Pick a demo member.");
-  if (url.searchParams.get("error")) return fail("X sign-in was cancelled. Pick a demo member or try again.");
+  if (url.searchParams.get("error")) return fail("X sign-in was cancelled. Try again.");
 
   const code = url.searchParams.get("code") ?? "";
   const state = url.searchParams.get("state") ?? "";
@@ -51,7 +51,8 @@ export async function GET(request: Request) {
     const accessToken = await exchangeAuthorizationCode(credentials, code, verifier);
     const profile = await fetchXProfile(accessToken);
     const account = await withDb((db) => upsertXMember(db, profile));
-    const dest = new URL(account.locked ? "/shortlist" : "/onboarding", request.url);
+    const nextPath = account.connectSeen ? (account.locked ? "/shortlist" : "/onboarding") : "/connect";
+    const dest = new URL(nextPath, request.url);
     const response = NextResponse.redirect(dest);
     response.cookies.set(SESSION, account.userId, {
       httpOnly: true,
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
     });
     return clearOauth(response);
   } catch (error) {
-    const message = error instanceof XAuthError ? error.message : "X sign-in did not finish. Pick a demo member or try again.";
+    const message = error instanceof XAuthError ? error.message : "X sign-in did not finish. Try again.";
     return fail(message.slice(0, 180));
   }
 }

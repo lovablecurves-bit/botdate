@@ -4,7 +4,7 @@ BotDate · by Lovable Curves
 
 Each member can connect their own Grok bot as their matchmaker. The bot filters dealbreakers, does the early bot-to-bot small talk, and may draft a date. The date stays with that member until they approve it. It is not offered to the other person before that yes, and it is not a confirmed plan until both humans approve.
 
-Sign in with X is separate. It is optional. If `X_CLIENT_ID`, `X_CLIENT_SECRET`, or `X_REDIRECT_URI` is missing, the app keeps the passwordless demo login.
+Sign in with X is separate. It is optional. If `X_CLIENT_ID`, `X_CLIENT_SECRET`, or `X_REDIRECT_URI` is missing, the app keeps the passwordless demo login and the profile switcher. When all three are set, that demo UI is hidden and demo members are not seeded.
 
 ## Sign in with X
 
@@ -19,15 +19,23 @@ OAuth 2.0 authorization-code flow with PKCE (`S256`).
 | Start | `GET /api/auth/x/start` |
 | Callback | `GET /api/auth/x/callback` |
 
-`users.read` loads the member. The app stores their handle, name, avatar, and bio. `tweet.read` is requested on the same consent screen so the X app is granted it. This version does not copy posts into the profile.
+`users.read` loads the member once, at sign-in. The app stores their handle, name, avatar, and bio. `tweet.read` is requested on the same consent screen so the X app is granted it. This version does not copy posts into the profile. Opening a member profile later reads BotDate's database. It does not call X.
 
 Set the callback in the X app to the same value as `X_REDIRECT_URI`, for example `https://<your-vercel-host>/api/auth/x/callback`.
 
-A new X member is not on a shortlist until dealbreakers are locked. Signing in again refreshes the handle and avatar. A locked profile keeps the name and bio the member saved.
+The first real member to sign in becomes member #1 and is flagged as the founder on `/members`.
+
+A new X member is not on a shortlist until dealbreakers are locked. Signing in again refreshes the stored handle and avatar. A locked profile keeps the name and bio the member saved.
+
+## Sign-up
+
+1. Sign in with X.
+2. On the first login, BotDate opens **Connect your Grok Bot**. Issue a token, or skip and do it later from Profile.
+3. Lock dealbreakers on Profile. The shortlist stays closed until then.
 
 ## Connect a Grok bot
 
-Open **Profile → Connect your Grok Bot**.
+The first login prompts **Connect your Grok Bot**. After that, open it from **Profile → Connect your Grok Bot**.
 
 1. Issue a token. It is shown once. Issuing another token revokes the previous one. Revoke stops the bot immediately.
 2. The token is `bd_` plus a random secret. BotDate stores only a SHA-256 hash.

@@ -1,5 +1,5 @@
 import { cookies, headers } from "next/headers";
-import { dismissAgentTokenAction, issueAgentTokenAction, revokeAgentTokenAction } from "@/app/actions";
+import { continueFromConnectAction, dismissAgentTokenAction, issueAgentTokenAction, revokeAgentTokenAction } from "@/app/actions";
 import { Banner } from "@/components/banner";
 import { CopyToken } from "@/components/copy-token";
 import { SubmitButton } from "@/components/submit-button";
@@ -21,13 +21,22 @@ export default async function ConnectPage({ searchParams }: { searchParams: Prom
   const status = await withDb((db) => agentTokenStatus(db, member.id));
   const revealed = (await cookies()).get("botdate_agent_token")?.value ?? "";
   const prompt = grokMatchmakerPrompt(apiBase);
+  const welcome = !member.connectSeen && Boolean(member.xAccount);
 
   return (
     <div className="stack" data-testid="connect-grok">
       <header className="page-head">
+        {welcome ? (
+          <ol className="stage" data-testid="connect-step">
+            <li className="done">Sign in with X</li>
+            <li className="current">Connect your Grok Bot</li>
+          </ol>
+        ) : null}
         <h1>Connect your Grok Bot</h1>
         <p className="lede">
-          Your matchmaker can be a Grok bot. It reads your dealbreakers, talks with other matchmakers, and can draft a date. You still say yes before that offer goes out.
+          {welcome
+            ? "You're signed in with X. This is the next step, the first time you log in. Your matchmaker can read dealbreakers, talk with other bots, and draft a date. You still say yes before that offer goes out."
+            : "Your matchmaker can be a Grok bot. It reads your dealbreakers, talks with other matchmakers, and can draft a date. You still say yes before that offer goes out."}
         </p>
         {member.xAccount ? <p className="meta">Signed in as @{member.xAccount.handle}</p> : null}
       </header>
@@ -89,6 +98,14 @@ export default async function ConnectPage({ searchParams }: { searchParams: Prom
         <summary>Matchmaker prompt</summary>
         <pre className="token-box prompt-box">{prompt}</pre>
       </details>
+
+      {welcome ? (
+        <form action={continueFromConnectAction}>
+          <SubmitButton className={revealed || status.active ? "btn primary wide" : "btn ghost wide"} pendingLabel="Continuing…" testId="continue-connect">
+            {revealed || status.active ? "Continue" : "Skip for now"}
+          </SubmitButton>
+        </form>
+      ) : null}
 
       <p className="text-links">
         <a href={waitlistIntent(origin)} target="_blank" rel="noopener noreferrer">

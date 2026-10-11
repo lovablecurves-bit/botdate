@@ -52,6 +52,12 @@ export type Member = {
   profile: Profile;
   prefs: Prefs;
   xAccount: XAccount | null;
+  /** First real X member. Demo profiles are never the founder. */
+  founder: boolean;
+  /** 1-based number among real X members. Null on the demo roster. */
+  memberNumber: number | null;
+  /** First-login Connect your Grok Bot step has been dismissed. */
+  connectSeen: boolean;
 };
 
 export type MemberInput = {

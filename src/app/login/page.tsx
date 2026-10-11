@@ -9,7 +9,7 @@ import { withDb } from "@/lib/db/open";
 import { listRoster } from "@/lib/domain";
 import { appOrigin } from "@/lib/http/origin";
 import { waitlistIntent } from "@/lib/share";
-import { xAuthConfigured } from "@/lib/x/config";
+import { coldStartNote, xAuthConfigured } from "@/lib/x/config";
 
 export const metadata = { title: "Enter" };
 
@@ -17,10 +17,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { error } = await searchParams;
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
   const xReady = xAuthConfigured();
+  const note = coldStartNote();
   const invite = waitlistIntent(appOrigin(await headers()));
-  const roster = (await withDb((db) => listRoster(db)))
-    .filter((person) => order.has(person.id))
-    .sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
+  const roster = xReady
+    ? []
+    : (await withDb((db) => listRoster(db)))
+        .filter((person) => order.has(person.id))
+        .sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
   const [featured, ...rest] = roster;
 
   return (
@@ -34,9 +37,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </header>
       <Banner>{error}</Banner>
       {xReady ? (
-        <a className="btn primary wide" href="/api/auth/x/start">
-          Sign in with X
-        </a>
+        <section className="stack tight">
+          <a className="btn primary wide" href="/api/auth/x/start">
+            Sign in with X
+          </a>
+          <p className="help">Next you'll connect your Grok bot. The first person to sign in becomes member #1.</p>
+          {note ? <p className="help">{note}</p> : null}
+        </section>
       ) : null}
       <p className="text-links">
         <a href={invite} target="_blank" rel="noopener noreferrer">
@@ -75,12 +82,14 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           ))}
         </section>
       ) : null}
-      <form action={resetDemoAction} className="reset-row">
-        <p className="help">If a previous pass changed the seed, reset brings every demo member, desk, and date back.</p>
-        <SubmitButton className="btn ghost wide" pendingLabel="Resetting…">
-          Reset demo data
-        </SubmitButton>
-      </form>
+      {xReady ? null : (
+        <form action={resetDemoAction} className="reset-row">
+          <p className="help">If a previous pass changed the seed, reset brings every demo member, desk, and date back.</p>
+          <SubmitButton className="btn ghost wide" pendingLabel="Resetting…">
+            Reset demo data
+          </SubmitButton>
+        </form>
+      )}
       <p className="credit">BotDate · by Lovable Curves</p>
     </main>
   );

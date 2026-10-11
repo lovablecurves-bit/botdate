@@ -43,6 +43,9 @@ function member(seed: Seed): Member {
     profile,
     prefs: { ...seed.prefs, locked: seed.prefs.locked !== false },
     xAccount: null,
+    founder: false,
+    memberNumber: null,
+    connectSeen: true,
   };
 }
 

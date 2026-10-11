@@ -18,7 +18,55 @@ function accentFor(id: string): string {
   return ACCENTS[hash] ?? ACCENTS[0];
 }
 
-export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: string; locked: boolean } {
+function flagged(value: unknown): boolean {
+  return value === true || value === 1;
+}
+
+/**
+ * Number real X members in sign-in order. The earliest becomes member #1
+ * and keeps the founder flag. Demo rows have no X id and are skipped.
+ * A second call is a no-op once every real member is numbered and one is founder.
+ */
+export function ensureRealMemberNumbers(ctx: BotDateDb) {
+  const rows = ctx.db
+    .select()
+    .from(users)
+    .all()
+    .filter((row) => row.xUserId);
+  if (rows.length === 0) return;
+  const ordered = [...rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+  const needsNumber = ordered.some((row) => row.memberNumber == null);
+  const needsFounder = !ordered.some((row) => flagged(row.founder));
+  if (!needsNumber && !needsFounder) return;
+
+  let max = 0;
+  for (const row of ordered) {
+    if (row.memberNumber != null) max = Math.max(max, Number(row.memberNumber));
+  }
+  if (needsNumber) {
+    for (const row of ordered) {
+      if (row.memberNumber != null) continue;
+      max += 1;
+      ctx.db
+        .update(users)
+        .set({ memberNumber: max, founder: max === 1 })
+        .where(eq(users.id, row.id))
+        .run();
+      row.memberNumber = max;
+      row.founder = max === 1;
+    }
+  }
+  if (!ordered.some((row) => flagged(row.founder))) {
+    const first = ordered.find((row) => Number(row.memberNumber) === 1) ?? ordered[0];
+    if (first) ctx.db.update(users).set({ founder: true }).where(eq(users.id, first.id)).run();
+  }
+}
+
+export function markConnectSeen(ctx: BotDateDb, userId: string) {
+  ctx.db.update(users).set({ connectSeen: true }).where(eq(users.id, userId)).run();
+}
+
+export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: string; locked: boolean; connectSeen: boolean } {
   const existing = ctx.db.select().from(users).where(eq(users.xUserId, profile.xUserId)).get();
   const name = clip(profile.name, 60) || profile.handle;
   const bio = clip(profile.bio, 500);
@@ -37,7 +85,8 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
     if (member && !locked && bio) {
       ctx.db.update(profiles).set({ bio }).where(eq(profiles.userId, existing.id)).run();
     }
-    return { userId: existing.id, locked };
+    ensureRealMemberNumbers(ctx);
+    return { userId: existing.id, locked, connectSeen: Boolean(member?.connectSeen) };
   }
 
   const id = `x_${profile.xUserId}`;
@@ -54,6 +103,9 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
       xUserId: profile.xUserId,
       xHandle: profile.handle,
       xAvatarUrl: profile.avatarUrl,
+      founder: false,
+      memberNumber: null,
+      connectSeen: false,
     })
     .run();
   ctx.db
@@ -87,5 +139,6 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
       locked: false,
     })
     .run();
-  return { userId: id, locked: false };
+  ensureRealMemberNumbers(ctx);
+  return { userId: id, locked: false, connectSeen: false };
 }

@@ -115,7 +115,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   width: min(480px, 100%);
   z-index: 6;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 2px;
   padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--bg) 92%, white);
@@ -131,7 +131,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--ink-soft);
   text-decoration: none;
   font-weight: 500;
-  font-size: 1rem;
+  font-size: 0.92rem;
 }
 .tabbar a.active {
   color: var(--ink);
@@ -192,6 +192,48 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .switcher-label, .signout { color: var(--ink-soft); }
 .switcher-label { margin: 8px 8px 4px; font-size: 0.95rem; }
 .signout { justify-content: center; margin-top: 4px; }
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+}
+.account > span { font-weight: 600; }
+.account button {
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 600;
+  min-height: 48px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.founder-flag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--cherry);
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.handle-line { font-weight: 600; color: var(--ink); }
+.summary-card {
+  background: white;
+  border-radius: 24px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.summary-card h2 { font-size: 1.35rem; }
+.member-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.member-copy .founder-flag { margin-top: 4px; }
 
 .page-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
 .lede, .help, .meta, .note, .credit { color: var(--ink-soft); }

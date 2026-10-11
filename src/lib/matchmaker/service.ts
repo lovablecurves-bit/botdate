@@ -25,6 +25,23 @@ export class MatchmakerBotService {
     return { score: soft.score, why, rankNotes: soft.notes };
   }
 
+  /** Short blurb from the profile already stored in BotDate. No network call. */
+  summarize(member: Member): string {
+    const name = member.displayName.split(" ")[0] || member.displayName;
+    const voice = member.profile.voice;
+    const be = voice.subject === "they" ? "are" : "is";
+    const interests = member.profile.interests.slice(0, 3);
+    const bio = member.profile.bio.trim();
+    return [
+      `${name}'s matchmaker has this on file.`,
+      `${cap(voice.subject)} ${be} ${member.profile.age}, in ${member.profile.city}, working as ${member.profile.occupation}.`,
+      bio,
+      interests.length ? `Matching notes: ${interests.join(", ")}.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
   composeOpening(member: Member): string {
     const voice = member.profile.voice;
     const subject = cap(voice.subject);

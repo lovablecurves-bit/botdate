@@ -4,6 +4,9 @@ export const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "users", column: "x_handle", ddl: "TEXT" },
   { table: "users", column: "x_avatar_url", ddl: "TEXT" },
   { table: "date_proposals", column: "released", ddl: "INTEGER NOT NULL DEFAULT 1" },
+  { table: "users", column: "founder", ddl: "INTEGER NOT NULL DEFAULT 0" },
+  { table: "users", column: "member_number", ddl: "INTEGER" },
+  { table: "users", column: "connect_seen", ddl: "INTEGER NOT NULL DEFAULT 0" },
 ];
 
 export const X_USER_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_x_user_idx ON users(x_user_id)";

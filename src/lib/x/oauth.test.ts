@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { openDatabase } from "../db/open";
 import { getMember } from "../domain";
 import { upsertXMember } from "./account";
-import { xAuthConfigured, xCredentials } from "./config";
+import { demoMode, xAuthConfigured, xCredentials } from "./config";
 import { XAuthError, exchangeAuthorizationCode, fetchXProfile } from "./oauth";
 import { X_SCOPES, authorizeUrl, codeChallenge } from "./pkce";
 import { safeAvatarUrl, xProfileFromPayload } from "./profile";
@@ -38,10 +38,13 @@ test("X sign-in stays off unless client id, secret, and redirect URI are all set
   delete process.env.X_REDIRECT_URI;
   assert.equal(xCredentials(), null);
   assert.equal(xAuthConfigured(), false);
+  assert.equal(demoMode(), true);
   process.env.X_CLIENT_ID = "id";
   process.env.X_CLIENT_SECRET = "secret";
   assert.equal(xAuthConfigured(), false);
+  assert.equal(demoMode(), true);
   process.env.X_REDIRECT_URI = "http://localhost:3000/api/auth/x/callback";
+  assert.equal(demoMode(), false);
   assert.deepEqual(xCredentials(), {
     clientId: "id",
     clientSecret: "secret",
@@ -120,6 +123,9 @@ test("signing in with X creates an unlocked member and refreshes the avatar with
   assert.equal(member?.profile.bio, "Analytical.");
   assert.equal(member?.xAccount?.handle, "ada_bot");
   assert.equal(member?.prefs.locked, false);
+  assert.equal(member?.founder, true);
+  assert.equal(member?.memberNumber, 1);
+  assert.equal(member?.connectSeen, false);
 
   upsertXMember(ctx, {
     xUserId: "42",
@@ -132,6 +138,9 @@ test("signing in with X creates an unlocked member and refreshes the avatar with
   assert.equal(refreshed?.displayName, "Ada");
   assert.equal(refreshed?.profile.bio, "Still analytical.");
   assert.equal(refreshed?.xAccount?.handle, "ada");
+  assert.equal(refreshed?.founder, true);
+  assert.equal(refreshed?.memberNumber, 1);
+  assert.equal(refreshed?.connectSeen, false);
 
   const { saveMember, memberToInput } = await import("../domain");
   assert.equal(saveMember(ctx, first.userId, { ...memberToInput(refreshed!), occupation: "Mathematician", locked: true }).ok, true);

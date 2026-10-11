@@ -6,6 +6,11 @@ import type { Member } from "./types";
 
 const COOKIE = "botdate_uid";
 
+/** Real X members see Connect your Grok Bot once, on the first login. */
+export function needsConnectPrompt(member: Member): boolean {
+  return member.xAccount !== null && !member.connectSeen;
+}
+
 export async function requireUser(): Promise<Member> {
   const jar = await cookies();
   const id = jar.get(COOKIE)?.value;
@@ -20,6 +25,7 @@ export async function requireUser(): Promise<Member> {
 
 export async function requireOnboarded(): Promise<Member> {
   const member = await requireUser();
+  if (needsConnectPrompt(member)) redirect("/connect");
   if (!member.prefs.locked) redirect("/onboarding");
   return member;
 }

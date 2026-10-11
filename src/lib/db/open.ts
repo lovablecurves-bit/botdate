@@ -8,6 +8,8 @@ import * as schema from "./schema";
 import { ADDED_COLUMNS, X_USER_INDEX, isBenignMigrationError } from "./migrate";
 import { SCHEMA_SQL } from "./schema";
 import { seedIfEmpty } from "./seed";
+import { demoMode } from "../x/config";
+import { ensureRealMemberNumbers } from "../x/account";
 
 type SqlJsStatic = Awaited<ReturnType<typeof initSqlJs>>;
 type SqlDatabase = InstanceType<SqlJsStatic["Database"]>;
@@ -346,6 +348,8 @@ async function createSqlDatabase(options: { filePath: string | null; client: Cli
     persist();
   }
 
+  ensureRealMemberNumbers(ctx);
+  await flush();
   return ctx;
 }
 
@@ -366,7 +370,8 @@ async function openApp(): Promise<BotDateDb> {
       const remote = tursoConfig();
       const client = remote ? createClient({ url: remote.url, authToken: remote.authToken, intMode: "number" }) : null;
       const filePath = client || process.env.VERCEL ? null : path.join(process.cwd(), "data", "botdate.sqlite");
-      return createSqlDatabase({ filePath, client, seed: true });
+      // X sign-in is the production roster. Demo members are seeded only when those env vars are missing.
+      return createSqlDatabase({ filePath, client, seed: demoMode() });
     })().catch((error) => {
       state.opening = undefined;
       throw error;
@@ -376,7 +381,10 @@ async function openApp(): Promise<BotDateDb> {
 }
 
 /**
- * Run read or write work against the shared demo database.
+ * Run read or write work against the app database.
+ * Turso/libSQL is used when TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are both set.
+ * Otherwise dev keeps data/botdate.sqlite and Vercel keeps an in-memory database.
+ * Member data won't survive cold starts without Turso.
  * Requests take turns so an in-memory database cannot interleave, and Turso
  * writes from this turn are flushed before the next turn starts.
  */

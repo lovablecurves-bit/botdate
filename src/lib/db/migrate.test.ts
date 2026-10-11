@@ -4,7 +4,7 @@ import { missingColumnStatements } from "./migrate";
 
 test("migrations add X profile columns and the held-offer flag only when they are missing", () => {
   const fresh = missingColumnStatements({
-    users: ["id", "email", "display_name", "bot_paused", "created_at", "x_user_id", "x_handle", "x_avatar_url"],
+    users: ["id", "email", "display_name", "bot_paused", "created_at", "x_user_id", "x_handle", "x_avatar_url", "founder", "member_number", "connect_seen"],
     date_proposals: ["id", "released"],
   });
   assert.deepEqual(fresh, []);
@@ -12,7 +12,10 @@ test("migrations add X profile columns and the held-offer flag only when they ar
     users: ["id", "email", "display_name", "bot_paused", "created_at"],
     date_proposals: ["id"],
   });
-  assert.equal(legacy.length, 4);
+  assert.equal(legacy.length, 7);
   assert.match(legacy[0] ?? "", /x_user_id/);
   assert.match(legacy[3] ?? "", /released/);
+  assert.match(legacy.join("\n"), /founder/);
+  assert.match(legacy.join("\n"), /member_number/);
+  assert.match(legacy.join("\n"), /connect_seen/);
 });
