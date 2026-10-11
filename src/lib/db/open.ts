@@ -5,7 +5,7 @@ import { createClient, type Client, type InValue } from "@libsql/client/web";
 import { drizzle, type SQLJsDatabase } from "drizzle-orm/sql-js";
 import initSqlJs from "sql.js";
 import * as schema from "./schema";
-import { ADDED_COLUMNS, X_USER_INDEX, isBenignMigrationError } from "./migrate";
+import { ADDED_COLUMNS, STRIPE_CUSTOMER_INDEX, X_USER_INDEX, isBenignMigrationError } from "./migrate";
 import { SCHEMA_SQL } from "./schema";
 import { seedIfEmpty } from "./seed";
 import { demoMode } from "../x/config";
@@ -209,6 +209,7 @@ async function createSqlDatabase(options: { filePath: string | null; client: Cli
     if (!names.includes(column.column)) raw.run(`ALTER TABLE ${column.table} ADD COLUMN ${column.column} ${column.ddl}`);
   }
   raw.run(X_USER_INDEX);
+  raw.run(STRIPE_CUSTOMER_INDEX);
   persist();
   const db = drizzle(raw, { schema });
 
@@ -331,6 +332,7 @@ async function createSqlDatabase(options: { filePath: string | null; client: Cli
       }
     }
     await client.execute(X_USER_INDEX);
+    await client.execute(STRIPE_CUSTOMER_INDEX);
     await pull();
     capture = true;
     if (options.seed && userCount() === 0) {

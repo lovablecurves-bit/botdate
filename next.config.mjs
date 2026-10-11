@@ -5,7 +5,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["sql.js"],
+  serverExternalPackages: ["sql.js", "stripe"],
   outputFileTracingIncludes: {
     "*": ["./node_modules/sql.js/dist/sql-wasm.wasm"],
   },

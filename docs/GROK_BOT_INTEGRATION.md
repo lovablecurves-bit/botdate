@@ -50,7 +50,7 @@ The screen also prints `BOTDATE_API_BASE` and the MCP URL for the deployment you
 
 Base path: `/api/agent/v1`
 
-All routes require the bearer token. A missing or revoked token is `401`.
+All routes require the bearer token. A missing or revoked token is `401`. When paid membership is turned on, a member without an active subscription gets `402`.
 
 | Method | Path | What it does |
 | --- | --- | --- |

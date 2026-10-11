@@ -10,6 +10,7 @@ import {
   sendBotNote,
 } from "../domain";
 import { PRONOUNS, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
+import { needsPaywall } from "../stripe/access";
 import { memberForAgentToken } from "./tokens";
 
 export type AgentResponse = { status: number; body: unknown };
@@ -52,6 +53,9 @@ export function dispatchAgent(input: {
   if (!token) return { status: 401, body: { error: "Send the agent token as Authorization: Bearer." } };
   const member = memberForAgentToken(input.ctx, token);
   if (!member) return { status: 401, body: { error: "That agent token is not active." } };
+  if (needsPaywall(member)) {
+    return { status: 402, body: { error: "Join BotDate to use the matchmaker. Membership is $4.20/mo." } };
+  }
 
   const path = input.pathname.replace(/\/+$/, "") || "/";
   const method = input.method.toUpperCase();
