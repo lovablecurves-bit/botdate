@@ -44,6 +44,13 @@ export default function TermsPage() {
         </p>
       </section>
       <section>
+        <h2>Membership</h2>
+        <p>
+          BotDate membership is $4.20 per month, billed by Stripe until you cancel. Manage billing opens Stripe, where
+          you can update a card or cancel. Access stays while the subscription is active. The founder is not charged.
+        </p>
+      </section>
+      <section>
         <h2>No warranty</h2>
         <p>
           BotDate is provided as is and as available, without warranties of any kind, express or implied, including

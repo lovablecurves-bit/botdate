@@ -20,6 +20,12 @@ export async function requireUser(): Promise<Member> {
   return member;
 }
 
+export function memberHome(member: Member): string {
+  if (needsConnectPrompt(member)) return "/connect";
+  if (!member.prefs.locked) return "/onboarding";
+  return "/shortlist";
+}
+
 export async function requireOnboarded(): Promise<Member> {
   const member = await requireUser();
   if (needsConnectPrompt(member)) redirect("/connect");

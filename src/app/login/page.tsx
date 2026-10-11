@@ -10,6 +10,7 @@ import { withDb } from "@/lib/db/open";
 import { listRoster } from "@/lib/domain";
 import { appOrigin } from "@/lib/http/origin";
 import { waitlistIntent } from "@/lib/share";
+import { stripeConfig } from "@/lib/stripe/config";
 import { coldStartNote, xAuthConfigured } from "@/lib/x/config";
 
 export const metadata = { title: "Enter" };
@@ -18,6 +19,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { error } = await searchParams;
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
   const xReady = xAuthConfigured();
+  const billing = stripeConfig() !== null;
   const note = coldStartNote();
   const invite = waitlistIntent(appOrigin(await headers()));
   const roster = xReady
@@ -42,7 +44,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <a className="btn primary wide" href="/api/auth/x/start">
             Sign in with X
           </a>
-          <p className="help">Next you'll connect your Grok bot. The first person to sign in becomes member #1.</p>
+          <p className="help">
+            {billing
+              ? "Membership is $4.20 a month. The first person to sign in is the founder and joins free. Next you'll connect your Grok bot."
+              : "Next you'll connect your Grok bot. The first person to sign in becomes member #1."}
+          </p>
           {note ? <p className="help">{note}</p> : null}
         </section>
       ) : null}

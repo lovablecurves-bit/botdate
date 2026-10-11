@@ -238,6 +238,9 @@ export function listMembers(ctx: BotDateDb): Member[] {
       founder: asBool(user.founder),
       memberNumber: user.memberNumber == null ? null : Number(user.memberNumber),
       connectSeen: asBool(user.connectSeen),
+      stripeCustomerId: user.stripeCustomerId || null,
+      stripeSubscriptionId: user.stripeSubscriptionId || null,
+      subscriptionStatus: user.stripeSubscriptionStatus || null,
     });
   }
   return members;

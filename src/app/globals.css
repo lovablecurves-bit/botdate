@@ -243,6 +243,50 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .meta { font-size: 1.05rem; }
 .credit { font-size: 0.95rem; }
 .content > .credit { margin-top: 28px; }
+.paywall {
+  width: min(480px, 100%);
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 48px 20px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.paywall h1 { color: var(--pop); }
+.paywall .credit { margin-top: auto; }
+.paywall-card {
+  background: white;
+  border-radius: 28px;
+  padding: 28px 22px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.price-line {
+  font-family: var(--serif);
+  font-size: 2.75rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--pop);
+}
+.price-line span {
+  font-family: var(--sans);
+  font-size: 1.15rem;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.text-button {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  min-height: 44px;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .stack { display: flex; flex-direction: column; gap: 22px; }
 .stack.tight { gap: 10px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
