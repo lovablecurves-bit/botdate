@@ -17,6 +17,8 @@ const OPEN = [
   "/api/admin/x/connect",
   "/api/admin/x/post",
   "/api/admin/x/mentions",
+  "/api/admin/x/media",
+  "/api/admin/x/pin",
   "/api/stripe/webhook",
   "/icon.svg",
   "/apple-icon.png",
