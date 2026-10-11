@@ -6,6 +6,8 @@ const LEFT_OVER =
 const RIGHT_OVER =
   "M 28.69 2.64 A 12.8 12.8 0 0 1 44.36 18.31 L 38.76 16.81 A 7 7 0 0 0 30.19 8.24 Z";
 
+const SMILE = "M28.55 17.15C29.7 19.7 34.3 19.7 35.45 17.15 34.15 18.35 29.85 18.35 28.55 17.15Z";
+
 export function Wordmark() {
   return (
     <>
@@ -20,9 +22,14 @@ export function Wordmark() {
         </defs>
         <path fill="var(--melon)" transform="translate(0 3)" d={HEART} />
         <path fill="var(--pop)" transform="translate(32 3)" d={HEART} />
-        <circle cx="32" cy="15" r="10" fill="none" stroke="var(--cherry)" strokeWidth="4.5" />
+        <circle cx="32" cy="15" r="12.25" fill="var(--cherry)" />
         <path fill="var(--melon)" transform="translate(0 3)" d={HEART} clipPath="url(#bd-heart-left)" />
         <path fill="var(--pop)" transform="translate(32 3)" d={HEART} clipPath="url(#bd-heart-right)" />
+        <circle cx="29.05" cy="13.35" r="2.15" fill="#fff" />
+        <circle cx="34.95" cy="13.35" r="2.15" fill="#fff" />
+        <circle cx="29.05" cy="13.72" r="0.88" fill="var(--ink)" />
+        <circle cx="34.95" cy="13.72" r="0.88" fill="var(--ink)" />
+        <path d={SMILE} fill="#fff" />
       </svg>
       <span>BotDate</span>
     </>
