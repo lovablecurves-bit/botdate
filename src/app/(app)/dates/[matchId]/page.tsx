@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Banner } from "@/components/banner";
 import { DateOffer } from "@/components/date-offer";
@@ -7,6 +8,8 @@ import { PersonStrip } from "@/components/person";
 import { requireOnboarded } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { getDate } from "@/lib/domain";
+import { appOrigin } from "@/lib/http/origin";
+import { dateOfferIntent } from "@/lib/share";
 
 export const metadata = { title: "Date" };
 
@@ -18,6 +21,7 @@ export default async function DatePage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const member = await requireOnboarded();
+  const shareHref = dateOfferIntent(appOrigin(await headers()));
   const { matchId } = await params;
   const { error } = await searchParams;
   const date = await withDb((db) => getDate(db, member.id, matchId));
@@ -48,6 +52,7 @@ export default async function DatePage({
             local={proposal.local}
             place={proposal.place}
             note={proposal.note}
+            shareHref={shareHref}
           />
         ) : (
           <article key={proposal.id} className={proposal.status === "confirmed" ? "confirm-card" : "stack tight"} data-testid={`proposal-${proposal.status}`}>

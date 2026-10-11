@@ -42,6 +42,7 @@ function member(seed: Seed): Member {
     botPaused: false,
     profile,
     prefs: { ...seed.prefs, locked: seed.prefs.locked !== false },
+    xAccount: null,
   };
 }
 

@@ -20,7 +20,7 @@ Open [http://localhost:3000](http://localhost:3000). There is no password. Pick 
 
 The first request creates `data/botdate.sqlite` and seeds it with Avery Chen and the rest of the demo roster. That file is local and gitignored. **Reset demo data** on Profile (or the signed-out login screen) restores the seed.
 
-`npm test` covers hard filters, bot notes sent without a draft queue, date-offer approve / tweak / pass, intro opt-in, and wipe. No API keys.
+`npm test` covers hard filters, bot notes sent without a draft queue, date-offer approve / tweak / pass, intro opt-in, wipe, X profile import, and the Grok bot agent API. No API keys are required for the tests. Sign in with X stays off until its three environment variables are set.
 
 ## Demo path
 
@@ -41,7 +41,8 @@ Switch members from the menu in the header.
 2. **Shortlist** (`/shortlist`) — the home screen. Mutual hard-filter passes, with a date offer on top when one is ready. Everyone else is "bots are talking."
 3. **Activity** (`/desk`) — a quiet log of bot-to-bot notes. Not in the tab bar. Nothing on it needs approval.
 4. **Intro** (`/intro/[match]`) — optional, after people want a direct chat. Not part of the date offer.
-5. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve.
+5. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve. A date offer can be shared to X without the other person's name.
+6. **Connect your Grok Bot** (`/connect`) — issue or revoke the member's agent token, and copy the matchmaker prompt. Linked from Profile.
 
 ## Preferences
 
@@ -53,6 +54,8 @@ Soft prefs rank the list. Shared interests add the most, then the same city. The
 
 `MatchmakerBotService` in `src/lib/matchmaker/service.ts` is a deterministic stand-in for a Grok matchmaker. Seeded desks use sample scripts. Everyone else gets a heuristic opening or reply from the profile they already consented to share. There is no network call and no model key.
 
+A member can also connect an external Grok bot. **Connect your Grok Bot** issues a bearer token. The bot calls `/api/agent/v1` (or the MCP endpoint at `/api/mcp`) to read and update dealbreakers, fetch the shortlist, exchange bot-to-bot notes, and draft a date. The draft stays with the member until they approve it. See [docs/GROK_BOT_INTEGRATION.md](docs/GROK_BOT_INTEGRATION.md).
+
 Scripted notes are sent as the matchmakers talk. A paused matchmaker does not send the next note. A date offer is the human interrupt.
 
 ## Deploy on Vercel
@@ -63,10 +66,22 @@ The demo does not use native SQLite. Queries run on [sql.js](https://sql.js.org/
 
 1. Push this repo to GitHub.
 2. In Vercel, choose **Add New… → Project** and import the repo.
-3. Leave the framework preset as **Next.js**. Do not set environment variables.
+3. Leave the framework preset as **Next.js**. Environment variables are optional.
 4. Deploy.
 
 Open the deployment URL. The login screen lists the demo members with no password. Each serverless instance keeps its own in-memory copy and reseeds after a cold start, so one visitor's approvals are not shared with another instance. That is enough for a clickable public demo.
+
+### Sign in with X
+
+Set these three on the Vercel project when members should sign in with X instead of only picking a demo profile. Leave any one of them unset and the login screen keeps the demo list, with no error until someone opens the X route directly.
+
+| Name | Value |
+| --- | --- |
+| `X_CLIENT_ID` | OAuth 2.0 client ID from the X app |
+| `X_CLIENT_SECRET` | Client secret |
+| `X_REDIRECT_URI` | `https://<your-deployment>/api/auth/x/callback` |
+
+The X app needs the scopes `users.read` and `tweet.read`, and the callback URL has to match `X_REDIRECT_URI`. A successful sign-in stores the member's handle, name, avatar, and bio. The Grok bot token is issued later inside the app. It is not an environment variable.
 
 `npm run dev` on your machine still stores `data/botdate.sqlite` so a local session survives a restart.
 
@@ -100,13 +115,14 @@ SQLite via [Drizzle ORM](https://orm.drizzle.team/) and [sql.js](https://sql.js.
 
 | Table | Holds |
 | --- | --- |
-| `users` | Member, pause flag |
+| `users` | Member, pause flag, and optional X handle, name link, and avatar |
 | `profiles` | Age, city, bio, kids, intent, smoking, interests |
 | `prefs` | Dealbreakers, nice-to-haves, lock |
 | `matches` | Pair, intro opt-in, human vs bot channel |
 | `bot_threads` | One desk per match |
 | `messages` | Bot, human, and system notes. Bot small talk is stored as sent. |
-| `date_proposals` | Time, place, and each person's decision (`pending`, `approved`, `passed`) |
+| `date_proposals` | Time, place, and each person's decision (`pending`, `approved`, `passed`). A Grok bot draft stays unreleased until that member approves it. |
+| `agent_tokens` | Hashed per-member Grok bot tokens. The raw token is shown once, then only the hash is kept. |
 
 ## Out of scope
 

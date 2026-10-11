@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { DateOffer } from "@/components/date-offer";
 import { Portrait, Facts } from "@/components/person";
 import { requireOnboarded } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { listShortlist, type ShortlistCard } from "@/lib/domain";
+import { appOrigin } from "@/lib/http/origin";
+import { dateOfferIntent } from "@/lib/share";
 
 export const metadata = { title: "Shortlist" };
 
@@ -24,6 +27,7 @@ function statusLine(card: ShortlistCard): string {
 
 export default async function ShortlistPage() {
   const member = await requireOnboarded();
+  const shareHref = dateOfferIntent(appOrigin(await headers()));
   const list = await withDb((db) => listShortlist(db, member.id));
   const offers = list.cards.filter((card) => card.offerWaiting && card.offer);
   const rest = list.cards.filter((card) => !(card.offerWaiting && card.offer));
@@ -54,6 +58,7 @@ export default async function ShortlistPage() {
                 local={card.offer.local}
                 place={card.offer.place}
                 note={card.offer.note}
+                shareHref={shareHref}
               />
             ) : null,
           )}
@@ -63,7 +68,7 @@ export default async function ShortlistPage() {
                 const first = card.person.displayName.split(" ")[0];
                 return (
                   <article key={card.matchId} className="person-card" data-testid={`shortlist-${card.person.id}`}>
-                    <Portrait name={card.person.displayName} accent={card.person.accent} />
+                    <Portrait name={card.person.displayName} accent={card.person.accent} imageUrl={card.person.avatarUrl} />
                     <div className="person-copy">
                       <h2>{card.person.displayName}</h2>
                       <p className="meta">

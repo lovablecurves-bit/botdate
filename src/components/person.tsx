@@ -2,7 +2,14 @@ import { Avatar } from "@/components/avatar";
 import { intentLabel, kidsLabel, smokingLabel, titleWord, initials } from "@/lib/labels";
 import type { PublicPerson } from "@/lib/domain";
 
-export function Portrait({ name, accent }: { name: string; accent: string }) {
+export function Portrait({ name, accent, imageUrl }: { name: string; accent: string; imageUrl?: string | null }) {
+  if (imageUrl) {
+    return (
+      <div className="portrait photo" style={{ backgroundColor: accent }} aria-hidden="true">
+        <img src={imageUrl} alt="" />
+      </div>
+    );
+  }
   return (
     <div className="portrait" style={{ backgroundColor: accent }} aria-hidden="true">
       <span className="portrait-mark">{initials(name)}</span>
@@ -14,7 +21,7 @@ export function Portrait({ name, accent }: { name: string; accent: string }) {
 export function PersonStrip({ person }: { person: PublicPerson }) {
   return (
     <div className="person-strip">
-      <Avatar name={person.displayName} accent={person.accent} size="lg" />
+      <Avatar name={person.displayName} accent={person.accent} size="lg" imageUrl={person.avatarUrl} />
       <div>
         <h1>{person.displayName}</h1>
         <p className="meta">

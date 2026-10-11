@@ -38,6 +38,12 @@ export type Prefs = {
   locked: boolean;
 };
 
+export type XAccount = {
+  userId: string;
+  handle: string;
+  avatarUrl: string;
+};
+
 export type Member = {
   id: string;
   email: string;
@@ -45,6 +51,7 @@ export type Member = {
   botPaused: boolean;
   profile: Profile;
   prefs: Prefs;
+  xAccount: XAccount | null;
 };
 
 export type MemberInput = {

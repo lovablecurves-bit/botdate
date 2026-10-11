@@ -2,6 +2,7 @@ import { loginAction, logoutAction } from "@/app/actions";
 import { Avatar } from "@/components/avatar";
 import { Nav } from "@/components/nav";
 import { Wordmark } from "@/components/wordmark";
+import { DEMO_ORDER } from "@/lib/demo/members";
 import type { RosterEntry } from "@/lib/domain";
 import type { Member } from "@/lib/types";
 
@@ -16,6 +17,8 @@ export function Shell({
   pending: number;
   children: React.ReactNode;
 }) {
+  const demoIds = new Set<string>(DEMO_ORDER);
+  const people = roster.filter((person) => demoIds.has(person.id) || person.id === member.id);
   return (
     <div className="app">
       <a className="skip" href="#content">
@@ -29,12 +32,12 @@ export function Shell({
             </a>
             <details className="switcher">
               <summary>
-                <Avatar name={member.displayName} accent={member.profile.accent} size="sm" />
+                <Avatar name={member.displayName} accent={member.profile.accent} size="sm" imageUrl={member.xAccount?.avatarUrl} />
                 <span>{member.displayName.split(" ")[0]}</span>
               </summary>
               <div className="switcher-panel">
-                <p className="switcher-label">Demo members</p>
-                {roster.map((person) => (
+                <p className="switcher-label">Switch member</p>
+                {people.map((person) => (
                   <form key={person.id} action={loginAction}>
                     <input type="hidden" name="userId" value={person.id} />
                     <button type="submit" className={person.id === member.id ? "current" : undefined} disabled={person.id === member.id}>

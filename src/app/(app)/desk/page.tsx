@@ -24,7 +24,7 @@ export default async function DeskIndexPage() {
         <div>
           {desks.map((desk) => (
             <Link key={desk.matchId} href={`/desk/${desk.matchId}`} className="list-link">
-              <Avatar name={desk.person.displayName} accent={desk.person.accent} />
+              <Avatar name={desk.person.displayName} accent={desk.person.accent} imageUrl={desk.person.avatarUrl} />
               <span>
                 <strong>{desk.person.displayName}</strong>
                 <span className="meta">{truncate(desk.preview, 90)}</span>

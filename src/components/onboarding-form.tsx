@@ -16,12 +16,20 @@ export function OnboardingForm({ member }: { member: Member }) {
       <section className="stack tight">
         <div className="photo-row">
           <div className="photo-ph" style={{ background: member.profile.accent }}>
-            <Avatar name={member.displayName} accent={member.profile.accent} size="lg" />
-            <span>Photo placeholder</span>
+            {member.xAccount?.avatarUrl ? (
+              <img className="x-photo" src={member.xAccount.avatarUrl} alt="" />
+            ) : (
+              <Avatar name={member.displayName} accent={member.profile.accent} size="lg" />
+            )}
+            <span>{member.xAccount?.avatarUrl ? "Photo from X" : "Photo placeholder"}</span>
           </div>
           <div>
             <h2>About you</h2>
-            <p className="help">This is the profile other matchmakers are allowed to read. Photos stay a placeholder in this MVP.</p>
+            <p className="help">
+              {member.xAccount
+                ? `Signed in as @${member.xAccount.handle}. Other matchmakers can read this profile.`
+                : "This is the profile other matchmakers are allowed to read. Photos stay a placeholder until you sign in with X."}
+            </p>
           </div>
         </div>
         <label className="field">

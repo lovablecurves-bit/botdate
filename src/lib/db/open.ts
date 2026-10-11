@@ -5,6 +5,7 @@ import { createClient, type Client, type InValue } from "@libsql/client/web";
 import { drizzle, type SQLJsDatabase } from "drizzle-orm/sql-js";
 import initSqlJs from "sql.js";
 import * as schema from "./schema";
+import { ADDED_COLUMNS, X_USER_INDEX, isBenignMigrationError } from "./migrate";
 import { SCHEMA_SQL } from "./schema";
 import { seedIfEmpty } from "./seed";
 
@@ -125,7 +126,7 @@ function toArgs(values: unknown): InValue[] {
   });
 }
 
-const TABLE_ORDER = ["users", "profiles", "prefs", "matches", "bot_threads", "messages", "date_proposals"] as const;
+const TABLE_ORDER = ["users", "profiles", "prefs", "matches", "bot_threads", "messages", "date_proposals", "agent_tokens"] as const;
 
 async function createSqlDatabase(options: { filePath: string | null; client: Client | null; seed: boolean }): Promise<BotDateDb> {
   const SQL = await loadSqlJs();
@@ -198,6 +199,15 @@ async function createSqlDatabase(options: { filePath: string | null; client: Cli
   };
 
   execScript(SCHEMA_SQL);
+  for (const column of ADDED_COLUMNS) {
+    const info = originalPrepare(`PRAGMA table_info(${column.table})`);
+    const names: string[] = [];
+    while (info.step()) names.push(String(info.getAsObject().name));
+    info.free();
+    if (!names.includes(column.column)) raw.run(`ALTER TABLE ${column.table} ADD COLUMN ${column.column} ${column.ddl}`);
+  }
+  raw.run(X_USER_INDEX);
+  persist();
   const db = drizzle(raw, { schema });
 
   const userCount = () => {
@@ -311,6 +321,14 @@ async function createSqlDatabase(options: { filePath: string | null; client: Cli
     } catch {
       await client.batch(statementsOf(SCHEMA_SQL), "write");
     }
+    for (const column of ADDED_COLUMNS) {
+      try {
+        await client.execute(`ALTER TABLE ${column.table} ADD COLUMN ${column.column} ${column.ddl}`);
+      } catch (error) {
+        if (!isBenignMigrationError(error)) throw error;
+      }
+    }
+    await client.execute(X_USER_INDEX);
     await pull();
     capture = true;
     if (options.seed && userCount() === 0) {

@@ -5,7 +5,7 @@ import { DEMO_ORDER } from "./demo/members";
 import { SCRIPTS } from "./demo/scripts";
 import { HOLD_LABELS, mutualPass, primaryHold } from "./matchmaker/filters";
 import { matchmaker } from "./matchmaker/service";
-import { fail, ok, type ActionResult } from "./result";
+import { created, fail, ok, type ActionResult, type CreatedResult } from "./result";
 import { formatPacific, isFutureIso, isoToPacificLocal, pacificLocalToIso } from "./time";
 import {
   CITIES,
@@ -36,6 +36,7 @@ export type PublicPerson = {
   bio: string;
   interests: string[];
   accent: string;
+  avatarUrl: string | null;
   smoking: boolean;
   kids: KidsStance;
   intent: Intent;
@@ -178,9 +179,10 @@ export function toPublic(member: Member): PublicPerson {
     city: member.profile.city,
     occupation: member.profile.occupation,
     bio: member.profile.bio,
-    interests: member.profile.interests,
-    accent: member.profile.accent,
-    smoking: member.profile.smoking,
+        interests: member.profile.interests,
+        accent: member.profile.accent,
+        avatarUrl: member.xAccount?.avatarUrl || null,
+        smoking: member.profile.smoking,
     kids: member.profile.kids,
     intent: member.profile.intent,
   };
@@ -203,6 +205,13 @@ export function listMembers(ctx: BotDateDb): Member[] {
       email: user.email,
       displayName: user.displayName,
       botPaused: asBool(user.botPaused),
+      xAccount: user.xUserId
+        ? {
+            userId: user.xUserId,
+            handle: user.xHandle ?? "",
+            avatarUrl: user.xAvatarUrl ?? "",
+          }
+        : null,
       profile: {
         age: profile.age,
         city: profile.city,
@@ -393,7 +402,7 @@ export function listShortlist(ctx: BotDateDb, userId: string): Shortlist {
     const match = ctx.db.select().from(matches).where(eq(matches.id, matchId)).get();
     if (!match) continue;
     const rows = messagesFor(ctx, matchId);
-    const proposalRows = proposalsFor(ctx, matchId);
+    const proposalRows = visibleProposals(ctx, matchId, userId);
     const open = proposalRows.find((row) => row.status === "proposed");
     const confirmed = proposalRows.find((row) => row.status === "confirmed");
     const declined = proposalRows.find((row) => row.status === "declined");
@@ -481,7 +490,7 @@ export function getDesk(ctx: BotDateDb, userId: string, matchId: string): DeskDa
   const pair = loadPair(ctx, userId, matchId);
   if (!pair) return null;
   const rows = messagesFor(ctx, matchId);
-  const proposalRows = proposalsFor(ctx, matchId);
+  const proposalRows = visibleProposals(ctx, matchId, userId);
   const members = new Map(listMembers(ctx).map((member) => [member.id, member]));
   const items: ThreadItem[] = rows
     .filter((row) => row.approvalStatus === "sent" && (row.channel === "bot" || row.channel === "system"))
@@ -525,7 +534,7 @@ export function getIntro(ctx: BotDateDb, userId: string, matchId: string): Intro
   const pair = loadPair(ctx, userId, matchId);
   if (!pair) return null;
   const rows = messagesFor(ctx, matchId);
-  const proposalRows = proposalsFor(ctx, matchId);
+  const proposalRows = visibleProposals(ctx, matchId, userId);
   const members = new Map(listMembers(ctx).map((member) => [member.id, member]));
   const viewerIsA = pair.match.userAId === userId;
   const recap = rows
@@ -555,6 +564,19 @@ export function getIntro(ctx: BotDateDb, userId: string, matchId: string): Intro
     humanMessages,
     stage: stageFor(rows, pair.match, proposalRows),
   };
+}
+
+/** A held offer stays with the member who proposed it until they approve. */
+export function proposalVisibleTo(
+  row: { released: boolean | number | null; proposedByUserId: string; status: string },
+  userId: string,
+): boolean {
+  if (asBool(row.released) || row.status === "confirmed") return true;
+  return row.proposedByUserId === userId;
+}
+
+function visibleProposals(ctx: BotDateDb, matchId: string, userId: string) {
+  return proposalsFor(ctx, matchId).filter((row) => proposalVisibleTo(row, userId));
 }
 
 function sideDecision(row: { aDecision: string; bDecision: string }, viewerIsA: boolean): OfferDecision {
@@ -587,7 +609,7 @@ export function getDate(ctx: BotDateDb, userId: string, matchId: string): DateDa
   const pair = loadPair(ctx, userId, matchId);
   if (!pair) return null;
   const rows = messagesFor(ctx, matchId);
-  const proposalRows = proposalsFor(ctx, matchId);
+  const proposalRows = visibleProposals(ctx, matchId, userId);
   const bothOptIn = asBool(pair.match.aOptIn) && asBool(pair.match.bOptIn);
   const open = proposalRows.some((row) => row.status === "proposed");
   const confirmed = proposalRows.some((row) => row.status === "confirmed");
@@ -829,20 +851,7 @@ export function sendHuman(ctx: BotDateDb, userId: string, matchId: string, body:
   return ok();
 }
 
-export function proposeDate(
-  ctx: BotDateDb,
-  userId: string,
-  matchId: string,
-  input: { local: string; place: string; note: string },
-): ActionResult {
-  const pair = loadPair(ctx, userId, matchId);
-  if (!pair) return fail("That date desk is not on your shortlist.");
-  if (!asBool(pair.match.aOptIn) || !asBool(pair.match.bOptIn)) {
-    return fail("Both of you opt in before proposing a time.");
-  }
-  const existing = proposalsFor(ctx, matchId);
-  if (existing.some((row) => row.status === "confirmed")) return fail("This date is already confirmed.");
-  if (existing.some((row) => row.status === "proposed")) return fail("There's already an open proposal.");
+function parseWhen(input: { local: string; place: string; note: string }): { ok: true; startsAt: string; place: string; note: string } | { ok: false; error: string } {
   const place = input.place.trim();
   const note = input.note.trim();
   if (place.length < 2 || place.length > 120) return fail("Name a place.");
@@ -854,22 +863,112 @@ export function proposeDate(
     return fail("Choose a date and time.");
   }
   if (!isFutureIso(startsAt)) return fail("Pick a time in the future. Times are Pacific.");
+  return { ok: true, startsAt, place, note };
+}
+
+function openProposalBlock(ctx: BotDateDb, matchId: string): { ok: false; error: string } | null {
+  const existing = proposalsFor(ctx, matchId);
+  if (existing.some((row) => row.status === "confirmed")) return fail("This date is already confirmed.");
+  if (existing.some((row) => row.status === "proposed")) return fail("There's already an open proposal.");
+  return null;
+}
+
+export function proposeDate(
+  ctx: BotDateDb,
+  userId: string,
+  matchId: string,
+  input: { local: string; place: string; note: string },
+): ActionResult {
+  const pair = loadPair(ctx, userId, matchId);
+  if (!pair) return fail("That date desk is not on your shortlist.");
+  if (!asBool(pair.match.aOptIn) || !asBool(pair.match.bOptIn)) {
+    return fail("Both of you opt in before proposing a time.");
+  }
+  const blocked = openProposalBlock(ctx, matchId);
+  if (blocked) return blocked;
+  const when = parseWhen(input);
+  if (!when.ok) return when;
   ctx.db
     .insert(dateProposals)
     .values({
       id: `proposal_${crypto.randomUUID()}`,
       matchId,
       proposedByUserId: userId,
-      startsAt,
-      place,
-      note,
+      startsAt: when.startsAt,
+      place: when.place,
+      note: when.note,
       status: "proposed",
       aDecision: "pending",
       bDecision: "pending",
+      released: true,
       createdAt: new Date().toISOString(),
     })
     .run();
   return ok();
+}
+
+/** A matchmaker draft. Both decisions stay pending, and the other person cannot see it until this member approves. */
+export function proposeHeldDate(
+  ctx: BotDateDb,
+  userId: string,
+  matchId: string,
+  input: { local: string; place: string; note: string },
+): CreatedResult {
+  const member = getMember(ctx, userId);
+  if (!member) return fail("Member not found.");
+  if (member.botPaused) return fail("Your matchmaker is paused.");
+  const pair = loadPair(ctx, userId, matchId);
+  if (!pair) return fail("That date desk is not on your shortlist.");
+  const blocked = openProposalBlock(ctx, matchId);
+  if (blocked) return blocked;
+  const when = parseWhen(input);
+  if (!when.ok) return when;
+  const id = `proposal_${crypto.randomUUID()}`;
+  ctx.db
+    .insert(dateProposals)
+    .values({
+      id,
+      matchId,
+      proposedByUserId: userId,
+      startsAt: when.startsAt,
+      place: when.place,
+      note: when.note,
+      status: "proposed",
+      aDecision: "pending",
+      bDecision: "pending",
+      released: false,
+      createdAt: new Date().toISOString(),
+    })
+    .run();
+  return created(id);
+}
+
+export function sendBotNote(ctx: BotDateDb, userId: string, matchId: string, body: string): CreatedResult {
+  const member = getMember(ctx, userId);
+  if (!member) return fail("Member not found.");
+  if (member.botPaused) return fail("Your matchmaker is paused.");
+  const pair = loadPair(ctx, userId, matchId);
+  if (!pair) return fail("That desk is not on your shortlist.");
+  const nextBody = cleanBody(body);
+  if (!nextBody) return fail("Write a message first.");
+  if (nextBody.length > 800) return fail("Keep a message under 800 characters.");
+  const id = `msg_${crypto.randomUUID()}`;
+  ctx.db
+    .insert(messages)
+    .values({
+      id,
+      matchId,
+      channel: "bot",
+      authorUserId: userId,
+      authorKind: "bot",
+      body: nextBody,
+      approvalStatus: "sent",
+      scriptStep: null,
+      edited: false,
+      createdAt: new Date().toISOString(),
+    })
+    .run();
+  return created(id);
 }
 
 function applyDecision(
@@ -897,6 +996,7 @@ function applyDecision(
       aDecision: viewerIsA ? myNext : theirNext,
       bDecision: viewerIsA ? theirNext : myNext,
       status,
+      released: decision === "approved" ? true : asBool(proposal.released),
       ...(next ? { startsAt: next.startsAt, place: next.place, note: next.note } : {}),
     })
     .where(eq(dateProposals.id, proposalId))

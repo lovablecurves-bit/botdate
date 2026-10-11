@@ -115,7 +115,7 @@ export function seed(ctx: BotDateDb) {
     }
   }
 
-  const when = pacificLocalToIso(upcomingSaturdayLocal(new Date("2026-09-23T18:00:00.000Z")));
+  const when = pacificLocalToIso(upcomingSaturdayLocal());
   db.insert(dateProposals)
     .values({
       id: "proposal_avery_jordan",
@@ -141,6 +141,7 @@ export function resetDatabase(ctx: BotDateDb) {
   ctx.sqlite.exec("BEGIN");
   try {
     ctx.sqlite.exec(`
+      DELETE FROM agent_tokens;
       DELETE FROM date_proposals;
       DELETE FROM messages;
       DELETE FROM bot_threads;
