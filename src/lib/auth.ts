@@ -16,10 +16,7 @@ export async function requireUser(): Promise<Member> {
   const id = jar.get(COOKIE)?.value;
   if (!id) redirect("/login");
   const member = await withDb((db) => getMember(db, id));
-  if (!member) {
-    jar.set(COOKIE, "", { path: "/", maxAge: 0 });
-    redirect("/login");
-  }
+  if (!member) redirect("/api/auth/clear");
   return member;
 }
 

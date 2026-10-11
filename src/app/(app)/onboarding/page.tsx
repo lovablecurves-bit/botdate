@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { resetDemoAction, setPausedAction } from "@/app/actions";
 import { Banner } from "@/components/banner";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { SubmitButton } from "@/components/submit-button";
 import { WipeControl } from "@/components/wipe-control";
-import { redirect } from "next/navigation";
 import { needsConnectPrompt, requireUser } from "@/lib/auth";
 import { demoMode } from "@/lib/x/config";
 
