@@ -505,7 +505,7 @@ function cookieValue(setCookies: string[], name: string): string {
   }
 }
 
-async function withEnv(values: Record<string, string | undefined>, fn: () => Promise<unknown>): Promise<void> {
+async function withEnv<T>(values: Record<string, string | undefined>, fn: () => Promise<T>): Promise<T> {
   const previous: Record<string, string | undefined> = {};
   for (const key of Object.keys(values)) previous[key] = process.env[key];
   try {
@@ -513,7 +513,7 @@ async function withEnv(values: Record<string, string | undefined>, fn: () => Pro
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
-    await fn();
+    return await fn();
   } finally {
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[key];
