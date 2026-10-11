@@ -1,4 +1,10 @@
-const OPEN = [/^\/api\/auth\/x(?:\/|$)/, /^\/api\/agent(?:\/|$)/, /^\/api\/mcp(?:\/|$)/];
+const OPEN = [
+  /^\/api\/auth\/x(?:\/|$)/,
+  /^\/api\/agent(?:\/|$)/,
+  /^\/api\/mcp(?:\/|$)/,
+  /^\/privacy\/?$/,
+  /^\/terms\/?$/,
+];
 
 /** Routes that authenticate themselves, or do not use the demo session cookie. */
 export function isOpenPath(pathname: string): boolean {

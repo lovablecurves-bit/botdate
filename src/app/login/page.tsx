@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import Link from "next/link";
 import { loginAction, resetDemoAction } from "@/app/actions";
 import { Portrait } from "@/components/person";
 import { Wordmark } from "@/components/wordmark";
@@ -90,7 +91,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </SubmitButton>
         </form>
       )}
-      <p className="credit">BotDate · by Lovable Curves</p>
+      <footer className="login-foot">
+        <p className="credit">BotDate · by Lovable Curves</p>
+        <nav className="text-links legal-links" aria-label="Legal">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+        </nav>
+      </footer>
     </main>
   );
 }

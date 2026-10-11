@@ -530,6 +530,11 @@ fieldset { border: 0; margin: 0; padding: 0; }
   flex-direction: column;
   gap: 28px;
 }
+.legal { width: min(640px, 100%); }
+.legal section { display: flex; flex-direction: column; gap: 8px; }
+.legal h2 { font-size: 1.35rem; }
+.login-foot { display: flex; flex-direction: column; gap: 4px; }
+.legal-links { flex-direction: row; flex-wrap: wrap; gap: 4px 18px; }
 .member-row {
   display: flex;
   flex-direction: column;
