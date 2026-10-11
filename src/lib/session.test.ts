@@ -115,10 +115,10 @@ test("a signed snapshot signs the member in when the database has no row", () =>
   assert.equal(founder.founder, true);
   assert.equal(founder.connectSeen, false);
   assert.equal(needsPaywall(founder, BILLING), false);
-  assert.equal(memberHome(founder), "/connect");
-  assert.equal(safePostLoginPath(memberHome(founder)), "/connect");
-  assert.equal(safePostLoginPath("/"), "/connect");
-  assert.equal(safePostLoginPath("/login"), "/connect");
+  assert.equal(memberHome(founder), "/profile");
+  assert.equal(safePostLoginPath(memberHome(founder)), "/profile");
+  assert.equal(safePostLoginPath("/"), "/profile");
+  assert.equal(safePostLoginPath("/login"), "/profile");
 
   const guest = memberFromClaims(sample({ founder: false, memberNumber: 2, handle: "grace", name: "Grace", connectSeen: true, locked: true }));
   assert.equal(needsPaywall(guest, {}), false);
@@ -132,7 +132,7 @@ test("a signed snapshot signs the member in when the database has no row", () =>
     assert.notEqual(memberHome(guest), "/login");
     const subscribed = memberFromClaims(sample({ founder: false, memberNumber: 2, connectSeen: true, locked: true, subscriptionStatus: "trialing" }));
     assert.equal(needsPaywall(subscribed), false);
-    assert.equal(memberHome(subscribed), "/shortlist");
+    assert.equal(memberHome(subscribed), "/profile");
   } finally {
     if (previous.key === undefined) delete process.env.STRIPE_SECRET_KEY;
     else process.env.STRIPE_SECRET_KEY = previous.key;

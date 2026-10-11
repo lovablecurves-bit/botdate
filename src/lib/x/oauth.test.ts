@@ -367,7 +367,7 @@ test("X sign-in survives a second instance that does not share the database", as
     assert.equal(restored.xAccount?.handle, "ada_bot");
     assert.equal(restored.displayName, "Ada Lovelace");
     assert.equal(restored.profile.bio, "Analytical.");
-    assert.equal(memberHome(restored), "/connect");
+    assert.equal(memberHome(restored), "/profile");
     assert.equal(calls.length, 2, "profile views must not call X again");
     other.close();
   } finally {

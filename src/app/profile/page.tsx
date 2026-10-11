@@ -1,31 +1,42 @@
-import Link from "next/link";
-import { Portrait } from "@/components/person";
+import { issueAgentTokenAction } from "@/app/actions";
+import { SubmitButton } from "@/components/submit-button";
 import { Wordmark } from "@/components/wordmark";
-import { memberHome, requireUser } from "@/lib/auth";
+import { agentTokenStatus } from "@/lib/agent/tokens";
+import { requireUser } from "@/lib/auth";
+import { withDb } from "@/lib/db/open";
 import { displayAvatarUrl } from "@/lib/directory";
 
-export const metadata = { title: "Profile" };
+export const metadata = { title: "You're in" };
 
-/** The signed-in member, read from BotDate's database. No second call to X. */
+/** Signed-in home. Stored X photo and handle only. No profile form. */
 export default async function ProfilePage() {
   const member = await requireUser();
   const handle = member.xAccount?.handle ?? "";
   const avatar = displayAvatarUrl(member.xAccount?.avatarUrl);
+  const status = await withDb((db) => agentTokenStatus(db, member.id));
 
   return (
-    <main className="content solo" data-testid="own-profile">
-      <header className="page-head">
-        <p className="wordmark splash">
-          <Wordmark />
+    <main className="youre-in" data-testid="post-login-card">
+      <p className="wordmark">
+        <Wordmark />
+      </p>
+      <h1>You're in 💘</h1>
+      <p className="lede">🔒 Only you see this. Your bot does the rest.</p>
+      {avatar ? <img className="x-face" src={avatar} alt="" data-testid="x-profile-photo" /> : null}
+      {handle ? (
+        <p className="handle-line" data-testid="x-handle">
+          @{handle}
         </p>
-        <Portrait name={member.displayName} accent={member.profile.accent} imageUrl={avatar} />
-        <h1>{member.displayName}</h1>
-        {handle ? <p className="handle-line">@{handle}</p> : null}
-        <p className="lede">{member.profile.bio}</p>
-      </header>
-      <Link className="btn primary wide" href={memberHome(member)}>
-        Continue
-      </Link>
+      ) : null}
+      <form action={issueAgentTokenAction}>
+        <input type="hidden" name="next" value="profile" />
+        <SubmitButton className="btn primary wide" pendingLabel="Connecting…" testId="connect-grok-bot">
+          Connect your Grok Bot
+        </SubmitButton>
+      </form>
+      <p className="bot-status" data-testid="bot-status">
+        {status.active ? "Bot connected" : "Not connected"}
+      </p>
     </main>
   );
 }

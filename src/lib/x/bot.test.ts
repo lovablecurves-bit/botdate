@@ -54,7 +54,7 @@ describe("BotDateApp auto-posting", { concurrency: false }, () => {
     assert.equal(openSecret(sealed, SESSION), ACCESS);
     assert.throws(() => openSecret(sealed, "other-secret"), /could not be read/);
     const [version, iv, tag, ciphertext] = sealed.split(".");
-    const flipped = tag?.endsWith("a") ? `${tag.slice(0, -1)}b` : `${tag?.slice(0, -1)}a`;
+    const flipped = tag?.[0] === "A" ? `B${tag.slice(1)}` : `A${tag?.slice(1)}`;
     assert.throws(() => openSecret([version, iv, flipped, ciphertext].join("."), SESSION), /could not be read/);
     assert.throws(() => sealSecret(ACCESS, ""), /SESSION_SECRET/);
   });

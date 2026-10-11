@@ -87,7 +87,7 @@ export async function loginAction(formData: FormData) {
 const AGENT_REVEAL = "botdate_agent_token";
 
 function nextPath(formData: FormData): string {
-  return String(formData.get("next") ?? "") === "profile" ? "/onboarding" : "/connect";
+  return String(formData.get("next") ?? "") === "profile" ? "/profile" : "/connect";
 }
 
 function rethrowRedirect(error: unknown): void {
