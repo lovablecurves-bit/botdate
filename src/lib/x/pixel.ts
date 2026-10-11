@@ -4,9 +4,11 @@ export const X_PIXEL_SRC = "https://static.ads-twitter.com/uwt.js";
 export const X_PIXEL_SCRIPT_ID = "x-pixel-base";
 export const X_SIGN_IN_PIXEL_PARAM = "xp";
 export const X_SIGN_IN_PIXEL_VALUE = "signed_in";
+export const X_SIGN_UP_PIXEL_PARAM = "xu";
+export const X_SIGN_UP_PIXEL_VALUE = "signed_up";
 
 export const X_PIXEL_EVENT = {
-  waitlist_joined: "waitlist_joined",
+  signed_up: "signed_up",
   signed_in_with_x: "signed_in_with_x",
 } as const;
 
@@ -31,7 +33,7 @@ export function xPixelId(): string | null {
 }
 
 export function xPixelEventId(event: XPixelEvent): string | null {
-  const eventRaw = event === "waitlist_joined" ? process.env.NEXT_PUBLIC_X_EVT_WAITLIST : process.env.NEXT_PUBLIC_X_EVT_SIGNIN;
+  const eventRaw = event === "signed_up" ? process.env.NEXT_PUBLIC_X_EVT_SIGNUP : process.env.NEXT_PUBLIC_X_EVT_SIGNIN;
   return readXPixelEventId(process.env.NEXT_PUBLIC_X_PIXEL_ID, eventRaw);
 }
 

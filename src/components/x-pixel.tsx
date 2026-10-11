@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import {
   X_SIGN_IN_PIXEL_PARAM,
   X_SIGN_IN_PIXEL_VALUE,
+  X_SIGN_UP_PIXEL_PARAM,
+  X_SIGN_UP_PIXEL_VALUE,
   ensureXPixel,
   fireXPixelEvent,
   xPixelId,
@@ -27,13 +29,22 @@ export function XPixelConversion({ event, dedupe }: { event: XPixelEvent; dedupe
   return null;
 }
 
-/** signed_in_with_x, only after the X callback adds the one-time query param. */
+/** signed_in_with_x after every X callback, and signed_up only when that callback created the account. */
 export function XPixelSignIn() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get(X_SIGN_IN_PIXEL_PARAM) !== X_SIGN_IN_PIXEL_VALUE) return;
-    fireXPixelEvent("signed_in_with_x", X_SIGN_IN_PIXEL_VALUE);
-    params.delete(X_SIGN_IN_PIXEL_PARAM);
+    let changed = false;
+    if (params.get(X_SIGN_UP_PIXEL_PARAM) === X_SIGN_UP_PIXEL_VALUE) {
+      fireXPixelEvent("signed_up", X_SIGN_UP_PIXEL_VALUE);
+      params.delete(X_SIGN_UP_PIXEL_PARAM);
+      changed = true;
+    }
+    if (params.get(X_SIGN_IN_PIXEL_PARAM) === X_SIGN_IN_PIXEL_VALUE) {
+      fireXPixelEvent("signed_in_with_x", X_SIGN_IN_PIXEL_VALUE);
+      params.delete(X_SIGN_IN_PIXEL_PARAM);
+      changed = true;
+    }
+    if (!changed) return;
     const query = params.toString();
     const next = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
     window.history.replaceState(null, "", next);

@@ -230,6 +230,7 @@ test("signing in with X creates an unlocked member and refreshes the avatar with
     avatarUrl: "https://pbs.twimg.com/profile_images/a/b_400x400.jpg",
   });
   assert.equal(first.locked, false);
+  assert.equal(first.created, true);
   const member = getMember(ctx, first.userId);
   assert.equal(member?.displayName, "Ada Lovelace");
   assert.equal(member?.profile.bio, "Analytical.");
@@ -239,13 +240,14 @@ test("signing in with X creates an unlocked member and refreshes the avatar with
   assert.equal(member?.memberNumber, 1);
   assert.equal(member?.connectSeen, false);
 
-  upsertXMember(ctx, {
+  const again = upsertXMember(ctx, {
     xUserId: "42",
     handle: "ada",
     name: "Ada",
     bio: "Still analytical.",
     avatarUrl: "https://pbs.twimg.com/profile_images/a/c_400x400.jpg",
   });
+  assert.equal(again.created, false);
   const refreshed = getMember(ctx, first.userId);
   assert.equal(refreshed?.displayName, "Ada");
   assert.equal(refreshed?.profile.bio, "Still analytical.");

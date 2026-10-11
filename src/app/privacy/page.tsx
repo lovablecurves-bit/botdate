@@ -65,9 +65,10 @@ export default function PrivacyPage() {
         <h2>X Pixel</h2>
         <p>
           When an X Pixel id is configured, BotDate loads the X Pixel and can send two conversion events:
-          waitlist_joined when you join the waitlist, and signed_in_with_x when you sign in with X. An event is sent
-          only when its event id is also configured. When no pixel id is set, the tag is not loaded and those events
-          are not sent. The pixel does not receive your email address or X profile.
+          signed_up when Sign in with X creates your account, and signed_in_with_x when you sign in with X. signed_up
+          is sent only for that new account, not on a later sign-in, and not when the account could not be stored. An
+          event is sent only when its event id is also configured. When no pixel id is set, the tag is not loaded and
+          those events are not sent. The pixel does not receive your email address or X profile.
         </p>
       </section>
       <section>

@@ -19,7 +19,13 @@ import { upsertXMember } from "@/lib/x/account";
 import { xCredentials } from "@/lib/x/config";
 import { finishBotOAuthCallback, isBotOAuthCallback } from "@/lib/x/bot-callback";
 import { XAuthError, exchangeAuthorizationCode, fetchXProfile, logOAuthCallbackError, readOAuthCallbackError } from "@/lib/x/oauth";
-import { X_SIGN_IN_PIXEL_PARAM, X_SIGN_IN_PIXEL_VALUE, xPixelEventId } from "@/lib/x/pixel";
+import {
+  X_SIGN_IN_PIXEL_PARAM,
+  X_SIGN_IN_PIXEL_VALUE,
+  X_SIGN_UP_PIXEL_PARAM,
+  X_SIGN_UP_PIXEL_VALUE,
+  xPixelEventId,
+} from "@/lib/x/pixel";
 import type { XProfile } from "@/lib/x/profile";
 
 export const runtime = "nodejs";
@@ -70,9 +76,11 @@ export async function GET(request: Request) {
   try {
     const accessToken = await exchangeAuthorizationCode(credentials, code, verifier);
     const profile = await fetchXProfile(accessToken);
-    const member = await memberFromSignIn(profile);
+    const signedIn = await memberFromSignIn(profile);
+    const member = signedIn.member;
     const dest = new URL(safePostLoginPath(memberHome(member)), request.url);
     if (xPixelEventId("signed_in_with_x")) dest.searchParams.set(X_SIGN_IN_PIXEL_PARAM, X_SIGN_IN_PIXEL_VALUE);
+    if (signedIn.created && xPixelEventId("signed_up")) dest.searchParams.set(X_SIGN_UP_PIXEL_PARAM, X_SIGN_UP_PIXEL_VALUE);
     const response = NextResponse.redirect(dest);
     response.cookies.set(SESSION_COOKIE, signSession(claimsFromMember(member)), sessionCookieOptions(secure));
     return clearOauth(response, secure);
@@ -90,13 +98,16 @@ async function memberFromSignIn(profile: XProfile) {
   try {
     const saved = await withDb((db) => {
       const upserted = upsertXMember(db, profile);
-      return getMember(db, upserted.userId);
+      const member = getMember(db, upserted.userId);
+      return member ? { member, created: upserted.created } : null;
     });
     if (saved) return saved;
   } catch (error) {
     console.error("Could not store the X member; signing in from the profile snapshot.", error);
   }
-  return memberFromClaims(
+  return {
+    created: false,
+    member: memberFromClaims(
     claimsFromMember({
       id: `x_${profile.xUserId}`,
       email: `x_${profile.xUserId}@x.botdate`,
@@ -133,5 +144,6 @@ async function memberFromSignIn(profile: XProfile) {
       stripeSubscriptionId: null,
       subscriptionStatus: null,
     }),
-  );
+    ),
+  };
 }

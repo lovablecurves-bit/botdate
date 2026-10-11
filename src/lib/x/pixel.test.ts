@@ -21,15 +21,16 @@ test("X Pixel base code and conversion events are a no-op when unset", () => {
   assert.ok(source);
   assert.match(source, new RegExp(X_PIXEL_SRC.replace(/\./g, "\\.")));
   assert.match(source, /twq\('config','o8z4h'\)/);
+  assert.equal(source.includes("signed_up"), false);
   assert.equal(source.includes("waitlist_joined"), false);
 
   const previous = {
     NEXT_PUBLIC_X_PIXEL_ID: process.env.NEXT_PUBLIC_X_PIXEL_ID,
-    NEXT_PUBLIC_X_EVT_WAITLIST: process.env.NEXT_PUBLIC_X_EVT_WAITLIST,
+    NEXT_PUBLIC_X_EVT_SIGNUP: process.env.NEXT_PUBLIC_X_EVT_SIGNUP,
     NEXT_PUBLIC_X_EVT_SIGNIN: process.env.NEXT_PUBLIC_X_EVT_SIGNIN,
   };
   delete process.env.NEXT_PUBLIC_X_PIXEL_ID;
-  delete process.env.NEXT_PUBLIC_X_EVT_WAITLIST;
+  delete process.env.NEXT_PUBLIC_X_EVT_SIGNUP;
   delete process.env.NEXT_PUBLIC_X_EVT_SIGNIN;
   const calls: unknown[][] = [];
   const storage = new Map<string, string>();
@@ -44,17 +45,17 @@ test("X Pixel base code and conversion events are a no-op when unset", () => {
     },
   });
   try {
-    assert.equal(fireXPixelEvent("waitlist_joined", "code1"), false);
+    assert.equal(fireXPixelEvent("signed_up", "signed_up"), false);
     assert.equal(calls.length, 0);
 
     process.env.NEXT_PUBLIC_X_PIXEL_ID = "o8z4h";
-    process.env.NEXT_PUBLIC_X_EVT_WAITLIST = "tw-o8z4h-wait";
+    process.env.NEXT_PUBLIC_X_EVT_SIGNUP = "tw-o8z4h-signup";
     process.env.NEXT_PUBLIC_X_EVT_SIGNIN = "tw-o8z4h-signin";
-    assert.equal(fireXPixelEvent("waitlist_joined", "code1"), true);
-    assert.equal(fireXPixelEvent("waitlist_joined", "code1"), false);
+    assert.equal(fireXPixelEvent("signed_up", "signed_up"), true);
+    assert.equal(fireXPixelEvent("signed_up", "signed_up"), false);
     assert.equal(fireXPixelEvent("signed_in_with_x", "signed_in"), true);
     assert.deepEqual(calls, [
-      ["event", "tw-o8z4h-wait"],
+      ["event", "tw-o8z4h-signup"],
       ["event", "tw-o8z4h-signin"],
     ]);
   } finally {
@@ -68,10 +69,13 @@ test("X Pixel base code and conversion events are a no-op when unset", () => {
 
   const privacy = fs.readFileSync(new URL("../../app/privacy/page.tsx", import.meta.url), "utf8");
   assert.match(privacy, /X Pixel/);
-  assert.match(privacy, /waitlist_joined/);
+  assert.match(privacy, /signed_up/);
   assert.match(privacy, /signed_in_with_x/);
+  assert.equal(privacy.includes("waitlist_joined"), false);
   const callback = fs.readFileSync(new URL("../../app/api/auth/x/callback/route.ts", import.meta.url), "utf8");
   assert.match(callback, /xPixelEventId\("signed_in_with_x"\)/);
+  assert.match(callback, /signedIn\.created && xPixelEventId\("signed_up"\)/);
   const login = fs.readFileSync(new URL("../../app/login/page.tsx", import.meta.url), "utf8");
-  assert.match(login, /event="waitlist_joined"/);
+  assert.equal(login.includes("waitlist_joined"), false);
+  assert.equal(login.includes("XPixelConversion"), false);
 });

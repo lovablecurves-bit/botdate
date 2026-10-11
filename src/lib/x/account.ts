@@ -77,7 +77,10 @@ export function markConnectSeen(ctx: BotDateDb, userId: string) {
   ctx.db.update(users).set({ connectSeen: true }).where(eq(users.id, userId)).run();
 }
 
-export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: string; locked: boolean; connectSeen: boolean } {
+export function upsertXMember(
+  ctx: BotDateDb,
+  profile: XProfile,
+): { userId: string; locked: boolean; connectSeen: boolean; created: boolean } {
   const existing = ctx.db.select().from(users).where(eq(users.xUserId, profile.xUserId)).get();
   const name = clip(profile.name, 60) || profile.handle;
   const bio = clip(profile.bio, 500);
@@ -97,7 +100,7 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
       ctx.db.update(profiles).set({ bio }).where(eq(profiles.userId, existing.id)).run();
     }
     ensureRealMemberNumbers(ctx);
-    return { userId: existing.id, locked, connectSeen: Boolean(member?.connectSeen) };
+    return { userId: existing.id, locked, connectSeen: Boolean(member?.connectSeen), created: false };
   }
 
   const id = `x_${profile.xUserId}`;
@@ -154,5 +157,5 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
     })
     .run();
   ensureRealMemberNumbers(ctx);
-  return { userId: id, locked: false, connectSeen: false };
+  return { userId: id, locked: false, connectSeen: false, created: true };
 }
