@@ -4,9 +4,6 @@ const OPEN = [
   /^\/admin\/x\/connected\/?$/,
   /^\/api\/agent(?:\/|$)/,
   /^\/api\/mcp(?:\/|$)/,
-  /^\/\.well-known\/oauth-authorization-server\/?$/,
-  /^\/\.well-known\/oauth-protected-resource(?:\/api\/mcp)?\/?$/,
-  /^\/oauth\/(?:authorize|token|register)\/?$/,
   /^\/api\/stripe\/webhook\/?$/,
   /^\/api\/health\/?$/,
   /^\/privacy\/?$/,
@@ -23,6 +20,10 @@ const STATIC =
 /** Routes that authenticate themselves, or do not use the demo session cookie. */
 export function isOpenPath(pathname: string): boolean {
   if (pathname === "/") return true;
+  // MCP OAuth discovery and the authorize/token/register endpoints. A dot in
+  // /.well-known must not fall through to the login redirect.
+  if (pathname === "/.well-known" || pathname.startsWith("/.well-known/")) return true;
+  if (pathname === "/oauth" || pathname.startsWith("/oauth/")) return true;
   if (STATIC.test(pathname)) return true;
   return OPEN.some((pattern) => pattern.test(pathname));
 }
