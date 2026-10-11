@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Outfit } from "next/font/google";
+import { XPixel, XPixelSignIn } from "@/components/x-pixel";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -31,7 +32,11 @@ export const runtime = "nodejs";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${outfit.variable} ${fraunces.variable}`}>
-      <body className={outfit.className}>{children}</body>
+      <body className={outfit.className}>
+        <XPixel />
+        <XPixelSignIn />
+        {children}
+      </body>
     </html>
   );
 }

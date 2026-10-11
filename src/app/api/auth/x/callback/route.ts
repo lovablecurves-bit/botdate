@@ -19,6 +19,7 @@ import { upsertXMember } from "@/lib/x/account";
 import { xCredentials } from "@/lib/x/config";
 import { finishBotOAuthCallback, isBotOAuthCallback } from "@/lib/x/bot-callback";
 import { XAuthError, exchangeAuthorizationCode, fetchXProfile, logOAuthCallbackError, readOAuthCallbackError } from "@/lib/x/oauth";
+import { X_SIGN_IN_PIXEL_PARAM, X_SIGN_IN_PIXEL_VALUE, xPixelEventId } from "@/lib/x/pixel";
 import type { XProfile } from "@/lib/x/profile";
 
 export const runtime = "nodejs";
@@ -71,6 +72,7 @@ export async function GET(request: Request) {
     const profile = await fetchXProfile(accessToken);
     const member = await memberFromSignIn(profile);
     const dest = new URL(safePostLoginPath(memberHome(member)), request.url);
+    if (xPixelEventId("signed_in_with_x")) dest.searchParams.set(X_SIGN_IN_PIXEL_PARAM, X_SIGN_IN_PIXEL_VALUE);
     const response = NextResponse.redirect(dest);
     response.cookies.set(SESSION_COOKIE, signSession(claimsFromMember(member)), sessionCookieOptions(secure));
     return clearOauth(response, secure);

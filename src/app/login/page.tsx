@@ -3,6 +3,7 @@ import { joinWaitlistAction, loginAction, resetDemoAction } from "@/app/actions"
 import { Portrait } from "@/components/person";
 import { Wordmark } from "@/components/wordmark";
 import { Banner } from "@/components/banner";
+import { XPixelConversion } from "@/components/x-pixel";
 import { CopyLink } from "@/components/copy-link";
 import { SubmitButton } from "@/components/submit-button";
 import { DEMO_NOTES, DEMO_ORDER } from "@/lib/demo/members";
@@ -61,6 +62,7 @@ export default async function LoginPage({
         </div>
         {joined && shareUrl ? (
           <div className="stack tight" data-testid="waitlist-confirm">
+            {already === "1" ? null : <XPixelConversion event="waitlist_joined" dedupe={joined.referralCode} />}
             <p className="waitlist-position">You're #{joined.position}</p>
             {already === "1" ? <p className="help">This email is already on the list.</p> : <p className="help">We'll hold your spot.</p>}
             <a className="btn primary wide" href={joinedWaitlistIntent(joined.referralCode)} target="_blank" rel="noopener noreferrer" data-testid="share-waitlist">
