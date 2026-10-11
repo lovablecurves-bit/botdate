@@ -64,6 +64,18 @@ test("the old waitlist URL redirects to the public homepage and keeps a referral
 test("the public homepage offers Sign in with X and no waitlist", () => {
   const root = path.resolve(import.meta.dirname, "../../..");
   const files = ["src/app/page.tsx", "src/app/login/page.tsx", "src/components/sign-in-screen.tsx", "src/app/profile/page.tsx"];
+  const profile = fs.readFileSync(path.join(root, "src/app/profile/page.tsx"), "utf8");
+  assert.match(profile, /You're in 💘/);
+  assert.match(profile, /🔒 Only you see this\. Your bot does the rest\./);
+  assert.match(profile, /data-testid="x-profile-photo"/);
+  assert.match(profile, /data-testid="x-handle"/);
+  assert.match(profile, /Connect your Grok Bot/);
+  assert.match(profile, /data-testid="bot-status"/);
+  assert.equal(profile.includes("About you"), false);
+  assert.equal(profile.includes("member.profile.bio"), false);
+  const onboard = fs.readFileSync(path.join(root, "src/app/(app)/onboarding/page.tsx"), "utf8");
+  assert.match(onboard, /redirect\("\/profile"\)/);
+  assert.equal(onboard.includes("About you"), false);
   const screen = fs.readFileSync(path.join(root, "src/components/sign-in-screen.tsx"), "utf8");
   assert.match(screen, /Sign in with X/);
   assert.match(screen, /data-testid="sign-in-x"/);

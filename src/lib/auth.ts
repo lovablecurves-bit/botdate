@@ -23,21 +23,18 @@ export function needsConnectPrompt(member: Member): boolean {
 
 /**
  * Where a signed-in member goes after X, checkout, or the home page.
- * Connect your Grok Bot, then the profile form, then the shortlist.
- * Never the logged-out home.
+ * One card: logo, X photo, handle, and connect. Never the logged-out home.
  */
 export function memberHome(member: Member): string {
   if (needsPaywall(member)) return "/join";
-  if (needsConnectPrompt(member)) return "/connect";
-  if (!member.prefs.locked) return "/onboarding";
-  return "/shortlist";
+  return "/profile";
 }
 
 /** Refuse a post-login redirect that would dump the member on the signed-out home. */
 export function safePostLoginPath(path: string): string {
-  if (path === "/join" || path === "/connect" || path === "/onboarding" || path === "/shortlist") return path;
+  if (path === "/join" || path === "/profile" || path === "/connect" || path === "/onboarding" || path === "/shortlist") return path;
   if (/^\/members\/[A-Za-z0-9_-]+$/.test(path)) return path;
-  return "/connect";
+  return "/profile";
 }
 
 async function requestIsSecure(): Promise<boolean> {
@@ -77,8 +74,8 @@ export async function requireUser(): Promise<Member> {
 
 export async function requireOnboarded(): Promise<Member> {
   const member = await requireUser();
-  if (needsConnectPrompt(member)) redirect("/connect");
-  if (!member.prefs.locked) redirect("/onboarding");
+  if (needsConnectPrompt(member)) redirect("/profile");
+  if (!member.prefs.locked) redirect("/profile");
   return member;
 }
 

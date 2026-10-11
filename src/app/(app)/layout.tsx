@@ -13,7 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const member = await requireUser();
   const pathname = (await headers()).get("x-pathname") ?? "";
   if (isFounderAccount(member) && pathname === "/subscribe") redirect("/onboarding");
-  if (needsConnectPrompt(member) && pathname && pathname !== "/connect") redirect("/connect");
+  if (needsConnectPrompt(member) && pathname && pathname !== "/connect" && pathname !== "/profile") redirect("/profile");
   const paywalled = needsPaywall(member) || membershipRequired(member);
   const paywallAllowed = pathname === "/subscribe" || pathname === "/onboarding" || pathname === "/connect";
   if (paywalled && pathname && !paywallAllowed) redirect(membershipRequired(member) ? "/join" : "/subscribe");
