@@ -19,10 +19,16 @@ function auth(token: string) {
   return `Bearer ${token}`;
 }
 
-test("agent routes and the X callback are outside the demo session gate", () => {
+test("agent routes, the X callback, and the legal pages are outside the demo session gate", () => {
   assert.equal(isOpenPath("/api/agent/v1/me"), true);
   assert.equal(isOpenPath("/api/mcp"), true);
   assert.equal(isOpenPath("/api/auth/x/callback"), true);
+  assert.equal(isOpenPath("/privacy"), true);
+  assert.equal(isOpenPath("/privacy/"), true);
+  assert.equal(isOpenPath("/terms"), true);
+  assert.equal(isOpenPath("/terms/"), true);
+  assert.equal(isOpenPath("/privacy-policy"), false);
+  assert.equal(isOpenPath("/members"), false);
   assert.equal(isOpenPath("/shortlist"), false);
   assert.equal(isOpenPath("/login"), false);
 });
