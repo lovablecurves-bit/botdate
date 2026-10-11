@@ -42,10 +42,8 @@ export function normalizeReferralCode(value: string | null | undefined): string 
   return ref;
 }
 
-export function peopleWaitingLabel(count: number): string {
-  const n = Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
-  return `${n} ${n === 1 ? "person" : "people"} waiting`;
-}
+/** Shown on the public waitlist. No count and no place in line. */
+export const PUBLIC_WAITLIST_LINE = "Invite-only · Austin opening first";
 
 export function founderMayExport(member: { founder: boolean } | null | undefined): boolean {
   return member?.founder === true;

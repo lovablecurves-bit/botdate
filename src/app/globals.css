@@ -661,6 +661,37 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .status-list { display: flex; flex-direction: column; gap: 6px; }
 .status-list li { padding-left: 0; }
 
+.onboarding-progress { padding-top: 4px; }
+.meter {
+  height: 10px;
+  background: var(--wash);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--pop);
+  border-radius: inherit;
+}
+.question-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.question-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+.question-list li span:first-child { text-transform: capitalize; }
+.question-list .done { color: var(--good); text-align: right; }
+.question-list .todo { color: var(--ink-soft); }
+
 @media (min-width: 420px) {
   .grid-2 { grid-template-columns: 1fr 1fr; }
 }

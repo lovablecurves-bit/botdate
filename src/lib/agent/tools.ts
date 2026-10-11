@@ -9,9 +9,11 @@ import {
   listShortlist,
   passOffer,
   proposeHeldDate,
+  saveOnboardingAnswers,
   sendBotNote,
   type BotProfilePatch,
 } from "../domain";
+import { onboardingBlock, onboardingView } from "../onboarding";
 import { representedBy } from "../labels";
 import { matchIdFor, type Intent, type KidsStance, type Member, type SmokingFilter } from "../types";
 import type { AgentResponse } from "./dispatch";
@@ -207,9 +209,32 @@ function profilePatch(args: Record<string, unknown>): BotProfilePatch | { error:
   return patch;
 }
 
+function onboardingError(member: Member): AgentResponse | null {
+  const block = onboardingBlock(member.onboarding);
+  if (!block) return null;
+  return { status: 400, body: block };
+}
+
 export function callTool(ctx: BotDateDb, member: Member, name: string, args: Record<string, unknown>): AgentResponse | null {
+  if (name === "get_onboarding") {
+    return { status: 200, body: onboardingView(member.onboarding) };
+  }
+  if (name === "submit_onboarding_answers") {
+    const result = saveOnboardingAnswers(ctx, member.id, args);
+    if (!result.ok) return { status: 400, body: { error: result.error } };
+    return { status: 200, body: { saved: result.saved, ...result.view } };
+  }
   if (name === "get_my_profile") {
-    return { status: 200, body: { member: profileBody(member, true) } };
+    const view = onboardingView(member.onboarding);
+    return {
+      status: 200,
+      body: {
+        member: profileBody(member, true),
+        profile_complete: view.profile_complete,
+        missing: view.missing,
+        instructions: view.instructions,
+      },
+    };
   }
   if (name === "update_my_profile" || name === "update_preferences") {
     const patch = profilePatch(args);
@@ -220,6 +245,10 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
     return { status: 200, body: { member: updated ? profileBody(updated, true) : null } };
   }
   if (name === "browse_members" || name === "get_shortlist") {
+    if (name === "browse_members") {
+      const blocked = onboardingError(member);
+      if (blocked) return blocked;
+    }
     if (name === "get_shortlist") {
       const list = listShortlist(ctx, member.id);
       return {
@@ -260,6 +289,8 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
     return { status: 200, body: { member: profileBody(person, false) } };
   }
   if (name === "send_bot_message" || name === "send_desk_message") {
+    const blocked = onboardingError(member);
+    if (blocked) return blocked;
     const body = text(args.body);
     if (body === undefined) return { status: 400, body: { error: "Send a body." } };
     const matchId = text(args.matchId) || (text(args.memberId) ? matchIdFor(member.id, text(args.memberId) as string) : "");
@@ -280,6 +311,8 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
     return { status: 200, body: { inbox: listBotInbox(ctx, member.id, matchId) } };
   }
   if (name === "propose_date") {
+    const blocked = onboardingError(member);
+    if (blocked) return blocked;
     const matchId = text(args.matchId) || (text(args.memberId) ? matchIdFor(member.id, text(args.memberId) as string) : "");
     const local = text(args.local);
     const place = text(args.place);

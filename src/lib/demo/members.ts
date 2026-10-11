@@ -1,3 +1,4 @@
+import { demoOnboarding } from "../onboarding";
 import type { Intent, KidsStance, Member, Prefs, Profile, Voice } from "../types";
 
 const SHE: Voice = { subject: "she", object: "her", possessive: "her" };
@@ -42,6 +43,15 @@ function member(seed: Seed): Member {
     botPaused: false,
     profile,
     prefs: { ...seed.prefs, locked: seed.prefs.locked !== false },
+    onboarding: demoOnboarding({
+      city: seed.city,
+      pronouns: seed.pronouns,
+      smoking: seed.smoking,
+      kids: seed.kids,
+      intent: seed.intent,
+      ageMin: seed.prefs.ageMin,
+      ageMax: seed.prefs.ageMax,
+    }),
     xAccount: null,
     founder: false,
     memberNumber: null,

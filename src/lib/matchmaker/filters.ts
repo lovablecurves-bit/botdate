@@ -1,3 +1,4 @@
+import { phraseHits, profileSearchText } from "../onboarding";
 import type { KidsFilter, KidsStance, Member, Prefs, Profile } from "../types";
 
 export type FilterKey = "age" | "city" | "smoking" | "kids" | "intent";
@@ -19,6 +20,12 @@ export const HOLD_LABELS: Record<string, string> = {
   "their-smoking": "You don't clear their smoking dealbreaker",
   "their-kids": "You don't clear their kids dealbreaker",
   "their-intent": "You don't clear their intent dealbreaker",
+  "must-have": "Doesn't meet a must-have",
+  dealbreaker: "Hits a dealbreaker",
+  distance: "Outside your max distance",
+  "their-must-have": "You don't meet a must-have of theirs",
+  "their-dealbreaker": "You hit one of their dealbreakers",
+  "their-distance": "You are outside their max distance",
   inactive: "Hasn't locked dealbreakers",
 };
 
@@ -72,13 +79,88 @@ export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterChe
   ];
 }
 
+const PLACE_MILES: [string, string, number][] = [
+  ["san francisco", "oakland", 12],
+  ["san francisco", "berkeley", 14],
+  ["san francisco", "los angeles", 380],
+  ["oakland", "berkeley", 10],
+  ["oakland", "los angeles", 370],
+  ["berkeley", "los angeles", 375],
+];
+
+const PLACE_ALIASES: Record<string, string> = {
+  sf: "san francisco",
+  "san fran": "san francisco",
+  la: "los angeles",
+  oak: "oakland",
+};
+
+function canonPlace(value: string): string {
+  const raw = value.trim().toLowerCase().replace(/\s+/g, " ");
+  const aliased = PLACE_ALIASES[raw] ?? raw;
+  const head = aliased.split(",")[0]?.trim() ?? aliased;
+  return PLACE_ALIASES[head] ?? head;
+}
+
+function placeOf(member: Member): string {
+  return canonPlace(member.onboarding.location || member.profile.city || "");
+}
+
+/** Miles between two places, or null when the pair is not in the local table. */
+export function milesBetween(a: string, b: string): number | null {
+  const left = canonPlace(a);
+  const right = canonPlace(b);
+  if (!left || !right) return null;
+  if (left === right) return 0;
+  const row = PLACE_MILES.find(([from, to]) => (from === left && to === right) || (from === right && to === left));
+  return row ? row[2] : null;
+}
+
+function withinMaxDistance(viewer: Member, candidate: Member): boolean {
+  const max = viewer.onboarding.maxDistanceMiles;
+  if (max == null) return false;
+  const miles = milesBetween(placeOf(viewer), placeOf(candidate));
+  return miles != null && miles <= max;
+}
+
+function firstStructuredMiss(viewer: Member, candidate: Member): FilterKey | null {
+  for (const check of evaluateHardFilters(viewer.prefs, candidate.profile)) {
+    if (check.pass) continue;
+    if (check.key === "city" && withinMaxDistance(viewer, candidate)) continue;
+    return check.key;
+  }
+  return null;
+}
+
+function phraseHold(viewer: Member, candidate: Member): "must-have" | "dealbreaker" | null {
+  const corpus = profileSearchText(candidate);
+  for (const phrase of viewer.onboarding.mustHaves ?? []) {
+    if (!phraseHits(corpus, phrase)) return "must-have";
+  }
+  for (const phrase of viewer.onboarding.dealbreakers ?? []) {
+    if (phraseHits(corpus, phrase)) return "dealbreaker";
+  }
+  return null;
+}
+
+function distanceMiss(viewer: Member, candidate: Member): boolean {
+  if (viewer.onboarding.maxDistanceMiles == null) return false;
+  return !withinMaxDistance(viewer, candidate);
+}
+
 /** First reason a pair should stay off the shortlist, or null when both sides clear. */
 export function primaryHold(viewer: Member, candidate: Member): string | null {
   if (!viewer.prefs.locked || !candidate.prefs.locked) return "inactive";
-  const mine = evaluateHardFilters(viewer.prefs, candidate.profile).find((check) => !check.pass);
-  if (mine) return mine.key;
-  const theirs = evaluateHardFilters(candidate.prefs, viewer.profile).find((check) => !check.pass);
-  if (theirs) return `their-${theirs.key}`;
+  const mine = firstStructuredMiss(viewer, candidate);
+  if (mine) return mine;
+  const theirs = firstStructuredMiss(candidate, viewer);
+  if (theirs) return `their-${theirs}`;
+  const phrase = phraseHold(viewer, candidate);
+  if (phrase) return phrase;
+  const theirPhrase = phraseHold(candidate, viewer);
+  if (theirPhrase) return `their-${theirPhrase}`;
+  if (distanceMiss(viewer, candidate)) return "distance";
+  if (distanceMiss(candidate, viewer)) return "their-distance";
   return null;
 }
 

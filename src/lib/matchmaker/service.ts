@@ -21,6 +21,8 @@ export class MatchmakerBotService {
       .filter((check) => check.pass)
       .map((check) => check.detail);
     why.push("Clears their dealbreakers too");
+    if ((viewer.onboarding.mustHaves ?? []).length) why.push("Meets your must-haves");
+    if ((viewer.onboarding.dealbreakers ?? []).length) why.push("Clears your written dealbreakers");
     const soft = softRank(viewer, candidate);
     return { score: soft.score, why, rankNotes: soft.notes };
   }

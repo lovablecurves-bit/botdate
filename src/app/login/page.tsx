@@ -11,7 +11,7 @@ import { listRoster } from "@/lib/domain";
 import { joinedWaitlistIntent, waitlistIntent, waitlistReferralUrl } from "@/lib/share";
 import { paywallCopy } from "@/lib/stripe/access";
 import { stripeConfig, trialDays } from "@/lib/stripe/config";
-import { findWaitlistByCode, normalizeReferralCode, peopleWaitingLabel, waitlistCount } from "@/lib/waitlist";
+import { findWaitlistByCode, normalizeReferralCode, PUBLIC_WAITLIST_LINE } from "@/lib/waitlist";
 import { xAuthConfigured } from "@/lib/x/config";
 import { loginErrorText } from "@/lib/x/oauth";
 
@@ -31,7 +31,6 @@ export default async function LoginPage({
   const ref = normalizeReferralCode(refParam);
   const joinedCode = normalizeReferralCode(joinedParam);
   const snapshot = await withDb((db) => ({
-    count: waitlistCount(db),
     joined: joinedCode ? findWaitlistByCode(db, joinedCode) : null,
     roster: xReady ? [] : listRoster(db),
   }));
@@ -55,13 +54,12 @@ export default async function LoginPage({
       <section className="waitlist-card" aria-labelledby="waitlist-title" data-testid="waitlist">
         <div>
           <h2 id="waitlist-title">{joined ? "You're on the list" : "Join the waitlist"}</h2>
-          <p className="waitlist-count" data-testid="waitlist-count">
-            {peopleWaitingLabel(snapshot.count)}
+          <p className="waitlist-count" data-testid="waitlist-status">
+            {PUBLIC_WAITLIST_LINE}
           </p>
         </div>
         {joined && shareUrl ? (
           <div className="stack tight" data-testid="waitlist-confirm">
-            <p className="waitlist-position">You're #{joined.position}</p>
             {already === "1" ? <p className="help">This email is already on the list.</p> : <p className="help">We'll hold your spot.</p>}
             <a className="btn primary wide" href={joinedWaitlistIntent(joined.referralCode)} target="_blank" rel="noopener noreferrer" data-testid="share-waitlist">
               Share BotDate on X

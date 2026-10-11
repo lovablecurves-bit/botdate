@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
 import { resetDatabase } from "./db/seed";
 import { SYNCED_TABLES, openDatabase } from "./db/open";
@@ -7,7 +9,7 @@ import { guestLoginUrl, isOpenPath } from "./http/public";
 import {
   founderMayExport,
   joinWaitlist,
-  peopleWaitingLabel,
+  PUBLIC_WAITLIST_LINE,
   waitlistCount,
   waitlistCsv,
   waitlistExport,
@@ -26,10 +28,18 @@ test("a guest login redirect keeps a referral code", () => {
   assert.equal(guestLoginUrl("https://botdate.example/members?ref=bad%20code"), "https://botdate.example/login");
 });
 
-test("the public count reads as people waiting", () => {
-  assert.equal(peopleWaitingLabel(0), "0 people waiting");
-  assert.equal(peopleWaitingLabel(1), "1 person waiting");
-  assert.equal(peopleWaitingLabel(12), "12 people waiting");
+test("the public waitlist hides the count and the place in line", () => {
+  assert.equal(PUBLIC_WAITLIST_LINE, "Invite-only · Austin opening first");
+  assert.equal(/\d/.test(PUBLIC_WAITLIST_LINE), false);
+  const root = path.resolve(import.meta.dirname, "../..");
+  const login = fs.readFileSync(path.join(root, "src/app/login/page.tsx"), "utf8");
+  assert.match(login, /PUBLIC_WAITLIST_LINE/);
+  assert.equal(login.includes("You're #"), false);
+  assert.equal(login.includes("waitlistCount"), false);
+  assert.equal(login.includes("people waiting"), false);
+  const route = fs.readFileSync(path.join(root, "src/app/api/waitlist/count/route.ts"), "utf8");
+  assert.equal(route.includes("waitlistCount"), false);
+  assert.match(route, /PUBLIC_WAITLIST_LINE/);
 });
 
 test("joining validates email and handle, blocks duplicates, and tracks referrals", async () => {

@@ -151,6 +151,7 @@ export function upsertXMember(ctx: BotDateDb, profile: XProfile): { userId: stri
       intent: "any",
       niceToHaves: "",
       locked: false,
+      onboarding: "{}",
     })
     .run();
   ensureRealMemberNumbers(ctx);

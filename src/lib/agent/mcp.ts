@@ -1,4 +1,5 @@
 import type { BotDateDb } from "../db/open";
+import { ONBOARDING_INSTRUCTIONS } from "../onboarding";
 import { authenticateAgent } from "./tokens";
 import { callTool } from "./tools";
 
@@ -13,8 +14,54 @@ const PROTOCOL = "2025-03-26";
 
 const TOOLS = [
   {
+    name: "get_onboarding",
+    description:
+      "Call this first. Returns the interview questions, which are answered, the profile_complete flag, and instructions. Interview your human conversationally, one or two questions at a time, in your own words. Do not browse, message, or propose a date until profile_complete is true.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "submit_onboarding_answers",
+    description:
+      "Save onboarding answers. Partial answers are allowed: omit anything the human has not answered yet. Omitted fields stay as they are. Sending a field replaces that field. Ask one or two questions at a time, then submit only those fields.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        datingGoal: { type: "string", enum: ["serious", "marriage", "casual"], description: "What they are looking for." },
+        mustHaves: {
+          type: "array",
+          items: { type: "string" },
+          description: "Phrases that must appear in the other person's profile. Hard filters.",
+        },
+        dealbreakers: {
+          type: "array",
+          items: { type: "string" },
+          description: "Phrases that hide the other person if they appear in their profile. Hard filters.",
+        },
+        ageMin: { type: "integer", description: "Youngest age they want to meet." },
+        ageMax: { type: "integer", description: "Oldest age they want to meet." },
+        location: { type: "string", description: "Where they are based." },
+        maxDistanceMiles: { type: "integer", description: "Farthest they will travel, in miles." },
+        gender: { type: "string" },
+        orientation: { type: "string" },
+        seeking: { type: "string", description: "Who they want to meet." },
+        kidsHave: { type: "string", enum: ["yes", "no"] },
+        kidsWant: { type: "string", enum: ["yes", "no", "open"] },
+        drinking: { type: "string", enum: ["never", "socially", "often"] },
+        smoking: { type: "string", enum: ["no", "sometimes", "yes"], description: "Their own smoking habit, not a filter." },
+        faith: { type: "string" },
+        fitness: { type: "string" },
+        pets: { type: "string" },
+        valuesPolitics: { type: "string", enum: ["low", "medium", "high"], description: "How important shared values and politics are." },
+        loveLanguage: { type: "string" },
+        communicationStyle: { type: "string" },
+        funFacts: { type: "array", items: { type: "string" }, description: "At least two short facts for small talk." },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "get_my_profile",
-    description: "Read this member's profile and preferences. Free-text fields are included.",
+    description: "Read this member's profile and preferences. Call get_onboarding first and finish the interview before browsing, messaging, or proposing a date.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
@@ -123,6 +170,8 @@ const TOOLS = [
   },
 ] as const;
 
+export const MCP_TOOL_NAMES = TOOLS.map((tool) => tool.name);
+
 function rpcError(id: JsonRpc["id"], code: number, message: string) {
   return { jsonrpc: "2.0", id: id ?? null, error: { code, message } };
 }
@@ -159,6 +208,7 @@ export function handleMcp(input: { ctx: BotDateDb; authorization: string | null;
           protocolVersion,
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: "botdate", version: "0.1.0" },
+          instructions: ONBOARDING_INSTRUCTIONS,
         },
       },
     };

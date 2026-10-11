@@ -11,6 +11,7 @@ export const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "users", column: "stripe_subscription_id", ddl: "TEXT" },
   { table: "users", column: "stripe_subscription_status", ddl: "TEXT" },
   { table: "agent_tokens", column: "last_used_at", ddl: "TEXT" },
+  { table: "prefs", column: "onboarding", ddl: "TEXT NOT NULL DEFAULT '{}'" },
 ];
 
 export const X_USER_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_x_user_idx ON users(x_user_id)";

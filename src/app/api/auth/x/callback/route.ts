@@ -123,6 +123,7 @@ async function memberFromSignIn(profile: XProfile) {
         niceToHaves: "",
         locked: false,
       },
+      onboarding: {},
       xAccount: { userId: profile.xUserId, handle: profile.handle, avatarUrl: profile.avatarUrl },
       founder: false,
       memberNumber: null,

@@ -170,6 +170,7 @@ export function memberFromClaims(claims: SessionClaims): Member {
       niceToHaves: "",
       locked: claims.locked,
     },
+    onboarding: {},
     xAccount: handle
       ? { userId: claims.xUserId || claims.id.replace(/^x_/, ""), handle, avatarUrl: claims.avatar }
       : null,

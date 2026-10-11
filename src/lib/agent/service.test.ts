@@ -175,6 +175,8 @@ test("MCP tools/call uses the same token and will not release a date", async () 
     message: { jsonrpc: "2.0", id: 1, method: "tools/list" },
   });
   const tools = ((listed.body as { result: { tools: { name: string }[] } }).result.tools).map((tool) => tool.name);
+  assert.equal(tools.includes("get_onboarding"), true);
+  assert.equal(tools.includes("submit_onboarding_answers"), true);
   assert.equal(tools.includes("get_my_profile"), true);
   assert.equal(tools.includes("update_my_profile"), true);
   assert.equal(tools.includes("browse_members"), true);

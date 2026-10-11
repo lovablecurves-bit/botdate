@@ -50,6 +50,7 @@ export function seed(ctx: BotDateDb) {
         intent: member.prefs.intent,
         niceToHaves: member.prefs.niceToHaves,
         locked: member.prefs.locked,
+        onboarding: JSON.stringify(member.onboarding),
       })
       .run();
   }

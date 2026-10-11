@@ -1,5 +1,47 @@
 export type KidsStance = "wants" | "open" | "doesnt";
 export type Intent = "serious" | "casual";
+export type DatingGoal = "serious" | "marriage" | "casual";
+export type KidsHave = "yes" | "no";
+export type KidsWant = "yes" | "no" | "open";
+export type Drinking = "never" | "socially" | "often";
+export type SmokingHabit = "no" | "sometimes" | "yes";
+export type ValuesImportance = "low" | "medium" | "high";
+
+/** Answers from the conversational onboarding interview. Omitted fields are still unanswered. */
+export type OnboardingAnswers = {
+  datingGoal?: DatingGoal;
+  mustHaves?: string[];
+  dealbreakers?: string[];
+  ageMin?: number;
+  ageMax?: number;
+  location?: string;
+  maxDistanceMiles?: number;
+  gender?: string;
+  orientation?: string;
+  seeking?: string;
+  kidsHave?: KidsHave;
+  kidsWant?: KidsWant;
+  drinking?: Drinking;
+  smoking?: SmokingHabit;
+  faith?: string;
+  fitness?: string;
+  pets?: string;
+  valuesPolitics?: ValuesImportance;
+  loveLanguage?: string;
+  communicationStyle?: string;
+  funFacts?: string[];
+};
+
+export type OnboardingQuestion = {
+  id: string;
+  label: string;
+  fields: string[];
+  prompt: string;
+  answered: boolean;
+  /** Stored value, or the parts filled so far when the question is only partly answered. Null when nothing is stored. */
+  answer: unknown;
+};
+
 export type SmokingFilter = "no" | "any";
 export type KidsFilter = "wants" | "doesnt" | "any";
 export type IntentFilter = Intent | "any";
@@ -51,6 +93,8 @@ export type Member = {
   botPaused: boolean;
   profile: Profile;
   prefs: Prefs;
+  /** Conversational interview the member's bot collects before it can browse or propose. */
+  onboarding: OnboardingAnswers;
   xAccount: XAccount | null;
   /** First real X member. Demo profiles are never the founder. */
   founder: boolean;

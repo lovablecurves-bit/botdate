@@ -46,6 +46,7 @@ function member(overrides: Partial<Member> = {}): Member {
       niceToHaves: "",
       locked: true,
     },
+    onboarding: {},
     xAccount: { userId: "2", handle: "ada", avatarUrl: "" },
     founder: false,
     memberNumber: 2,

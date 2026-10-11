@@ -4,6 +4,7 @@ import { botThreads, dateProposals, matches, messages, prefs, profiles, users } 
 import { DEMO_ORDER } from "./demo/members";
 import { SCRIPTS } from "./demo/scripts";
 import { HOLD_LABELS, mutualPass, primaryHold } from "./matchmaker/filters";
+import { kidsWantToStance, mergeOnboarding, onboardingView, parseOnboardingJson, type OnboardingView } from "./onboarding";
 import { matchmaker } from "./matchmaker/service";
 import { subscriptionBlocks } from "./billing/access";
 import { created, fail, ok, type ActionResult, type CreatedResult } from "./result";
@@ -236,6 +237,7 @@ export function listMembers(ctx: BotDateDb): Member[] {
         niceToHaves: pref.niceToHaves,
         locked: asBool(pref.locked),
       },
+      onboarding: parseOnboardingJson(pref.onboarding),
       founder: asBool(user.founder),
       memberNumber: user.memberNumber == null ? null : Number(user.memberNumber),
       connectSeen: asBool(user.connectSeen),
@@ -1295,6 +1297,40 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
     .where(eq(prefs.userId, userId))
     .run();
   return ok();
+}
+
+export function saveOnboardingAnswers(
+  ctx: BotDateDb,
+  userId: string,
+  patch: Record<string, unknown>,
+): { ok: true; view: OnboardingView; saved: string[] } | { ok: false; error: string } {
+  const existing = getMember(ctx, userId);
+  if (!existing) return { ok: false, error: "Member not found." };
+  const merged = mergeOnboarding(existing.onboarding, patch);
+  if ("error" in merged) return { ok: false, error: merged.error };
+  ctx.db.update(prefs).set({ onboarding: JSON.stringify(merged.answers) }).where(eq(prefs.userId, userId)).run();
+  const answers = merged.answers;
+  const profileUpdate: { intent?: Intent; city?: string; smoking?: boolean; kids?: KidsStance } = {};
+  const prefsUpdate: { intent?: IntentFilter; ageMin?: number; ageMax?: number } = {};
+  if (answers.datingGoal) {
+    const intent: Intent = answers.datingGoal === "casual" ? "casual" : "serious";
+    profileUpdate.intent = intent;
+    prefsUpdate.intent = intent;
+  }
+  if (answers.ageMin != null && answers.ageMax != null) {
+    prefsUpdate.ageMin = answers.ageMin;
+    prefsUpdate.ageMax = answers.ageMax;
+  }
+  if (answers.location) profileUpdate.city = answers.location;
+  if (answers.smoking) profileUpdate.smoking = answers.smoking !== "no";
+  if (answers.kidsWant) profileUpdate.kids = kidsWantToStance(answers.kidsWant);
+  if (Object.keys(profileUpdate).length) {
+    ctx.db.update(profiles).set(profileUpdate).where(eq(profiles.userId, userId)).run();
+  }
+  if (Object.keys(prefsUpdate).length) {
+    ctx.db.update(prefs).set(prefsUpdate).where(eq(prefs.userId, userId)).run();
+  }
+  return { ok: true, view: onboardingView(merged.answers), saved: merged.saved };
 }
 
 export function setPaused(ctx: BotDateDb, userId: string, paused: boolean): ActionResult {

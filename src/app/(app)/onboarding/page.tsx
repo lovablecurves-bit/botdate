@@ -5,6 +5,8 @@ import { openBillingPortalAction, resetDemoAction, setPausedAction } from "@/app
 import { Banner } from "@/components/banner";
 import { ConnectCard } from "@/components/connect-card";
 import { OnboardingForm } from "@/components/onboarding-form";
+import { OnboardingProgress } from "@/components/onboarding-progress";
+import { onboardingView } from "@/lib/onboarding";
 import { SubmitButton } from "@/components/submit-button";
 import { WipeControl } from "@/components/wipe-control";
 import { agentTokenStatus } from "@/lib/agent/tokens";
@@ -38,6 +40,7 @@ export default async function OnboardingPage({
   const origin = appOrigin(await headers());
   const status = await withDb((db) => agentTokenStatus(db, member.id));
   const revealed = (await cookies()).get("botdate_agent_token")?.value ?? "";
+  const interviewDone = onboardingView(member.onboarding).profile_complete;
   return (
     <div className="stack">
       <header className="page-head">
@@ -51,13 +54,16 @@ export default async function OnboardingPage({
           {representedBy(member.displayName, true)}
         </p>
         <p className="lede">
-          {member.prefs.locked
-            ? "Your bot does the small talk. You get a notification when a date is ready."
-            : "Your shortlist stays closed until dealbreakers are locked. Your bot can fill the rest in."}
+          {!interviewDone
+            ? "Your bot still has interview questions to ask before it can browse, message, or propose a date."
+            : member.prefs.locked
+              ? "Your bot does the small talk. You get a notification when a date is ready."
+              : "Your shortlist stays closed until dealbreakers are locked. Your bot can fill the rest in."}
         </p>
       </header>
       <Banner tone="good">{query.notice ? NOTICES[query.notice] : null}</Banner>
       <Banner>{query.error}</Banner>
+      <OnboardingProgress onboarding={member.onboarding} />
       {paywall ? (
         <section className="stack tight" data-testid="trial-prompt">
           <h2>Start a free trial</h2>

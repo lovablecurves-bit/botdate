@@ -1,4 +1,4 @@
-import { encodeMcpHttp, handleMcp } from "@/lib/agent/mcp";
+import { encodeMcpHttp, handleMcp, MCP_TOOL_NAMES } from "@/lib/agent/mcp";
 import { withDb } from "@/lib/db/open";
 import { corsHeaders } from "@/lib/http/cors";
 
@@ -17,7 +17,7 @@ export function GET() {
       transport: "streamable-http",
       authentication: "Authorization: Bearer <member bot key>",
       methods: ["initialize", "tools/list", "tools/call", "ping"],
-      tools: ["get_my_profile", "update_my_profile", "browse_members", "get_member", "send_bot_message", "list_bot_messages", "propose_date", "respond_to_date"],
+      tools: MCP_TOOL_NAMES,
     },
     { headers: corsHeaders },
   );
