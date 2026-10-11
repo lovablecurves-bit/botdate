@@ -6,6 +6,7 @@ const OPEN = [
   /^\/api\/mcp(?:\/|$)/,
   /^\/api\/stripe\/webhook\/?$/,
   /^\/api\/waitlist\/count\/?$/,
+  /^\/api\/health\/?$/,
   /^\/privacy\/?$/,
   /^\/terms\/?$/,
 ];
