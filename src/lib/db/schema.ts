@@ -107,6 +107,19 @@ export const waitlistSignups = sqliteTable("waitlist", {
   createdAt: text("created_at").notNull(),
 });
 
+/**
+ * Present only while the member has opted in. Opt-out deletes the row:
+ * summary, access token, and refresh token.
+ */
+export const xPostLearning = sqliteTable("x_post_learning", {
+  memberId: text("member_id").primaryKey(),
+  accessTokenCiphertext: text("access_token_ciphertext").notNull(),
+  refreshTokenCiphertext: text("refresh_token_ciphertext").notNull(),
+  tokenExpiresAt: text("token_expires_at").notNull(),
+  summary: text("summary").notNull(),
+  summaryAt: text("summary_at").notNull(),
+});
+
 /** Singleton row `botdateapp`. Tokens are AES-GCM ciphertext, never plaintext. */
 export const xBotCredentials = sqliteTable("x_bot_credentials", {
   id: text("id").primaryKey(),
@@ -217,6 +230,14 @@ CREATE TABLE IF NOT EXISTS waitlist (
   referral_code TEXT NOT NULL UNIQUE,
   referred_by TEXT,
   created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS x_post_learning (
+  member_id TEXT PRIMARY KEY REFERENCES users(id),
+  access_token_ciphertext TEXT NOT NULL,
+  refresh_token_ciphertext TEXT NOT NULL,
+  token_expires_at TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  summary_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS x_bot_credentials (
   id TEXT PRIMARY KEY,

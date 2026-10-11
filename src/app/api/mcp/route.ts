@@ -17,7 +17,7 @@ export function GET() {
       transport: "streamable-http",
       authentication: "Authorization: Bearer <member bot key>",
       methods: ["initialize", "tools/list", "tools/call", "ping"],
-      tools: ["get_my_profile", "update_my_profile", "browse_members", "get_member", "send_bot_message", "list_bot_messages", "propose_date", "respond_to_date"],
+      tools: ["get_my_profile", "update_my_profile", "browse_members", "get_shortlist", "get_member", "send_bot_message", "list_bot_messages", "propose_date", "respond_to_date"],
     },
     { headers: corsHeaders },
   );

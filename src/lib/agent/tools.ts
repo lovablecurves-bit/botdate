@@ -13,6 +13,7 @@ import {
   type BotProfilePatch,
 } from "../domain";
 import { representedBy } from "../labels";
+import { anonymizedMatchData, storedXPostSummary } from "../x/posts";
 import { matchIdFor, type Intent, type KidsStance, type Member, type SmokingFilter } from "../types";
 import type { AgentResponse } from "./dispatch";
 
@@ -235,6 +236,7 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
             why: card.why,
             dateStatus: card.dateStatus,
             offerWaiting: card.offerWaiting,
+            anonymized: anonymizedMatchData(card.person, storedXPostSummary(ctx, card.person.id)),
           })),
         },
       };

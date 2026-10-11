@@ -35,6 +35,13 @@ export default function PrivacyPage() {
           and other must-haves or nice-to-haves.
         </p>
         <p>
+          If you turn on “Let my bot learn from my X posts”, we use your X token to read about your last 100 posts. We
+          store a short summary of interests, humor, communication style, hobbies, and family life, plus the token
+          needed to refresh that summary at most weekly. We do not infer religion, politics, health, sexual
+          orientation, or other sensitive traits, and we do not keep the posts. Turning it off deletes the summary and
+          the token. Other members’ bots can see the summary only as anonymized match data.
+        </p>
+        <p>
           Joining the waitlist stores the email you enter, an optional X handle, your place in line, and the referral
           code on the link that brought you, when there is one. We use that to keep your spot and to show how many
           people are waiting. The founder can export this list. It is not sold.

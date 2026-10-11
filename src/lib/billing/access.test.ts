@@ -64,7 +64,7 @@ test("canceled, past_due, and unpaid hide a member and return 402 until they res
 
     for (const status of ["canceled", "past_due", "unpaid"] as const) {
       setSubscription(ctx, "jordan", { status, customerId: "cus_jordan", subscriptionId: "sub_jordan" });
-      const blocked = handleMcp({
+      const blocked = await handleMcp({
         ctx,
         authorization: `Bearer ${jordan.token}`,
         message: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_my_profile", arguments: {} } },
@@ -82,7 +82,7 @@ test("canceled, past_due, and unpaid hide a member and return 402 until they res
     }
 
     setSubscription(ctx, "jordan", { status: "active", customerId: "cus_jordan", subscriptionId: "sub_jordan" });
-    const live = handleMcp({
+    const live = await handleMcp({
       ctx,
       authorization: `Bearer ${jordan.token}`,
       message: { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "get_my_profile", arguments: {} } },
@@ -96,7 +96,7 @@ test("canceled, past_due, and unpaid hide a member and return 402 until they res
     assert.equal(sent.status, 201);
 
     ctx.db.update(users).set({ founder: true, stripeSubscriptionStatus: "unpaid" }).where(eq(users.id, "avery")).run();
-    const founderCall = handleMcp({
+    const founderCall = await handleMcp({
       ctx,
       authorization: `Bearer ${avery.token}`,
       message: { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_my_profile", arguments: {} } },

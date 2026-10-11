@@ -37,8 +37,9 @@ export function codeChallenge(verifier: string): string {
 export const X_AUTHORIZE_URL = "https://x.com/i/oauth2/authorize";
 export const X_TOKEN_URL = "https://api.x.com/2/oauth2/token";
 export const X_ME_URL = "https://api.x.com/2/users/me";
-/** Member sign-in. BotDateApp auto-posting uses X_BOT_SCOPES instead. */
+/** Member sign-in. Learning from posts adds offline.access. BotDateApp auto-posting uses X_BOT_SCOPES. */
 export const X_SCOPES = "users.read tweet.read";
+export const X_LEARN_SCOPES = "users.read tweet.read offline.access";
 export const X_BOT_SCOPES = "tweet.read tweet.write users.read offline.access";
 
 export function authorizeUrl(input: {

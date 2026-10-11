@@ -1,4 +1,5 @@
 import type { BotDateDb } from "../db/open";
+import { refreshDueXPostSummaries } from "../x/posts";
 import { authenticateAgent } from "./tokens";
 import { callTool } from "./tools";
 
@@ -64,8 +65,14 @@ const TOOLS = [
     },
   },
   {
+    name: "get_shortlist",
+    description:
+      "Mutual shortlist. Each card includes anonymized match data: a label with no name, and xPosts only when that person opted in. xPosts is a short summary of interests, humor, communication style, hobbies, and family life. It never includes religion, politics, health, sexual orientation, or other sensitive traits. browse_members and get_member do not include xPosts.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
     name: "get_member",
-    description: "Read one member's public profile. Inactive subscriptions are not returned.",
+    description: "Read one member's public profile. Inactive subscriptions are not returned. Does not include X post summaries.",
     inputSchema: {
       type: "object",
       properties: { memberId: { type: "string" } },
@@ -138,7 +145,13 @@ export function encodeMcpHttp(body: unknown, accept: string | null): { contentTy
 
 export type McpResult = { status: number; body: unknown | null };
 
-export function handleMcp(input: { ctx: BotDateDb; authorization: string | null; message: unknown }): McpResult {
+export async function handleMcp(input: {
+  ctx: BotDateDb;
+  authorization: string | null;
+  message: unknown;
+  fetchImpl?: typeof fetch;
+  now?: number;
+}): Promise<McpResult> {
   const message = input.message as JsonRpc;
   if (!message || typeof message !== "object" || Array.isArray(message)) {
     return { status: 400, body: rpcError(null, -32600, "Expected a JSON-RPC object.") };
@@ -172,6 +185,9 @@ export function handleMcp(input: { ctx: BotDateDb; authorization: string | null;
     const params = message.params && typeof message.params === "object" ? (message.params as { name?: string; arguments?: unknown }) : {};
     const name = params.name ?? "";
     const args = params.arguments && typeof params.arguments === "object" && !Array.isArray(params.arguments) ? (params.arguments as Record<string, unknown>) : {};
+    if (name === "get_shortlist") {
+      await refreshDueXPostSummaries(input.ctx, auth.member.id, { fetchImpl: input.fetchImpl, now: input.now });
+    }
     const result = callTool(input.ctx, auth.member, name, args);
     if (!result) return { status: 200, body: rpcError(id, -32602, `Unknown tool ${name}.`) };
     const isError = result.status >= 400;

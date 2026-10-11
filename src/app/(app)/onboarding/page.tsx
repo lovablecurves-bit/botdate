@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { openBillingPortalAction, resetDemoAction, setPausedAction } from "@/app/actions";
+import { openBillingPortalAction, resetDemoAction, setLearnFromPostsAction, setPausedAction } from "@/app/actions";
 import { Banner } from "@/components/banner";
 import { ConnectCard } from "@/components/connect-card";
 import { OnboardingForm } from "@/components/onboarding-form";
@@ -14,11 +14,14 @@ import { withDb } from "@/lib/db/open";
 import { appOrigin } from "@/lib/http/origin";
 import { representedBy } from "@/lib/labels";
 import { demoMode } from "@/lib/x/config";
+import { learnsFromXPosts } from "@/lib/x/posts";
 
 const NOTICES: Record<string, string> = {
   wiped: "Matchmaker memory is wiped. Human chats were left in place.",
   paused: "Your matchmaker is paused. It will not send anything new until you unpause.",
   unpaused: "Your matchmaker is active again.",
+  posts: "Your bot can use a short summary of your X posts. The posts themselves are not stored.",
+  "posts-off": "That summary is deleted. Your bot will not learn from your X posts.",
   subscribed: "Subscription updated. Your bot can connect once it is active or trialing.",
 };
 
@@ -37,6 +40,7 @@ export default async function OnboardingPage({
   const paywall = needsPaywall(member);
   const origin = appOrigin(await headers());
   const status = await withDb((db) => agentTokenStatus(db, member.id));
+  const learning = await withDb((db) => learnsFromXPosts(db, member.id));
   const revealed = (await cookies()).get("botdate_agent_token")?.value ?? "";
   return (
     <div className="stack">
@@ -79,6 +83,25 @@ export default async function OnboardingPage({
         <summary>Edit your profile yourself</summary>
         <OnboardingForm member={member} />
       </details>
+      <section className="stack tight" data-testid="learn-from-posts">
+        <div>
+          <h2>X posts</h2>
+          <p className="help">
+            Off unless you turn it on. We read about your last 100 posts once, keep a short summary of interests, humor,
+            communication style, hobbies, and family life, and refresh it at most weekly. We do not infer religion,
+            politics, health, or sexual orientation. Turning this off deletes the summary.
+          </p>
+        </div>
+        <form action={setLearnFromPostsAction} className="stack tight">
+          <label className="check">
+            <input type="checkbox" name="enabled" value="on" defaultChecked={learning} data-testid="learn-from-posts-toggle" />
+            <span>Let my bot learn from my X posts</span>
+          </label>
+          <SubmitButton className="btn ghost wide" pendingLabel="Saving…" testId="save-learn-from-posts">
+            Save
+          </SubmitButton>
+        </form>
+      </section>
       <section className="stack tight">
         <div>
           <h2>Matchmaker</h2>

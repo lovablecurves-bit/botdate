@@ -8,6 +8,7 @@ import { createBillingPortalSession, createCheckoutSession } from "@/lib/billing
 import { clearSession, memberHome, requireOnboarded, requireUser, setSession } from "@/lib/auth";
 import { appOrigin } from "@/lib/http/origin";
 import { markConnectSeen } from "@/lib/x/account";
+import { learnsFromXPosts, optOutOfXPosts } from "@/lib/x/posts";
 import { demoMode } from "@/lib/x/config";
 import { issueAgentToken, revokeAgentTokens } from "@/lib/agent/tokens";
 import { resetDatabase } from "@/lib/db/seed";
@@ -330,6 +331,24 @@ export async function proposeDateAction(formData: FormData) {
   touch(matchId);
   bounce(`/dates/${matchId}`, result);
   redirect(`/dates/${matchId}`);
+}
+
+export async function setLearnFromPostsAction(formData: FormData) {
+  const member = await requireUser();
+  if (formData.get("enabled") !== "on") {
+    await withDb((db) => optOutOfXPosts(db, member.id));
+    revalidatePath("/onboarding");
+    redirect("/onboarding?notice=posts-off");
+  }
+  if (!member.xAccount?.userId) {
+    redirect("/onboarding?error=" + encodeURIComponent("Sign in with X to let your bot learn from your posts."));
+  }
+  const already = await withDb((db) => learnsFromXPosts(db, member.id));
+  if (already) {
+    revalidatePath("/onboarding");
+    redirect("/onboarding?notice=posts");
+  }
+  redirect("/api/auth/x/learn");
 }
 
 export async function respondDateAction(formData: FormData) {

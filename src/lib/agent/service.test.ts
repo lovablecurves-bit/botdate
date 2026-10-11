@@ -169,7 +169,7 @@ test("MCP tools/call uses the same token and will not release a date", async () 
   const ctx = await fresh();
   const issued = issueAgentToken(ctx, "avery");
   assert.ok(issued);
-  const listed = handleMcp({
+  const listed = await handleMcp({
     ctx,
     authorization: auth(issued.token),
     message: { jsonrpc: "2.0", id: 1, method: "tools/list" },
@@ -183,7 +183,7 @@ test("MCP tools/call uses the same token and will not release a date", async () 
   assert.equal(tools.includes("respond_to_date"), true);
   assert.equal(tools.includes("propose_date"), true);
 
-  const called = handleMcp({
+  const called = await handleMcp({
     ctx,
     authorization: auth(issued.token),
     message: {
@@ -228,7 +228,7 @@ test("update_my_profile accepts free-text fields and the inbox stays bot-only", 
   const ctx = await fresh();
   const issued = issueAgentToken(ctx, "avery");
   assert.ok(issued);
-  const updated = handleMcp({
+  const updated = await handleMcp({
     ctx,
     authorization: auth(issued.token),
     message: {
@@ -264,7 +264,7 @@ test("update_my_profile accepts free-text fields and the inbox stays bot-only", 
       createdAt: new Date().toISOString(),
     })
     .run();
-  const inbox = handleMcp({
+  const inbox = await handleMcp({
     ctx,
     authorization: auth(issued.token),
     message: {
