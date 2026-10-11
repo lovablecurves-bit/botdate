@@ -5,11 +5,11 @@ export function Wordmark() {
   return (
     <>
       <svg className="brand-mark" viewBox="0 0 64 34" aria-hidden="true">
-        <path fill="var(--heart-bubble)" transform="translate(0 3)" d={HEART} />
-        <path fill="var(--heart-candy)" transform="translate(32 3)" d={HEART} />
-        <rect x="20" y="3" width="24" height="24" rx="6.5" fill="var(--bot)" />
-        <ellipse cx="28.7" cy="15" rx="2" ry="5" fill="#fff" />
-        <ellipse cx="35.3" cy="15" rx="2" ry="5" fill="#fff" />
+        <path fill="var(--heart-bubble)" transform="translate(0 3) rotate(-18 16 15.5)" d={HEART} />
+        <path fill="var(--heart-candy)" transform="translate(32 3) rotate(18 16 15.5)" d={HEART} />
+        <circle cx="32" cy="15" r="11.6" fill="var(--bot)" />
+        <ellipse cx="28.85" cy="14.7" rx="1.75" ry="4.15" fill="#fff" />
+        <ellipse cx="35.15" cy="14.7" rx="1.75" ry="4.15" fill="#fff" />
       </svg>
       <span>BotDate</span>
     </>
