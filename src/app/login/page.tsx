@@ -11,11 +11,13 @@ import { listRoster } from "@/lib/domain";
 import { appOrigin } from "@/lib/http/origin";
 import { waitlistIntent } from "@/lib/share";
 import { coldStartNote, xAuthConfigured } from "@/lib/x/config";
+import { loginErrorText } from "@/lib/x/oauth";
 
 export const metadata = { title: "Enter" };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; error_description?: string }> }) {
+  const { error, error_description: errorDescription } = await searchParams;
+  const notice = loginErrorText(error, errorDescription);
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
   const xReady = xAuthConfigured();
   const note = coldStartNote();
@@ -36,7 +38,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <h1>Your matchmaker does the first pass.</h1>
         <p className="lede">The bots do the small talk. You only step in when there is a date to approve, tweak, or pass.</p>
       </header>
-      <Banner>{error}</Banner>
+      <Banner>{notice}</Banner>
       {xReady ? (
         <section className="stack tight">
           <a className="btn primary wide" href="/api/auth/x/start">

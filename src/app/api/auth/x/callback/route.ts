@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { withDb } from "@/lib/db/open";
 import { upsertXMember } from "@/lib/x/account";
 import { xCredentials } from "@/lib/x/config";
-import { XAuthError, exchangeAuthorizationCode, fetchXProfile } from "@/lib/x/oauth";
+import { XAuthError, exchangeAuthorizationCode, fetchXProfile, logOAuthCallbackError, readOAuthCallbackError } from "@/lib/x/oauth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +36,13 @@ export async function GET(request: Request) {
 
   const credentials = xCredentials();
   if (!credentials) return fail("Sign in with X is not configured yet. Pick a demo member.");
-  if (url.searchParams.get("error")) return fail("X sign-in was cancelled. Try again.");
+  const oauthError = readOAuthCallbackError(url.searchParams);
+  if (oauthError) {
+    logOAuthCallbackError(oauthError);
+    login.searchParams.set("error", oauthError.error);
+    if (oauthError.error_description) login.searchParams.set("error_description", oauthError.error_description);
+    return clearOauth(NextResponse.redirect(login));
+  }
 
   const code = url.searchParams.get("code") ?? "";
   const state = url.searchParams.get("state") ?? "";
