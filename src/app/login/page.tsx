@@ -12,7 +12,7 @@ import { joinedWaitlistIntent, waitlistIntent, waitlistReferralUrl } from "@/lib
 import { paywallCopy } from "@/lib/stripe/access";
 import { stripeConfig, trialDays } from "@/lib/stripe/config";
 import { findWaitlistByCode, normalizeReferralCode, peopleWaitingLabel, waitlistCount } from "@/lib/waitlist";
-import { coldStartNote, xAuthConfigured } from "@/lib/x/config";
+import { logColdStartNote, xAuthConfigured } from "@/lib/x/config";
 import { loginErrorText } from "@/lib/x/oauth";
 
 export const metadata = { title: "Enter" };
@@ -27,7 +27,7 @@ export default async function LoginPage({
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
   const xReady = xAuthConfigured();
   const billing = stripeConfig() !== null;
-  const note = coldStartNote();
+  logColdStartNote();
   const invite = waitlistIntent();
   const ref = normalizeReferralCode(refParam);
   const joinedCode = normalizeReferralCode(joinedParam);
@@ -113,7 +113,6 @@ export default async function LoginPage({
               ? `${paywallCopy(trialDays())} The first person to sign in is the founder and joins free. Next you'll connect your Grok bot.`
               : "Next you'll connect your Grok bot. The first person to sign in becomes member #1."}
           </p>
-          {note ? <p className="help">{note}</p> : null}
         </section>
       ) : null}
       {joined ? null : (

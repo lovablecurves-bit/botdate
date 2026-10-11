@@ -3,17 +3,16 @@ import { redirect } from "next/navigation";
 import { Avatar } from "@/components/avatar";
 import { needsConnectPrompt, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
-import { displayAvatarUrl, listDirectory } from "@/lib/directory";
+import { displayAvatarUrl, includeViewer, listDirectory } from "@/lib/directory";
 import { truncate } from "@/lib/labels";
-import { coldStartNote, demoMode } from "@/lib/x/config";
+import { demoMode } from "@/lib/x/config";
 
 export const metadata = { title: "Members" };
 
 export default async function MembersPage() {
   const member = await requireUser();
   if (needsConnectPrompt(member)) redirect("/connect");
-  const people = await withDb((db) => listDirectory(db));
-  const note = coldStartNote();
+  const people = includeViewer(await withDb((db) => listDirectory(db)), member);
   const demo = demoMode();
 
   return (
@@ -45,7 +44,6 @@ export default async function MembersPage() {
           ))}
         </section>
       )}
-      {note ? <p className="help">{note}</p> : null}
       {member.founder ? (
         <p className="text-links">
           <a href="/admin/waitlist">Export waitlist</a>

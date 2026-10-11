@@ -7,7 +7,7 @@ export function middleware(request: NextRequest) {
   if (pathname === "/api/stripe/webhook") return NextResponse.next();
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
-  const loggedIn = Boolean(request.cookies.get("botdate_uid")?.value);
+  const loggedIn = Boolean(request.cookies.get("botdate_session")?.value);
   if (isOpenPath(pathname)) return NextResponse.next({ request: { headers: requestHeaders } });
   if (!loggedIn && pathname !== "/login") {
     return NextResponse.redirect(guestLoginUrl(request.url));

@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
+import { OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE, oauthCookieOptions, requestIsSecureSync } from "@/lib/session";
 import { xCredentials } from "@/lib/x/config";
 import { authorizeUrl, randomState, randomVerifier } from "@/lib/x/pkce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const STATE = "botdate_x_state";
-const VERIFIER = "botdate_x_verifier";
 
 export function GET(request: Request) {
   const credentials = xCredentials();
@@ -25,9 +23,9 @@ export function GET(request: Request) {
       verifier,
     }),
   );
-  const secure = new URL(request.url).protocol === "https:";
-  const cookie = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 600, secure };
-  response.cookies.set(STATE, state, cookie);
-  response.cookies.set(VERIFIER, verifier, cookie);
+  const secure = requestIsSecureSync(request.url, request.headers.get("x-forwarded-proto"));
+  const cookie = oauthCookieOptions(secure);
+  response.cookies.set(OAUTH_STATE_COOKIE, state, cookie);
+  response.cookies.set(OAUTH_VERIFIER_COOKIE, verifier, cookie);
   return response;
 }

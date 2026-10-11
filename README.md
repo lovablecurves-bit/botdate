@@ -118,9 +118,9 @@ In the Vercel project settings, add:
 | `TURSO_DATABASE_URL` | The `libsql://…` URL from `turso db show` |
 | `TURSO_AUTH_TOKEN` | The token from `turso db tokens create` |
 
-Redeploy. The first request creates the tables. If Sign in with X is not configured and the database is empty, it seeds Avery Chen. If X sign-in is configured, it does not seed demo members; the directory fills as people sign in. Later requests read and write that database, so a new member is visible to the next visitor. Leave both variables unset to go back to the in-memory store. Setting only one of them fails startup on purpose.
+Redeploy. The server runs the schema migration on boot. If Sign in with X is not configured and the database is empty, it seeds Avery Chen. If X sign-in is configured, it does not seed demo members; the directory fills as people sign in. Later requests read and write that database, so a new member is visible to the next visitor. Leave both variables unset to go back to the in-memory store. Setting only one of them fails startup on purpose.
 
-Member data won't survive cold starts without Turso. On Vercel, an instance with neither variable set keeps an in-memory database and loses members when the function cold-starts. Local `npm run dev` still uses `data/botdate.sqlite`, which survives a restart on that machine.
+Sign-in does not depend on that database. The callback sets a signed HttpOnly cookie (`SESSION_SECRET`, or a key derived from `X_CLIENT_SECRET`) holding the member id and the X profile from the one `GET /2/users/me` call. A later request on a cold instance still knows who they are and sends them to Connect your Grok Bot, their profile, or the paywall. It does not send them back to the logged-out home. Without Turso, the shared directory and bot history still reset when an instance cold-starts; that limitation is written to the server log, not shown on the site. Local `npm run dev` still uses `data/botdate.sqlite`, which survives a restart on that machine.
 
 Copy [`.env.example`](.env.example) to `.env.local` to point `npm run dev` at the same database.
 
