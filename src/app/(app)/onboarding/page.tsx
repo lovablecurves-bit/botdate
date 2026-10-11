@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { resetDemoAction, setPausedAction } from "@/app/actions";
 import { Banner } from "@/components/banner";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { SubmitButton } from "@/components/submit-button";
 import { WipeControl } from "@/components/wipe-control";
-import { requireUser } from "@/lib/auth";
+import { needsConnectPrompt, requireUser } from "@/lib/auth";
+import { demoMode } from "@/lib/x/config";
 
 const NOTICES: Record<string, string> = {
   wiped: "Matchmaker memory is wiped. Human chats were left in place.",
@@ -20,7 +22,9 @@ export default async function OnboardingPage({
   searchParams: Promise<{ notice?: string; error?: string }>;
 }) {
   const member = await requireUser();
+  if (needsConnectPrompt(member)) redirect("/connect");
   const query = await searchParams;
+  const showDemoReset = demoMode();
   return (
     <div className="stack">
       <header className="page-head">
@@ -50,17 +54,19 @@ export default async function OnboardingPage({
         </form>
         <WipeControl />
       </section>
-      <section className="stack tight">
-        <div>
-          <h2>Demo data</h2>
-          <p className="help">Resets every member, desk, and date, then signs you out.</p>
-        </div>
-        <form action={resetDemoAction}>
-          <SubmitButton className="btn ghost wide" pendingLabel="Resetting…">
-            Reset demo data
-          </SubmitButton>
-        </form>
-      </section>
+      {showDemoReset ? (
+        <section className="stack tight">
+          <div>
+            <h2>Demo data</h2>
+            <p className="help">Resets every member, desk, and date, then signs you out.</p>
+          </div>
+          <form action={resetDemoAction}>
+            <SubmitButton className="btn ghost wide" pendingLabel="Resetting…">
+              Reset demo data
+            </SubmitButton>
+          </form>
+        </section>
+      ) : null}
     </div>
   );
 }

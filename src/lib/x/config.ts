@@ -16,3 +16,21 @@ export function xCredentials(): XCredentials | null {
 export function xAuthConfigured(): boolean {
   return xCredentials() !== null;
 }
+
+/** Demo roster, switcher, and seed exist only while Sign in with X is unset. */
+export function demoMode(): boolean {
+  return !xAuthConfigured();
+}
+
+/**
+ * On Vercel the database is memory unless Turso is set, so a cold start drops members.
+ * Local dev still keeps data/botdate.sqlite, and this note stays quiet there.
+ */
+export function coldStartNote(): string | null {
+  if (demoMode()) return null;
+  const url = process.env.TURSO_DATABASE_URL?.trim() ?? "";
+  const token = process.env.TURSO_AUTH_TOKEN?.trim() ?? "";
+  if (url && token) return null;
+  if (!process.env.VERCEL) return null;
+  return "Member data won't survive cold starts without Turso.";
+}

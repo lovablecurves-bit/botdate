@@ -18,7 +18,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). There is no password. Pick a demo member.
 
-The first request creates `data/botdate.sqlite` and seeds it with Avery Chen and the rest of the demo roster. That file is local and gitignored. **Reset demo data** on Profile (or the signed-out login screen) restores the seed.
+The first request creates `data/botdate.sqlite` and seeds it with Avery Chen and the rest of the demo roster, unless Sign in with X is configured. That file is local and gitignored. **Reset demo data** on Profile (or the signed-out login screen) restores the seed. It is hidden when X sign-in is on, so a reset cannot wipe real members.
 
 `npm test` covers hard filters, bot notes sent without a draft queue, date-offer approve / tweak / pass, intro opt-in, wipe, X profile import, and the Grok bot agent API. No API keys are required for the tests. Sign in with X stays off until its three environment variables are set.
 
@@ -33,16 +33,17 @@ The first request creates `data/botdate.sqlite` and seeds it with Avery Chen and
 | Priya Shah | Profile is filled in. Lock dealbreakers to open a shortlist. |
 | Morgan, Casey, Quinn, Noah, Alex | Each one misses a hard filter for Avery (smoking, city, age, kids, or the other person's age range). They do not appear on her shortlist. |
 
-Switch members from the menu in the header.
+Switch members from the menu in the header. That switcher is the demo roster. It is not shown when Sign in with X is configured. A signed-in member then sees only their own name, plus sign out.
 
 ## Screens
 
 1. **Profile** (`/onboarding`) — name, photo placeholder, bio, dealbreakers, and must-haves. The shortlist stays closed until preferences are locked. Pause and wipe live here.
 2. **Shortlist** (`/shortlist`) — the home screen. Mutual hard-filter passes, with a date offer on top when one is ready. Everyone else is "bots are talking."
-3. **Activity** (`/desk`) — a quiet log of bot-to-bot notes. Not in the tab bar. Nothing on it needs approval.
-4. **Intro** (`/intro/[match]`) — optional, after people want a direct chat. Not part of the date offer.
-5. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve. A date offer can be shared to X without the other person's name.
-6. **Connect your Grok Bot** (`/connect`) — issue or revoke the member's agent token, and copy the matchmaker prompt. Linked from Profile.
+3. **Members** (`/members`) — real people who signed in with X. The first of them is member #1, flagged as founder. A profile shows the saved X avatar, handle, bio, the matchmaker's summary, and matching cues. Opening a profile reads BotDate's database only. It does not call X.
+4. **Activity** (`/desk`) — a quiet log of bot-to-bot notes. Not in the tab bar. Nothing on it needs approval.
+5. **Intro** (`/intro/[match]`) — optional, after people want a direct chat. Not part of the date offer.
+6. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve. A date offer can be shared to X without the other person's name.
+7. **Connect your Grok Bot** (`/connect`) — issue or revoke the member's agent token, and copy the matchmaker prompt. Linked from Profile. After Sign in with X, this step is the first screen a new member sees.
 
 ## Preferences
 
@@ -60,7 +61,7 @@ Scripted notes are sent as the matchmakers talk. A paused matchmaker does not se
 
 ## Deploy on Vercel
 
-The demo does not use native SQLite. Queries run on [sql.js](https://sql.js.org/) (SQLite compiled to WebAssembly), so a Vercel function can boot without a build toolchain. Avery Chen and the rest of the roster are seeded on first use.
+The demo does not use native SQLite. Queries run on [sql.js](https://sql.js.org/) (SQLite compiled to WebAssembly), so a Vercel function can boot without a build toolchain. When Sign in with X is not configured, Avery Chen and the rest of the roster are seeded on first use. When it is configured, demo members are not seeded.
 
 ### One-shot demo (no database to provision)
 
@@ -73,7 +74,7 @@ Open the deployment URL. The login screen lists the demo members with no passwor
 
 ### Sign in with X
 
-Set these three on the Vercel project when members should sign in with X instead of only picking a demo profile. Leave any one of them unset and the login screen keeps the demo list, with no error until someone opens the X route directly.
+Set these three on the Vercel project when members should sign in with X. Leave any one of them unset and the login screen keeps the demo list and the profile switcher, with no error until someone opens the X route directly. When all three are set, the demo list, the reset control, and the profile switcher are hidden. A signed-in member sees only their own name. Demo users are not seeded.
 
 | Name | Value |
 | --- | --- |
@@ -81,7 +82,9 @@ Set these three on the Vercel project when members should sign in with X instead
 | `X_CLIENT_SECRET` | Client secret |
 | `X_REDIRECT_URI` | `https://<your-deployment>/api/auth/x/callback` |
 
-The X app needs the scopes `users.read` and `tweet.read`, and the callback URL has to match `X_REDIRECT_URI`. A successful sign-in stores the member's handle, name, avatar, and bio. The Grok bot token is issued later inside the app. It is not an environment variable.
+The X app needs the scopes `users.read` and `tweet.read`, and the callback URL has to match `X_REDIRECT_URI`. A successful sign-in stores the member's handle, name, avatar, and bio in BotDate's database. Later profile views use that copy. They do not call X again. The first real member to sign in is member #1 and is flagged as the founder on the directory.
+
+The first login then opens **Connect your Grok Bot**. The member can issue a token or skip. The step is not shown again. The Grok bot token is not an environment variable.
 
 `npm run dev` on your machine still stores `data/botdate.sqlite` so a local session survives a restart.
 
@@ -105,7 +108,9 @@ In the Vercel project settings, add:
 | `TURSO_DATABASE_URL` | The `libsql://…` URL from `turso db show` |
 | `TURSO_AUTH_TOKEN` | The token from `turso db tokens create` |
 
-Redeploy. The first request creates the tables and seeds Avery Chen if the database is empty. Later requests read and write that database, so a reset or an approval is visible to the next visitor. Leave both variables unset to go back to the in-memory demo. Setting only one of them fails startup on purpose.
+Redeploy. The first request creates the tables. If Sign in with X is not configured and the database is empty, it seeds Avery Chen. If X sign-in is configured, it does not seed demo members; the directory fills as people sign in. Later requests read and write that database, so a new member is visible to the next visitor. Leave both variables unset to go back to the in-memory store. Setting only one of them fails startup on purpose.
+
+Member data won't survive cold starts without Turso. On Vercel, an instance with neither variable set keeps an in-memory database and loses members when the function cold-starts. Local `npm run dev` still uses `data/botdate.sqlite`, which survives a restart on that machine.
 
 Copy [`.env.example`](.env.example) to `.env.local` to point `npm run dev` at the same database.
 
@@ -115,7 +120,7 @@ SQLite via [Drizzle ORM](https://orm.drizzle.team/) and [sql.js](https://sql.js.
 
 | Table | Holds |
 | --- | --- |
-| `users` | Member, pause flag, and optional X handle, name link, and avatar |
+| `users` | Member, pause flag, optional X handle and avatar, founder flag, and member number |
 | `profiles` | Age, city, bio, kids, intent, smoking, interests |
 | `prefs` | Dealbreakers, nice-to-haves, lock |
 | `matches` | Pair, intro opt-in, human vs bot channel |

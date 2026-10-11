@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { clearSession, requireOnboarded, requireUser, setSession } from "@/lib/auth";
+import { markConnectSeen } from "@/lib/x/account";
+import { demoMode } from "@/lib/x/config";
 import { issueAgentToken, revokeAgentTokens } from "@/lib/agent/tokens";
 import { resetDatabase } from "@/lib/db/seed";
 import { withDb } from "@/lib/db/open";
@@ -70,6 +72,7 @@ function bounce(path: string, result: ActionResult) {
 }
 
 export async function loginAction(formData: FormData) {
+  if (!demoMode()) redirect("/login");
   const userId = String(formData.get("userId") ?? "");
   const member = await withDb((db) => getMember(db, userId));
   if (!member) redirect("/login?error=That+demo+member+is+not+in+the+seed.");
@@ -108,7 +111,14 @@ export async function logoutAction() {
   redirect("/login");
 }
 
+export async function continueFromConnectAction() {
+  const user = await requireUser();
+  await withDb((db) => markConnectSeen(db, user.id));
+  redirect(user.prefs.locked ? "/shortlist" : "/onboarding");
+}
+
 export async function resetDemoAction() {
+  if (!demoMode()) redirect("/onboarding");
   await withDb((db) => resetDatabase(db));
   await clearSession();
   redirect("/login");

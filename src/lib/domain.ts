@@ -235,6 +235,9 @@ export function listMembers(ctx: BotDateDb): Member[] {
         niceToHaves: pref.niceToHaves,
         locked: asBool(pref.locked),
       },
+      founder: asBool(user.founder),
+      memberNumber: user.memberNumber == null ? null : Number(user.memberNumber),
+      connectSeen: asBool(user.connectSeen),
     });
   }
   return members;

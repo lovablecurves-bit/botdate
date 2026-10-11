@@ -9,6 +9,9 @@ export const users = sqliteTable("users", {
   xUserId: text("x_user_id"),
   xHandle: text("x_handle"),
   xAvatarUrl: text("x_avatar_url"),
+  founder: integer("founder", { mode: "boolean" }).notNull().default(false),
+  memberNumber: integer("member_number"),
+  connectSeen: integer("connect_seen", { mode: "boolean" }).notNull().default(false),
 });
 
 export const profiles = sqliteTable("profiles", {
@@ -99,7 +102,10 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT NOT NULL,
   x_user_id TEXT,
   x_handle TEXT,
-  x_avatar_url TEXT
+  x_avatar_url TEXT,
+  founder INTEGER NOT NULL DEFAULT 0,
+  member_number INTEGER,
+  connect_seen INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS profiles (
   user_id TEXT PRIMARY KEY REFERENCES users(id),
