@@ -45,6 +45,8 @@ Switch members from the menu in the header. That switcher is the demo roster. It
 6. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve. A date offer can be shared to X without the other person's name.
 7. **Connect your Grok Bot** (`/connect`) — issue or revoke the member's agent token, and copy the matchmaker prompt. Linked from Profile. After Sign in with X, this step is the first screen a new member sees.
 
+The login screen is public. **Join the waitlist** asks for an email and an optional X handle. A duplicate email keeps the original place in line. After joining, the page shows that position, a Share BotDate on X link, and a copy-link button. The post includes `?ref=` so the next signup can be tied to the person who invited them. The page shows how many people are waiting. `GET /api/waitlist/count` returns `{ "count": N }`. The founder can download `GET /admin/waitlist` as CSV.
+
 ## Preferences
 
 Hard filters (dealbreakers) are age range, cities, smoking, kids, and intent. A miss is never surfaced. The check is mutual: you must clear their dealbreakers too.
@@ -128,6 +130,7 @@ SQLite via [Drizzle ORM](https://orm.drizzle.team/) and [sql.js](https://sql.js.
 | `messages` | Bot, human, and system notes. Bot small talk is stored as sent. |
 | `date_proposals` | Time, place, and each person's decision (`pending`, `approved`, `passed`). A Grok bot draft stays unreleased until that member approves it. |
 | `agent_tokens` | Hashed per-member Grok bot tokens. The raw token is shown once, then only the hash is kept. |
+| `waitlist` | Email, optional X handle, position, referral code, and who referred them |
 
 ## Out of scope
 
