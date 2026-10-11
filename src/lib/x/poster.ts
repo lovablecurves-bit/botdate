@@ -5,8 +5,9 @@ type FetchLike = typeof fetch;
 
 export const X_TWEETS_URL = "https://api.x.com/2/tweets";
 const TWEET_ID = /^\d{1,32}$/;
+const MEDIA_ID = /^\d{1,19}$/;
 
-export type PostInput = { text: string; replyToId: string | null };
+export type PostInput = { text: string; replyToId: string | null; mediaIds: string[] | null };
 
 export function parsePostBody(body: unknown): { ok: true; value: PostInput } | { ok: false; error: string } {
   if (!body || typeof body !== "object") return { ok: false, error: "Expected a JSON object." };
@@ -14,13 +15,26 @@ export function parsePostBody(body: unknown): { ok: true; value: PostInput } | {
   if (typeof record.text !== "string" || !record.text.trim() || record.text.length > 25000) {
     return { ok: false, error: "text is required." };
   }
+  const mediaIds = parseMediaIds(record.media_ids);
+  if (!mediaIds.ok) return mediaIds;
   if (record.reply_to_id == null || record.reply_to_id === "") {
-    return { ok: true, value: { text: record.text, replyToId: null } };
+    return { ok: true, value: { text: record.text, replyToId: null, mediaIds: mediaIds.value } };
   }
   if (typeof record.reply_to_id !== "string" || !TWEET_ID.test(record.reply_to_id)) {
     return { ok: false, error: "reply_to_id must be a post id." };
   }
-  return { ok: true, value: { text: record.text, replyToId: record.reply_to_id } };
+  return { ok: true, value: { text: record.text, replyToId: record.reply_to_id, mediaIds: mediaIds.value } };
+}
+
+function parseMediaIds(value: unknown): { ok: true; value: string[] | null } | { ok: false; error: string } {
+  if (value == null) return { ok: true, value: null };
+  if (!Array.isArray(value) || value.length < 1 || value.length > 4) {
+    return { ok: false, error: "media_ids must be 1 to 4 media ids." };
+  }
+  if (value.some((id) => typeof id !== "string" || !MEDIA_ID.test(id))) {
+    return { ok: false, error: "media_ids must be 1 to 4 media ids." };
+  }
+  return { ok: true, value: value };
 }
 
 export function parseSinceId(value: string | null): { ok: true; sinceId: string | null } | { ok: false } {
@@ -45,8 +59,11 @@ async function xFetch(fetchImpl: FetchLike, url: string, init: RequestInit): Pro
 
 export async function postBotTweet(ctx: BotDateDb, input: PostInput, fetchImpl: FetchLike = fetch): Promise<{ id: string }> {
   const { accessToken } = await ensureBotAccessToken(ctx, { fetchImpl });
-  const payload: { text: string; reply?: { in_reply_to_tweet_id: string } } = { text: input.text };
+  const payload: { text: string; reply?: { in_reply_to_tweet_id: string }; media?: { media_ids: string[] } } = {
+    text: input.text,
+  };
   if (input.replyToId) payload.reply = { in_reply_to_tweet_id: input.replyToId };
+  if (input.mediaIds?.length) payload.media = { media_ids: input.mediaIds };
   const response = await xFetch(fetchImpl, X_TWEETS_URL, {
     method: "POST",
     headers: {

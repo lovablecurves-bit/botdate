@@ -39,7 +39,11 @@ export const X_TOKEN_URL = "https://api.x.com/2/oauth2/token";
 export const X_ME_URL = "https://api.x.com/2/users/me";
 /** Member sign-in. BotDateApp auto-posting uses X_BOT_SCOPES instead. */
 export const X_SCOPES = "users.read tweet.read";
-export const X_BOT_SCOPES = "tweet.read tweet.write users.read offline.access";
+/**
+ * BotDateApp auto-posting. media.write is the video upload scope.
+ * Pinning a post uses tweet.write and users.read, which are already here.
+ */
+export const X_BOT_SCOPES = "tweet.read tweet.write users.read offline.access media.write";
 
 export function authorizeUrl(input: {
   clientId: string;

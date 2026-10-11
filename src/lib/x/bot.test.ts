@@ -13,6 +13,15 @@ import {
   shouldRefreshAccessToken,
 } from "./bot-credentials";
 import { XAuthError, exchangeAuthorizationCode, exchangeBotAuthorizationCode, normalizeExpiresIn, refreshBotAccessToken } from "./oauth";
+import {
+  MEDIA_CHUNK_BYTES,
+  X_MEDIA_INIT_URL,
+  uploadBotVideo,
+  xMediaAppendUrl,
+  xMediaFinalizeUrl,
+  xMediaStatusUrl,
+} from "./media";
+import { parsePinBody, xPinTweetUrl } from "./pin";
 import { X_BOT_SCOPES, X_SCOPES, X_TOKEN_URL, authorizeUrl, codeChallenge } from "./pkce";
 import { X_TWEETS_URL, parsePostBody, parseSinceId, xUserMentionsUrl } from "./poster";
 import { openSecret, sealSecret } from "./seal";
@@ -102,8 +111,10 @@ describe("BotDateApp auto-posting", { concurrency: false }, () => {
       verifier: VERIFIER,
       scopes: X_BOT_SCOPES,
     });
-    assert.equal(new URL(bot).searchParams.get("scope"), "tweet.read tweet.write users.read offline.access");
-    assert.match(bot, /scope=tweet\.read%20tweet\.write%20users\.read%20offline\.access/);
+    assert.equal(X_BOT_SCOPES, "tweet.read tweet.write users.read offline.access media.write");
+    assert.equal(X_SCOPES.includes("media.write"), false);
+    assert.equal(new URL(bot).searchParams.get("scope"), X_BOT_SCOPES);
+    assert.match(bot, /scope=tweet\.read%20tweet\.write%20users\.read%20offline\.access%20media\.write/);
     assert.equal(bot.includes("+"), false);
     const member = authorizeUrl({
       clientId: "client",
@@ -116,6 +127,10 @@ describe("BotDateApp auto-posting", { concurrency: false }, () => {
     assert.equal(isOpenPath("/api/admin/x/post"), true);
     assert.equal(isOpenPath("/api/admin/x/mentions"), true);
     assert.equal(isOpenPath("/api/admin/x/mentions/"), true);
+    assert.equal(isOpenPath("/api/admin/x/media"), true);
+    assert.equal(isOpenPath("/api/admin/x/media/"), true);
+    assert.equal(isOpenPath("/api/admin/x/pin"), true);
+    assert.equal(isOpenPath("/api/admin/x/pin/"), true);
     assert.equal(isOpenPath("/admin/x/connected"), true);
     assert.equal(isOpenPath("/admin/x/connected/"), true);
     assert.equal(isOpenPath("/api/admin/x/secret"), true);
@@ -125,10 +140,24 @@ describe("BotDateApp auto-posting", { concurrency: false }, () => {
     assert.match(SCHEMA_SQL, /access_token_ciphertext/);
     assert.match(SCHEMA_SQL, /refresh_token_ciphertext/);
     assert.equal(SYNCED_TABLES.includes("x_bot_credentials"), true);
-    assert.deepEqual(parsePostBody({ text: "hello" }), { ok: true, value: { text: "hello", replyToId: null } });
-    assert.deepEqual(parsePostBody({ text: "hello", reply_to_id: "99" }), { ok: true, value: { text: "hello", replyToId: "99" } });
+    assert.deepEqual(parsePostBody({ text: "hello" }), { ok: true, value: { text: "hello", replyToId: null, mediaIds: null } });
+    assert.deepEqual(parsePostBody({ text: "hello", reply_to_id: "99" }), {
+      ok: true,
+      value: { text: "hello", replyToId: "99", mediaIds: null },
+    });
+    assert.deepEqual(parsePostBody({ text: "hello", media_ids: ["188002810602051584"] }), {
+      ok: true,
+      value: { text: "hello", replyToId: null, mediaIds: ["188002810602051584"] },
+    });
     assert.equal(parsePostBody({ text: "  " }).ok, false);
     assert.equal(parsePostBody({ text: "hello", reply_to_id: 99 }).ok, false);
+    assert.equal(parsePostBody({ text: "hello", media_ids: [] }).ok, false);
+    assert.equal(parsePostBody({ text: "hello", media_ids: ["nope"] }).ok, false);
+    assert.equal(parsePostBody({ text: "hello", media_ids: ["1", "2", "3", "4", "5"] }).ok, false);
+    assert.equal(MEDIA_CHUNK_BYTES, 5 * 1024 * 1024);
+    assert.deepEqual(parsePinBody({ tweet_id: "1001" }), { ok: true, tweetId: "1001" });
+    assert.equal(parsePinBody({ tweet_id: 1001 }).ok, false);
+    assert.equal(xPinTweetUrl("8675309"), "https://api.x.com/2/users/8675309/pinned_tweets");
     assert.deepEqual(parseSinceId(null), { ok: true, sinceId: null });
     assert.deepEqual(parseSinceId(""), { ok: true, sinceId: null });
     assert.deepEqual(parseSinceId("55"), { ok: true, sinceId: "55" });
@@ -359,6 +388,20 @@ describe("BotDateApp auto-posting", { concurrency: false }, () => {
         const reply = await POST(jsonRequest("POST", { text: "reply", reply_to_id: "1001" }, `Bearer ${POSTER}`));
         assert.deepEqual(await reply.json(), { id: "1002" });
 
+        globalThis.fetch = async (input, init) => {
+          assert.equal(String(input), X_TWEETS_URL);
+          assert.deepEqual(JSON.parse(String(init?.body)), {
+            text: "clip",
+            reply: { in_reply_to_tweet_id: "1001" },
+            media: { media_ids: ["188002810602051584"] },
+          });
+          return new Response(JSON.stringify({ data: { id: "1005" } }), { status: 200 });
+        };
+        const withMedia = await POST(
+          jsonRequest("POST", { text: "clip", reply_to_id: "1001", media_ids: ["188002810602051584"] }, `Bearer ${POSTER}`),
+        );
+        assert.deepEqual(await withMedia.json(), { id: "1005" });
+
         const leaked = ACCESS;
         globalThis.fetch = async () => new Response(JSON.stringify({ detail: leaked }), { status: 403 });
         const failed = await POST(jsonRequest("POST", { text: "nope" }, `Bearer ${POSTER}`));
@@ -454,6 +497,174 @@ describe("BotDateApp auto-posting", { concurrency: false }, () => {
       db.close();
     }
   });
+
+  test("media upload chunks an MP4 and pin posts a tweet id", async () => {
+    const logs = captureLogs();
+    const db = await openDatabase(":memory:", { seed: false });
+    useAppDatabaseForTests(db);
+    const originalFetch = globalThis.fetch;
+    const mediaId = "1880028106020515840";
+    try {
+      await withEnv(X_ENV, async () => {
+        const { POST: upload } = await import("../../app/api/admin/x/media/route");
+        const { POST: pin } = await import("../../app/api/admin/x/pin/route");
+        globalThis.fetch = async () => {
+          throw new Error("auth failures must not call X");
+        };
+        const unset = await withEnv({ ...X_ENV, POSTER_SECRET: undefined }, () =>
+          upload(mp4Request(Uint8Array.of(1, 2, 3), `Bearer ${POSTER}`)),
+        );
+        assert.equal(unset.status, 401);
+        const wrong = await upload(mp4Request(Uint8Array.of(1, 2, 3), "Bearer wrong-poster-secret"));
+        assert.equal(wrong.status, 401);
+        const notVideo = await upload(jsonRequest("POST", { text: "nope" }, `Bearer ${POSTER}`));
+        assert.equal(notVideo.status, 400);
+        const empty = await upload(mp4Request(new Uint8Array(), `Bearer ${POSTER}`));
+        assert.equal(empty.status, 400);
+        const missing = await upload(mp4Request(Uint8Array.of(1, 2, 3), `Bearer ${POSTER}`));
+        assert.equal(missing.status, 503);
+
+        saveBotCredentials(db, {
+          xUserId: "8675309",
+          username: "BotDateApp",
+          accessToken: ACCESS,
+          refreshToken: REFRESH,
+          expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+          secret: SESSION,
+        });
+
+        const bytes = Uint8Array.of(1, 2, 3, 4, 5, 6, 7);
+        const calls: string[] = [];
+        const sleeps: number[] = [];
+        const statusStates = ["in_progress", "in_progress", "succeeded"];
+        const statusWaits = [2, 99];
+        let statusHits = 0;
+        const uploaded = await uploadBotVideo(db, bytes, {
+          chunkBytes: 3,
+          sleep: async (ms) => {
+            sleeps.push(ms);
+          },
+          fetchImpl: async (input, init) => {
+            const url = String(input);
+            calls.push(`${init?.method ?? "GET"} ${url}`);
+            assert.equal(header(init, "Authorization"), `Bearer ${ACCESS}`);
+            assert.equal(header(init, "Authorization").includes(POSTER), false);
+            if (url === X_MEDIA_INIT_URL) {
+              assert.deepEqual(JSON.parse(String(init?.body)), {
+                media_type: "video/mp4",
+                total_bytes: 7,
+                media_category: "tweet_video",
+              });
+              return new Response(JSON.stringify({ data: { id: mediaId, expires_after_secs: 86400 } }), { status: 200 });
+            }
+            if (url === xMediaAppendUrl(mediaId)) {
+              assert.equal(header(init, "Content-Type"), "");
+              const form = init?.body;
+              assert.ok(form instanceof FormData);
+              const segment = Number(form.get("segment_index"));
+              const media = form.get("media");
+              assert.ok(media instanceof Blob);
+              assert.equal(media.size, segment === 2 ? 1 : 3);
+              return new Response(null, { status: 204 });
+            }
+            if (url === xMediaFinalizeUrl(mediaId)) {
+              assert.equal(init?.body, undefined);
+              return new Response(
+                JSON.stringify({ data: { id: mediaId, processing_info: { state: "pending", check_after_secs: 2 } } }),
+                { status: 200 },
+              );
+            }
+            if (url === xMediaStatusUrl(mediaId)) {
+              const state = statusStates[statusHits] ?? "succeeded";
+              const checkAfter = statusWaits[statusHits] ?? 1;
+              statusHits += 1;
+              return new Response(
+                JSON.stringify({ data: { id: mediaId, processing_info: { state, check_after_secs: checkAfter } } }),
+                { status: 200 },
+              );
+            }
+            throw new Error(`unexpected ${url}`);
+          },
+        });
+        assert.deepEqual(uploaded, { mediaId });
+        assert.deepEqual(calls, [
+          `POST ${X_MEDIA_INIT_URL}`,
+          `POST ${xMediaAppendUrl(mediaId)}`,
+          `POST ${xMediaAppendUrl(mediaId)}`,
+          `POST ${xMediaAppendUrl(mediaId)}`,
+          `POST ${xMediaFinalizeUrl(mediaId)}`,
+          `GET ${xMediaStatusUrl(mediaId)}`,
+          `GET ${xMediaStatusUrl(mediaId)}`,
+          `GET ${xMediaStatusUrl(mediaId)}`,
+        ]);
+        assert.deepEqual(sleeps, [2000, 5000]);
+
+        const routeCalls: string[] = [];
+        globalThis.fetch = async (input, init) => {
+          const url = String(input);
+          routeCalls.push(url);
+          assert.equal(header(init, "Authorization"), `Bearer ${ACCESS}`);
+          if (url === X_MEDIA_INIT_URL) {
+            return new Response(JSON.stringify({ data: { id: mediaId } }), { status: 200 });
+          }
+          if (url === xMediaAppendUrl(mediaId)) return new Response(null, { status: 204 });
+          if (url === xMediaFinalizeUrl(mediaId)) {
+            return new Response(JSON.stringify({ data: { id: mediaId } }), { status: 200 });
+          }
+          throw new Error(`status must be skipped when processing_info is absent: ${url}`);
+        };
+        const ready = await upload(mp4Request(Uint8Array.of(9, 8, 7), `Bearer ${POSTER}`));
+        assert.equal(ready.status, 200);
+        assert.deepEqual(await ready.json(), { media_id: mediaId });
+        assert.deepEqual(routeCalls, [X_MEDIA_INIT_URL, xMediaAppendUrl(mediaId), xMediaFinalizeUrl(mediaId)]);
+
+        globalThis.fetch = async (input) => {
+          const url = String(input);
+          if (url === X_MEDIA_INIT_URL) return new Response(JSON.stringify({ data: { id: mediaId } }), { status: 200 });
+          if (url === xMediaAppendUrl(mediaId)) return new Response(null, { status: 204 });
+          if (url === xMediaFinalizeUrl(mediaId)) {
+            return new Response(JSON.stringify({ data: { processing_info: { state: "pending", check_after_secs: 1 } } }), { status: 200 });
+          }
+          if (url === xMediaStatusUrl(mediaId)) {
+            return new Response(JSON.stringify({ data: { processing_info: { state: "failed" } }, detail: ACCESS }), { status: 200 });
+          }
+          throw new Error(`unexpected ${url}`);
+        };
+        const failed = await upload(mp4Request(Uint8Array.of(1), `Bearer ${POSTER}`));
+        assert.equal(failed.status, 502);
+        assert.equal(JSON.stringify(await failed.json()).includes(ACCESS), false);
+        assert.equal(logs.text().includes(ACCESS), false);
+
+        const pinUnset = await withEnv({ ...X_ENV, POSTER_SECRET: undefined }, () =>
+          pin(jsonRequest("POST", { tweet_id: "1001" }, `Bearer ${POSTER}`)),
+        );
+        assert.equal(pinUnset.status, 401);
+        const pinBad = await pin(jsonRequest("POST", { tweet_id: "nope" }, `Bearer ${POSTER}`));
+        assert.equal(pinBad.status, 400);
+        globalThis.fetch = async (input, init) => {
+          assert.equal(String(input), xPinTweetUrl("8675309"));
+          assert.equal(init?.method, "POST");
+          assert.equal(header(init, "Authorization"), `Bearer ${ACCESS}`);
+          assert.deepEqual(JSON.parse(String(init?.body)), { tweet_id: "1001" });
+          return new Response(JSON.stringify({ data: { pinned: true } }), { status: 200 });
+        };
+        const pinned = await pin(jsonRequest("POST", { tweet_id: "1001" }, `Bearer ${POSTER}`));
+        assert.equal(pinned.status, 200);
+        assert.deepEqual(await pinned.json(), { tweet_id: "1001" });
+        globalThis.fetch = async () => new Response(JSON.stringify({ detail: ACCESS }), { status: 403 });
+        const pinFailed = await pin(jsonRequest("POST", { tweet_id: "1001" }, `Bearer ${POSTER}`));
+        assert.equal(pinFailed.status, 502);
+        assert.equal(JSON.stringify(await pinFailed.json()).includes(ACCESS), false);
+        assert.equal(logs.text().includes(ACCESS), false);
+        assert.equal(logs.text().includes(REFRESH), false);
+      });
+    } finally {
+      logs.restore();
+      globalThis.fetch = originalFetch;
+      useAppDatabaseForTests(null);
+      db.close();
+    }
+  });
 });
 
 function profileResponse(username: string): Response {
@@ -474,6 +685,16 @@ function profileResponse(username: string): Response {
 function callbackRequest(state: string, verifier: string, query: string): Request {
   return new Request(`${ORIGIN}/api/auth/x/callback?${query}&state=${encodeURIComponent(state)}`, {
     headers: { cookie: `botdate_x_bot_state=${state}; botdate_x_bot_verifier=${verifier}` },
+  });
+}
+
+function mp4Request(bytes: Uint8Array, authorization: string): Request {
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return new Request(`${ORIGIN}/api/admin/x/media`, {
+    method: "POST",
+    headers: { authorization, "content-type": "video/mp4" },
+    body: new Blob([copy], { type: "video/mp4" }),
   });
 }
 
