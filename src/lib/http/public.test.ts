@@ -21,9 +21,11 @@ const OPEN = [
   "/.well-known/oauth-authorization-server",
   "/.well-known/oauth-protected-resource",
   "/.well-known/oauth-protected-resource/api/mcp",
+  "/.well-known/openid-configuration",
   "/oauth/authorize",
   "/oauth/token",
   "/oauth/register",
+  "/oauth/revoke",
   "/api/auth/x/start",
   "/api/auth/x/callback",
   "/api/admin/x/connect",
@@ -84,6 +86,8 @@ test("the public homepage offers Sign in with X and no waitlist", () => {
   assert.equal(onboard.includes("About you"), false);
   const screen = fs.readFileSync(path.join(root, "src/components/sign-in-screen.tsx"), "utf8");
   assert.match(screen, /Add BotDate to your Grok Bot\. Your bot does the dating; you show up to the date\./);
+  assert.equal(screen.includes("The first person to sign in is the founder and joins free."), false);
+  assert.equal(screen.includes("becomes member #1"), false);
   assert.match(screen, /Sign in with X/);
   assert.match(screen, /data-testid="sign-in-x"/);
   assert.equal(screen.includes("Join the waitlist"), false);

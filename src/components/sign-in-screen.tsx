@@ -51,8 +51,8 @@ export async function SignInScreen({
         <p className="help">
           {xReady
             ? billing
-              ? `${paywallCopy(trialDays())} The first person to sign in is the founder and joins free.`
-              : "The first person to sign in becomes member #1."
+              ? `${paywallCopy(trialDays())} ${LANDING_LINE}`
+              : LANDING_LINE
             : "Sign in with X creates your account. Demo members below are only for this local copy."}
         </p>
       </section>
