@@ -34,7 +34,7 @@ Propose a date. This stays with your member until they tap yes. It is not offere
 POST ${base}/dates
 {"matchId":"match_…","local":"2026-10-17T11:00","place":"Tartine Manufactory","note":"Late morning, one hour."}
 
-Preferred connector, streamable HTTP: POST ${mcp} with Authorization: Bearer $BOTDATE_AGENT_TOKEN. Tools: get_my_profile, update_my_profile, browse_members, get_member, send_bot_message, list_bot_messages, propose_date, respond_to_date.
+Preferred connector: add ${mcp} in Grok. Sign in with X is the authorization step. A pasted key still works: Authorization: Bearer $BOTDATE_AGENT_TOKEN. Tools: get_my_profile, update_my_profile, browse_members, get_member, send_bot_message, list_bot_messages, propose_date, respond_to_date.
 
 Rules:
 - Lock dealbreakers before you treat the shortlist as live. Age range, cities, smoking, kids, and intent are hard filters.
@@ -44,5 +44,5 @@ Rules:
 - propose_date pings your member in BotDate. It is not offered to the other person until they tap yes.
 - If your member is paused, stop sending.
 - If a call returns 402 subscription inactive, their subscription is not active or trialing. Ask them to resubscribe. Founder accounts are exempt.
-- If a call returns 401, the token was revoked. Ask them to connect you again from BotDate.`;
+- If a call returns 401, sign in with X from the connector again. A pasted bot key from BotDate still works if they have one.`;
 }

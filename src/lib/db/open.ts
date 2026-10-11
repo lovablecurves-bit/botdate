@@ -218,7 +218,7 @@ function toArgs(values: unknown): InValue[] {
 }
 
 /** Tables copied to and from Turso. A missing name here is invisible after a cold start. */
-export const SYNCED_TABLES = ["users", "profiles", "prefs", "matches", "bot_threads", "messages", "date_proposals", "agent_tokens", "waitlist", "x_bot_credentials"] as const;
+export const SYNCED_TABLES = ["users", "profiles", "prefs", "matches", "bot_threads", "messages", "date_proposals", "agent_tokens", "waitlist", "x_bot_credentials", "oauth_clients", "oauth_codes", "oauth_refresh_tokens"] as const;
 
 const TABLE_ORDER = SYNCED_TABLES;
 

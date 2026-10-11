@@ -97,6 +97,39 @@ export const agentTokens = sqliteTable("agent_tokens", {
   createdAt: text("created_at").notNull(),
   revokedAt: text("revoked_at"),
   lastUsedAt: text("last_used_at"),
+  /** Null means the bearer key does not expire. OAuth access tokens set this. */
+  expiresAt: text("expires_at"),
+});
+
+export const oauthClients = sqliteTable("oauth_clients", {
+  clientId: text("client_id").primaryKey(),
+  clientName: text("client_name").notNull(),
+  redirectUris: text("redirect_uris").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const oauthCodes = sqliteTable("oauth_codes", {
+  id: text("id").primaryKey(),
+  codeHash: text("code_hash").notNull().unique(),
+  clientId: text("client_id").notNull(),
+  userId: text("user_id").notNull(),
+  redirectUri: text("redirect_uri").notNull(),
+  codeChallenge: text("code_challenge").notNull(),
+  resource: text("resource").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  usedAt: text("used_at"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const oauthRefreshTokens = sqliteTable("oauth_refresh_tokens", {
+  id: text("id").primaryKey(),
+  tokenHash: text("token_hash").notNull().unique(),
+  clientId: text("client_id").notNull(),
+  userId: text("user_id").notNull(),
+  accessTokenId: text("access_token_id").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  revokedAt: text("revoked_at"),
+  createdAt: text("created_at").notNull(),
 });
 
 export const waitlistSignups = sqliteTable("waitlist", {
@@ -211,7 +244,36 @@ CREATE TABLE IF NOT EXISTS agent_tokens (
   token_prefix TEXT NOT NULL,
   created_at TEXT NOT NULL,
   revoked_at TEXT,
-  last_used_at TEXT
+  last_used_at TEXT,
+  expires_at TEXT
+);
+CREATE TABLE IF NOT EXISTS oauth_clients (
+  client_id TEXT PRIMARY KEY,
+  client_name TEXT NOT NULL,
+  redirect_uris TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_codes (
+  id TEXT PRIMARY KEY,
+  code_hash TEXT NOT NULL UNIQUE,
+  client_id TEXT NOT NULL REFERENCES oauth_clients(client_id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  redirect_uri TEXT NOT NULL,
+  code_challenge TEXT NOT NULL,
+  resource TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
+  id TEXT PRIMARY KEY,
+  token_hash TEXT NOT NULL UNIQUE,
+  client_id TEXT NOT NULL REFERENCES oauth_clients(client_id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  access_token_id TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  revoked_at TEXT,
+  created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS waitlist (
   id TEXT PRIMARY KEY,
