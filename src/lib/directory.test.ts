@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { openDatabase } from "./db/open";
-import { displayAvatarUrl, listDirectory, memberProfile } from "./directory";
+import { displayAvatarUrl, includeViewer, listDirectory, memberProfile, profileView } from "./directory";
 import { getMember } from "./domain";
 import { markConnectSeen, upsertXMember } from "./x/account";
 
@@ -100,4 +100,22 @@ test("the first real sign-in on an empty database is member #1", async () => {
   assert.equal(getMember(ctx, second.userId)?.founder, false);
   assert.equal(getMember(ctx, second.userId)?.memberNumber, 2);
   ctx.close();
+});
+
+test("a signed-in member stays in the directory when this instance has no row", async () => {
+  const full = await openDatabase(":memory:", { seed: false });
+  const created = upsertXMember(full, ada);
+  const member = getMember(full, created.userId);
+  assert.ok(member);
+  const empty = await openDatabase(":memory:", { seed: false });
+  assert.equal(listDirectory(empty).length, 0);
+  const shown = includeViewer(listDirectory(empty), member);
+  assert.equal(shown[0]?.handle, "ada_bot");
+  assert.equal(shown[0]?.founder, true);
+  const profile = profileView(member, member);
+  assert.equal(profile?.bio, ada.bio);
+  assert.equal(profile?.self, true);
+  assert.match(profile?.avatarUrl ?? "", /ada_400x400/);
+  full.close();
+  empty.close();
 });

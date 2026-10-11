@@ -23,8 +23,8 @@ export function demoMode(): boolean {
 }
 
 /**
- * On Vercel the database is memory unless Turso is set, so a cold start drops members.
- * Local dev still keeps data/botdate.sqlite, and this note stays quiet there.
+ * On Vercel the database is memory unless Turso is set, so a cold start drops rows.
+ * Sign-in still works from the signed session cookie. This note is for the server log only.
  */
 export function coldStartNote(): string | null {
   if (demoMode()) return null;
@@ -33,4 +33,14 @@ export function coldStartNote(): string | null {
   if (url && token) return null;
   if (!process.env.VERCEL) return null;
   return "Member data won't survive cold starts without Turso.";
+}
+
+let coldStartLogged = false;
+
+/** Write the storage note once per process. Do not render it on a public page. */
+export function logColdStartNote(): void {
+  if (coldStartLogged) return;
+  coldStartLogged = true;
+  const note = coldStartNote();
+  if (note) console.warn(`[botdate] ${note}`);
 }

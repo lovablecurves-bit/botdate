@@ -82,7 +82,29 @@ export function listDirectory(ctx: BotDateDb): DirectoryEntry[] {
   return listMembers(ctx)
     .map(toEntry)
     .filter((entry): entry is DirectoryEntry => entry !== null)
-    .sort((a, b) => a.memberNumber - b.memberNumber || a.displayName.localeCompare(b.displayName));
+    .sort(byMemberNumber);
+}
+
+function byMemberNumber(a: DirectoryEntry, b: DirectoryEntry): number {
+  return a.memberNumber - b.memberNumber || a.displayName.localeCompare(b.displayName);
+}
+
+/** Keep the signed-in member visible when this instance has not stored their row yet. */
+export function includeViewer(people: DirectoryEntry[], member: Member): DirectoryEntry[] {
+  const self = toEntry(member);
+  if (!self || people.some((person) => person.id === self.id)) return people;
+  return [...people, self].sort(byMemberNumber);
+}
+
+export function profileView(viewer: Member, person: Member): MemberProfileView | null {
+  const entry = toEntry(person);
+  if (!entry) return null;
+  return {
+    ...entry,
+    summary: matchmaker.summarize(person),
+    cues: matchingCues(viewer, person),
+    self: viewer.id === person.id,
+  };
 }
 
 /**
@@ -94,12 +116,5 @@ export function memberProfile(ctx: BotDateDb, viewerId: string, memberId: string
   const viewer = getMember(ctx, viewerId);
   const person = getMember(ctx, memberId);
   if (!viewer || !person) return null;
-  const entry = toEntry(person);
-  if (!entry) return null;
-  return {
-    ...entry,
-    summary: matchmaker.summarize(person),
-    cues: matchingCues(viewer, person),
-    self: viewer.id === person.id,
-  };
+  return profileView(viewer, person);
 }

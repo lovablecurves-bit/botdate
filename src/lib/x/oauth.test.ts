@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { openDatabase } from "../db/open";
+import { memberHome } from "../auth";
+import { openDatabase, useAppDatabaseForTests } from "../db/open";
 import { getMember } from "../domain";
+import { memberFromClaims, verifySession } from "../session";
 import { upsertXMember } from "./account";
 import { demoMode, xAuthConfigured, xCredentials } from "./config";
 import { XAuthError, exchangeAuthorizationCode, fetchXProfile, loginErrorText, logOAuthCallbackError, readOAuthCallbackError } from "./oauth";
-import { X_AUTHORIZE_URL, X_SCOPES, X_TOKEN_URL, authorizeUrl, codeChallenge, randomVerifier } from "./pkce";
+import { X_AUTHORIZE_URL, X_ME_URL, X_SCOPES, X_TOKEN_URL, authorizeUrl, codeChallenge, randomVerifier } from "./pkce";
 import { safeAvatarUrl, xProfileFromPayload } from "./profile";
 
 const VERIFIER = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
@@ -194,7 +196,7 @@ test("callback logs the exact error and error_description and the login page sho
   try {
     logOAuthCallbackError(parsed!);
     assert.deepEqual(logs, [["X OAuth callback error=access_denied error_description=You were not able to give access to the App"]]);
-    const { GET } = await import("../../app/api/auth/x/callback/route.ts");
+    const { GET } = await import("../../app/api/auth/x/callback/route");
     const response = await GET(
       new Request("https://botdate.example/api/auth/x/callback?error=access_denied&error_description=You%20were%20not%20able%20to%20give%20access%20to%20the%20App"),
     );
@@ -267,3 +269,121 @@ test("signing in with X creates an unlocked member and refreshes the avatar with
   assert.match(locked?.xAccount?.avatarUrl ?? "", /default_400x400/);
   ctx.close();
 });
+
+test("X sign-in survives a second instance that does not share the database", async () => {
+  const previous = {
+    id: process.env.X_CLIENT_ID,
+    secret: process.env.X_CLIENT_SECRET,
+    redirect: process.env.X_REDIRECT_URI,
+    session: process.env.SESSION_SECRET,
+  };
+  process.env.X_CLIENT_ID = "id";
+  process.env.X_CLIENT_SECRET = "secret";
+  process.env.X_REDIRECT_URI = "https://botdate.vercel.app/api/auth/x/callback";
+  delete process.env.SESSION_SECRET;
+  const db = await openDatabase(":memory:", { seed: false });
+  useAppDatabaseForTests(db);
+  const calls: string[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.startsWith(X_TOKEN_URL)) return new Response(JSON.stringify({ access_token: "access" }), { status: 200 });
+    if (url.startsWith(X_ME_URL)) {
+      return new Response(
+        JSON.stringify({
+          data: {
+            id: "42",
+            name: "Ada Lovelace",
+            username: "ada_bot",
+            description: "Analytical.",
+            profile_image_url: "https://pbs.twimg.com/profile_images/a/b_normal.jpg",
+          },
+        }),
+        { status: 200 },
+      );
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+  try {
+    const { GET: start } = await import("../../app/api/auth/x/start/route");
+    const started = await start(new Request("https://botdate.vercel.app/api/auth/x/start"));
+    const startedCookies = started.headers.getSetCookie();
+    const state = cookieValue(startedCookies, "botdate_x_state");
+    const verifier = cookieValue(startedCookies, "botdate_x_verifier");
+    for (const name of ["botdate_x_state", "botdate_x_verifier"]) {
+      const raw = startedCookies.find((item) => item.startsWith(`${name}=`));
+      assert.ok(raw);
+      assert.match(raw, /HttpOnly/);
+      assert.match(raw, /Secure/);
+      assert.match(raw, /SameSite=Lax/i);
+      assert.match(raw, /Path=\//);
+    }
+    const authorize = new URL(started.headers.get("location") ?? "");
+    assert.equal(authorize.origin + authorize.pathname, "https://x.com/i/oauth2/authorize");
+    assert.equal(authorize.searchParams.get("state"), state);
+    assert.equal(authorize.searchParams.get("code_challenge"), codeChallenge(verifier));
+    assert.equal(authorize.searchParams.get("code_challenge_method"), "S256");
+
+    const { GET: callback } = await import("../../app/api/auth/x/callback/route");
+    const finished = await callback(
+      new Request(`https://botdate.vercel.app/api/auth/x/callback?code=abc&state=${encodeURIComponent(state)}`, {
+        headers: { cookie: `botdate_x_state=${state}; botdate_x_verifier=${verifier}` },
+      }),
+    );
+    assert.equal(finished.status, 307);
+    const dest = new URL(finished.headers.get("location") ?? "");
+    assert.equal(dest.pathname, "/connect");
+    assert.notEqual(dest.pathname, "/");
+    assert.notEqual(dest.pathname, "/login");
+    const sessionCookies = finished.headers.getSetCookie();
+    const sessionRaw = sessionCookies.find((item) => item.startsWith("botdate_session="));
+    assert.ok(sessionRaw);
+    assert.match(sessionRaw, /HttpOnly/);
+    assert.match(sessionRaw, /Secure/);
+    assert.match(sessionRaw, /SameSite=Lax/i);
+    assert.match(sessionRaw, /Path=\//);
+    const token = cookieValue(sessionCookies, "botdate_session");
+    const claims = verifySession(token);
+    assert.ok(claims);
+    assert.equal(claims.id, "x_42");
+    assert.equal(claims.handle, "ada_bot");
+    assert.equal(claims.name, "Ada Lovelace");
+    assert.equal(claims.bio, "Analytical.");
+    assert.equal(claims.avatar, "https://pbs.twimg.com/profile_images/a/b_400x400.jpg");
+    assert.equal(claims.founder, true);
+    assert.equal(getMember(db, claims.id)?.xAccount?.handle, "ada_bot");
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0], X_TOKEN_URL);
+    assert.ok(calls[1]?.startsWith(X_ME_URL));
+
+    const other = await openDatabase(":memory:", { seed: false });
+    assert.equal(getMember(other, claims.id), null);
+    const restored = memberFromClaims(claims);
+    assert.equal(restored.xAccount?.handle, "ada_bot");
+    assert.equal(restored.displayName, "Ada Lovelace");
+    assert.equal(restored.profile.bio, "Analytical.");
+    assert.equal(memberHome(restored), "/connect");
+    assert.equal(calls.length, 2, "profile views must not call X again");
+    other.close();
+  } finally {
+    globalThis.fetch = originalFetch;
+    useAppDatabaseForTests(null);
+    db.close();
+    for (const [key, value] of Object.entries({
+      X_CLIENT_ID: previous.id,
+      X_CLIENT_SECRET: previous.secret,
+      X_REDIRECT_URI: previous.redirect,
+      SESSION_SECRET: previous.session,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+function cookieValue(setCookies: string[], name: string): string {
+  const raw = setCookies.find((item) => item.startsWith(`${name}=`));
+  assert.ok(raw, name);
+  return raw.slice(name.length + 1).split(";")[0] ?? "";
+}

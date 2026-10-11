@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { clearSession, requireOnboarded, requireUser, setSession } from "@/lib/auth";
+import { clearSession, memberHome, requireOnboarded, requireUser, setSession } from "@/lib/auth";
 import { markConnectSeen } from "@/lib/x/account";
 import { demoMode } from "@/lib/x/config";
 import { issueAgentToken, revokeAgentTokens } from "@/lib/agent/tokens";
@@ -76,8 +76,8 @@ export async function loginAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   const member = await withDb((db) => getMember(db, userId));
   if (!member) redirect("/login?error=That+demo+member+is+not+in+the+seed.");
-  await setSession(member.id);
-  redirect(member.prefs.locked ? "/shortlist" : "/onboarding");
+  await setSession(member);
+  redirect(memberHome(member));
 }
 
 const AGENT_REVEAL = "botdate_agent_token";
@@ -113,8 +113,20 @@ export async function logoutAction() {
 
 export async function continueFromConnectAction() {
   const user = await requireUser();
-  await withDb((db) => markConnectSeen(db, user.id));
-  redirect(user.prefs.locked ? "/shortlist" : "/onboarding");
+  try {
+    await withDb((db) => markConnectSeen(db, user.id));
+  } catch (error) {
+    console.error("Could not store connectSeen.", error);
+  }
+  let next = { ...user, connectSeen: true };
+  try {
+    const saved = await withDb((db) => getMember(db, user.id));
+    if (saved) next = saved;
+  } catch (error) {
+    console.error("Could not reload the member after connect.", error);
+  }
+  await setSession(next);
+  redirect(memberHome(next));
 }
 
 export async function resetDemoAction() {
@@ -126,8 +138,12 @@ export async function resetDemoAction() {
 
 export async function saveOnboardingAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const result = await withDb((db) => saveMember(db, user.id, inputFromForm(formData)));
-  if (!result.ok) return { ok: false, error: result.error, message: null };
+  const saved = await withDb((db) => {
+    const result = saveMember(db, user.id, inputFromForm(formData));
+    return { result, member: result.ok ? getMember(db, user.id) : null };
+  });
+  if (!saved.result.ok) return { ok: false, error: saved.result.error, message: null };
+  if (saved.member) await setSession(saved.member);
   touch();
   const locked = formData.get("locked") === "on";
   return {

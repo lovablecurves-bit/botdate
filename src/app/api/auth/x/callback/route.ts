@@ -1,17 +1,27 @@
 import { timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { memberHome, safePostLoginPath } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
+import { getMember } from "@/lib/domain";
+import {
+  OAUTH_STATE_COOKIE,
+  OAUTH_VERIFIER_COOKIE,
+  SESSION_COOKIE,
+  claimsFromMember,
+  memberFromClaims,
+  oauthCookieOptions,
+  readRequestCookie,
+  requestIsSecureSync,
+  sessionCookieOptions,
+  signSession,
+} from "@/lib/session";
 import { upsertXMember } from "@/lib/x/account";
 import { xCredentials } from "@/lib/x/config";
 import { XAuthError, exchangeAuthorizationCode, fetchXProfile, logOAuthCallbackError, readOAuthCallbackError } from "@/lib/x/oauth";
+import type { XProfile } from "@/lib/x/profile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const STATE = "botdate_x_state";
-const VERIFIER = "botdate_x_verifier";
-const SESSION = "botdate_uid";
 
 function same(left: string, right: string): boolean {
   const a = Buffer.from(left);
@@ -20,18 +30,20 @@ function same(left: string, right: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-function clearOauth(response: NextResponse) {
-  response.cookies.set(STATE, "", { path: "/", maxAge: 0 });
-  response.cookies.set(VERIFIER, "", { path: "/", maxAge: 0 });
+function clearOauth(response: NextResponse, secure: boolean) {
+  const expired = { ...oauthCookieOptions(secure), maxAge: 0 };
+  response.cookies.set(OAUTH_STATE_COOKIE, "", expired);
+  response.cookies.set(OAUTH_VERIFIER_COOKIE, "", expired);
   return response;
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const secure = requestIsSecureSync(request.url, request.headers.get("x-forwarded-proto"));
   const login = new URL("/login", request.url);
   const fail = (message: string) => {
     login.searchParams.set("error", message);
-    return clearOauth(NextResponse.redirect(login));
+    return clearOauth(NextResponse.redirect(login), secure);
   };
 
   const credentials = xCredentials();
@@ -41,14 +53,13 @@ export async function GET(request: Request) {
     logOAuthCallbackError(oauthError);
     login.searchParams.set("error", oauthError.error);
     if (oauthError.error_description) login.searchParams.set("error_description", oauthError.error_description);
-    return clearOauth(NextResponse.redirect(login));
+    return clearOauth(NextResponse.redirect(login), secure);
   }
 
   const code = url.searchParams.get("code") ?? "";
   const state = url.searchParams.get("state") ?? "";
-  const jar = await cookies();
-  const expected = jar.get(STATE)?.value ?? "";
-  const verifier = jar.get(VERIFIER)?.value ?? "";
+  const expected = readRequestCookie(request, OAUTH_STATE_COOKIE);
+  const verifier = readRequestCookie(request, OAUTH_VERIFIER_COOKIE);
   if (!code || !state || !expected || !verifier || !same(state, expected)) {
     return fail("That X sign-in expired. Try again.");
   }
@@ -56,20 +67,67 @@ export async function GET(request: Request) {
   try {
     const accessToken = await exchangeAuthorizationCode(credentials, code, verifier);
     const profile = await fetchXProfile(accessToken);
-    const account = await withDb((db) => upsertXMember(db, profile));
-    const nextPath = account.connectSeen ? (account.locked ? "/shortlist" : "/onboarding") : "/connect";
-    const dest = new URL(nextPath, request.url);
+    const member = await memberFromSignIn(profile);
+    const dest = new URL(safePostLoginPath(memberHome(member)), request.url);
     const response = NextResponse.redirect(dest);
-    response.cookies.set(SESSION, account.userId, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-      secure: url.protocol === "https:",
-    });
-    return clearOauth(response);
+    response.cookies.set(SESSION_COOKIE, signSession(claimsFromMember(member)), sessionCookieOptions(secure));
+    return clearOauth(response, secure);
   } catch (error) {
     const message = error instanceof XAuthError ? error.message : "X sign-in did not finish. Try again.";
     return fail(message.slice(0, 180));
   }
+}
+
+/**
+ * One GET /2/users/me already happened. Upsert that snapshot and do not call X again.
+ * If the database is down, the signed cookie still carries the profile.
+ */
+async function memberFromSignIn(profile: XProfile) {
+  try {
+    const saved = await withDb((db) => {
+      const upserted = upsertXMember(db, profile);
+      return getMember(db, upserted.userId);
+    });
+    if (saved) return saved;
+  } catch (error) {
+    console.error("Could not store the X member; signing in from the profile snapshot.", error);
+  }
+  return memberFromClaims(
+    claimsFromMember({
+      id: `x_${profile.xUserId}`,
+      email: `x_${profile.xUserId}@x.botdate`,
+      displayName: profile.name,
+      botPaused: false,
+      profile: {
+        age: 30,
+        city: "San Francisco",
+        occupation: "New here",
+        bio: profile.bio,
+        pronouns: "they/them",
+        smoking: false,
+        kids: "open",
+        intent: "serious",
+        interests: [],
+        accent: "#ff2d92",
+        voice: { subject: "they", object: "them", possessive: "their" },
+      },
+      prefs: {
+        ageMin: 25,
+        ageMax: 45,
+        cities: ["San Francisco"],
+        smoking: "no",
+        kids: "any",
+        intent: "any",
+        niceToHaves: "",
+        locked: false,
+      },
+      xAccount: { userId: profile.xUserId, handle: profile.handle, avatarUrl: profile.avatarUrl },
+      founder: false,
+      memberNumber: null,
+      connectSeen: false,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      subscriptionStatus: null,
+    }),
+  );
 }

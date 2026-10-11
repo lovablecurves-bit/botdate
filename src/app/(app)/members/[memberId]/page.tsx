@@ -3,12 +3,20 @@ import { redirect } from "next/navigation";
 import { Portrait } from "@/components/person";
 import { needsConnectPrompt, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
-import { displayAvatarUrl, memberProfile } from "@/lib/directory";
+import { displayAvatarUrl, memberProfile, profileView } from "@/lib/directory";
+import type { Member } from "@/lib/types";
+
+async function loadProfile(viewer: Member, memberId: string) {
+  const stored = await withDb((db) => memberProfile(db, viewer.id, memberId));
+  if (stored) return stored;
+  if (viewer.id !== memberId) return null;
+  return profileView(viewer, viewer);
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ memberId: string }> }) {
   const { memberId } = await params;
   const viewer = await requireUser();
-  const profile = await withDb((db) => memberProfile(db, viewer.id, memberId));
+  const profile = await loadProfile(viewer, memberId);
   return { title: profile?.displayName ?? "Member" };
 }
 
@@ -16,7 +24,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
   const viewer = await requireUser();
   if (needsConnectPrompt(viewer)) redirect("/connect");
   const { memberId } = await params;
-  const profile = await withDb((db) => memberProfile(db, viewer.id, memberId));
+  const profile = await loadProfile(viewer, memberId);
 
   if (!profile) {
     return (

@@ -8,7 +8,7 @@ import * as schema from "./schema";
 import { ADDED_COLUMNS, STRIPE_CUSTOMER_INDEX, X_USER_INDEX, isBenignMigrationError } from "./migrate";
 import { SCHEMA_SQL } from "./schema";
 import { seedIfEmpty } from "./seed";
-import { demoMode } from "../x/config";
+import { demoMode, logColdStartNote } from "../x/config";
 import { ensureRealMemberNumbers } from "../x/account";
 
 type SqlJsStatic = Awaited<ReturnType<typeof initSqlJs>>;
@@ -36,6 +36,8 @@ type DbGlobal = {
   gate: Promise<void>;
   opening?: Promise<BotDateDb>;
   sqlJs?: Promise<SqlJsStatic>;
+  /** Set by tests so a request can run against an isolated database. */
+  testDb?: BotDateDb | null;
 };
 
 const globalForDb = globalThis as { __botdate?: DbGlobal };
@@ -79,6 +81,37 @@ function loadSqlJs(): Promise<SqlJsStatic> {
     });
   }
   return state.sqlJs;
+}
+
+export async function applyRemoteSchema(client: Client): Promise<void> {
+  try {
+    await client.executeMultiple(SCHEMA_SQL);
+  } catch {
+    await client.batch(statementsOf(SCHEMA_SQL), "write");
+  }
+  for (const column of ADDED_COLUMNS) {
+    try {
+      await client.execute(`ALTER TABLE ${column.table} ADD COLUMN ${column.column} ${column.ddl}`);
+    } catch (error) {
+      if (!isBenignMigrationError(error)) throw error;
+    }
+  }
+  await client.execute(X_USER_INDEX);
+  await client.execute(STRIPE_CUSTOMER_INDEX);
+}
+
+/** Create tables on Turso when both variables are set. Returns false when persistence is not configured. */
+export async function migrateLibsqlIfConfigured(): Promise<boolean> {
+  const remote = tursoConfig();
+  if (!remote) return false;
+  const client = createClient({ url: remote.url, authToken: remote.authToken, intMode: "number" });
+  try {
+    await applyRemoteSchema(client);
+  } finally {
+    client.close();
+  }
+  console.info("libSQL schema migration finished for members, subscriptions, and bot data.");
+  return true;
 }
 
 function tursoConfig(): { url: string; authToken: string } | null {
@@ -319,20 +352,7 @@ async function createSqlDatabase(options: { filePath: string | null; client: Cli
   };
 
   if (client) {
-    try {
-      await client.executeMultiple(SCHEMA_SQL);
-    } catch {
-      await client.batch(statementsOf(SCHEMA_SQL), "write");
-    }
-    for (const column of ADDED_COLUMNS) {
-      try {
-        await client.execute(`ALTER TABLE ${column.table} ADD COLUMN ${column.column} ${column.ddl}`);
-      } catch (error) {
-        if (!isBenignMigrationError(error)) throw error;
-      }
-    }
-    await client.execute(X_USER_INDEX);
-    await client.execute(STRIPE_CUSTOMER_INDEX);
+    await applyRemoteSchema(client);
     await pull();
     capture = true;
     if (options.seed && userCount() === 0) {
@@ -365,8 +385,15 @@ export async function openDatabase(filename: string, options?: { seed?: boolean 
   return createSqlDatabase({ filePath, client: null, seed: options?.seed !== false });
 }
 
+/** Point `withDb` at an isolated database. Pass null to use the app database again. */
+export function useAppDatabaseForTests(ctx: BotDateDb | null) {
+  globals().testDb = ctx;
+}
+
 async function openApp(): Promise<BotDateDb> {
+  logColdStartNote();
   const state = globals();
+  if (state.testDb) return state.testDb;
   if (!state.opening) {
     state.opening = (async () => {
       const remote = tursoConfig();
@@ -386,13 +413,15 @@ async function openApp(): Promise<BotDateDb> {
  * Run read or write work against the app database.
  * Turso/libSQL is used when TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are both set.
  * Otherwise dev keeps data/botdate.sqlite and Vercel keeps an in-memory database.
- * Member data won't survive cold starts without Turso.
+ * Sign-in does not depend on that database: the signed session cookie carries the member.
  * Requests take turns so an in-memory database cannot interleave, and Turso
  * writes from this turn are flushed before the next turn starts.
  */
 export async function withDb<T>(fn: (ctx: BotDateDb) => T | Promise<T>): Promise<T> {
   const current = activeDb.getStore();
   if (current) return fn(current);
+  const testDb = globals().testDb;
+  if (testDb) return activeDb.run(testDb, async () => fn(testDb));
   return enqueue(async () => {
     const ctx = await openApp();
     await ctx.refresh();
