@@ -5,9 +5,9 @@ import { openDatabase } from "../db/open";
 import { getMember } from "../domain";
 import type { Member } from "../types";
 import { upsertXMember } from "../x/account";
-import { isComplimentary, MEMBERSHIP_LABEL, needsPaywall } from "./access";
+import { isComplimentary, MEMBERSHIP_LABEL, needsPaywall, paywallCopy } from "./access";
 import { billingPortalParams, checkoutSessionParams } from "./checkout";
-import type { StripeEnv } from "./config";
+import { trialDays, type StripeEnv } from "./config";
 import { applyMembership, membershipWriteFromEvent } from "./membership";
 import { verifyWebhook } from "./webhook";
 
@@ -59,6 +59,14 @@ function member(overrides: Partial<Member> = {}): Member {
 
 test("the paywall is skipped without Stripe, for demo members, the founder, complimentary handles, and an active subscription", () => {
   assert.equal(MEMBERSHIP_LABEL, "Join BotDate, $4.20/mo");
+  assert.equal(paywallCopy(3), "Try BotDate free for 3 days, then $4.20/mo. Cancel anytime.");
+  assert.equal(paywallCopy(), "Try BotDate free for 3 days, then $4.20/mo. Cancel anytime.");
+  assert.equal(paywallCopy(1), "Try BotDate free for 1 day, then $4.20/mo. Cancel anytime.");
+  assert.equal(trialDays({}), 3);
+  assert.equal(trialDays({ STRIPE_TRIAL_DAYS: "3" }), 3);
+  assert.equal(trialDays({ STRIPE_TRIAL_DAYS: " 14 " }), 14);
+  assert.equal(trialDays({ STRIPE_TRIAL_DAYS: "0" }), 3);
+  assert.equal(trialDays({ STRIPE_TRIAL_DAYS: "nope" }), 3);
   assert.equal(needsPaywall(member(), {}), false);
   assert.equal(needsPaywall(member(), { STRIPE_SECRET_KEY: " sk ", STRIPE_WEBHOOK_SECRET: "", STRIPE_PRICE_ID: "price_420" }), false);
   assert.equal(needsPaywall(member({ xAccount: null }), BILLING), false);
@@ -91,11 +99,13 @@ test("checkout is a subscription tied to the member, and the portal returns to t
     priceId: "price_420",
     customerId: null,
     origin: "https://botdate.vercel.app/",
+    trialPeriodDays: 3,
   });
   assert.equal(params.mode, "subscription");
   assert.equal(params.client_reference_id, "x_2");
   assert.deepEqual(params.metadata, { memberId: "x_2" });
   assert.deepEqual(params.subscription_data?.metadata, { memberId: "x_2" });
+  assert.equal(params.subscription_data?.trial_period_days, 3);
   assert.deepEqual(params.line_items, [{ price: "price_420", quantity: 1 }]);
   assert.equal(params.success_url, "https://botdate.vercel.app/join?checkout=success&session_id={CHECKOUT_SESSION_ID}");
   assert.equal(params.cancel_url, "https://botdate.vercel.app/join?checkout=cancel");
@@ -106,8 +116,10 @@ test("checkout is a subscription tied to the member, and the portal returns to t
     priceId: "price_420",
     customerId: "cus_9",
     origin: "https://botdate.vercel.app",
+    trialPeriodDays: trialDays({ STRIPE_TRIAL_DAYS: "14" }),
   });
   assert.equal(returning.customer, "cus_9");
+  assert.equal(returning.subscription_data?.trial_period_days, 14);
   assert.deepEqual(billingPortalParams("cus_9", "https://botdate.vercel.app/onboarding"), {
     customer: "cus_9",
     return_url: "https://botdate.vercel.app/onboarding",
@@ -150,6 +162,21 @@ test("registered Stripe events map onto a membership write", () => {
   assert.equal(fromMetadata?.memberId, "x_2");
   assert.equal(fromMetadata?.customerId, "cus_1");
   assert.equal(fromMetadata?.status, "trialing");
+
+  const trialCheckout = membershipWriteFromEvent({
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        client_reference_id: "x_2",
+        customer: "cus_1",
+        subscription: "sub_trial",
+        payment_status: "no_payment_required",
+        status: "complete",
+      },
+    },
+  });
+  assert.equal(trialCheckout?.status, "trialing");
+  assert.equal(needsPaywall(member({ subscriptionStatus: trialCheckout?.status }), BILLING), false);
 
   const updated = membershipWriteFromEvent({
     type: "customer.subscription.updated",

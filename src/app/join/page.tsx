@@ -7,7 +7,8 @@ import { Wordmark } from "@/components/wordmark";
 import { memberHome, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { getMember } from "@/lib/domain";
-import { canManageBilling, MEMBERSHIP_LABEL, needsPaywall } from "@/lib/stripe/access";
+import { canManageBilling, paywallCopy, needsPaywall } from "@/lib/stripe/access";
+import { trialDays } from "@/lib/stripe/config";
 import { fulfillCheckoutSession } from "@/lib/stripe/fulfill";
 
 export const metadata = { title: "Join" };
@@ -28,7 +29,7 @@ export default async function JoinPage({
   const notice =
     query.error ??
     (query.checkout === "cancel" ? "Checkout was cancelled. You can join whenever you're ready." : null) ??
-    (query.checkout === "success" ? "Stripe has the payment. Membership unlocks as soon as it confirms." : null);
+    (query.checkout === "success" ? "Stripe has the trial. Membership unlocks as soon as it confirms." : null);
 
   return (
     <main className="paywall">
@@ -36,18 +37,14 @@ export default async function JoinPage({
         <p className="wordmark splash">
           <Wordmark />
         </p>
-        <h1>{MEMBERSHIP_LABEL}</h1>
+        <h1>{paywallCopy(trialDays())}</h1>
         <p className="lede">Your matchmaker does the small talk. You step in when there is a date to approve.</p>
       </header>
       <Banner>{notice}</Banner>
       <section className="paywall-card">
-        <p className="price-line">
-          $4.20<span>/mo</span>
-        </p>
-        <p>A recurring membership. Cancel anytime from billing.</p>
         <form action={startCheckoutAction}>
           <SubmitButton className="btn primary wide" pendingLabel="Opening checkout…" testId="join-botdate">
-            {MEMBERSHIP_LABEL}
+            Start free trial
           </SubmitButton>
         </form>
         {canManageBilling(member) ? (

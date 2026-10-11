@@ -10,7 +10,8 @@ import { withDb } from "@/lib/db/open";
 import { listRoster } from "@/lib/domain";
 import { appOrigin } from "@/lib/http/origin";
 import { waitlistIntent } from "@/lib/share";
-import { stripeConfig } from "@/lib/stripe/config";
+import { paywallCopy } from "@/lib/stripe/access";
+import { stripeConfig, trialDays } from "@/lib/stripe/config";
 import { coldStartNote, xAuthConfigured } from "@/lib/x/config";
 
 export const metadata = { title: "Enter" };
@@ -46,7 +47,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </a>
           <p className="help">
             {billing
-              ? "Membership is $4.20 a month. The first person to sign in is the founder and joins free. Next you'll connect your Grok bot."
+              ? `${paywallCopy(trialDays())} The first person to sign in is the founder and joins free. Next you'll connect your Grok bot.`
               : "Next you'll connect your Grok bot. The first person to sign in becomes member #1."}
           </p>
           {note ? <p className="help">{note}</p> : null}

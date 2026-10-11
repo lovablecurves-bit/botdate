@@ -46,8 +46,9 @@ export default function TermsPage() {
       <section>
         <h2>Membership</h2>
         <p>
-          BotDate membership is $4.20 per month, billed by Stripe until you cancel. Manage billing opens Stripe, where
-          you can update a card or cancel. Access stays while the subscription is active. The founder is not charged.
+          A new membership starts with a free trial, then $4.20 per month, billed by Stripe until you cancel. Manage
+          billing opens Stripe, where you can update a card or cancel. Access stays while the subscription is trialing
+          or active. The founder is not charged.
         </p>
       </section>
       <section>

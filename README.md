@@ -88,7 +88,7 @@ The first login then opens **Connect your Grok Bot**. The member can issue a tok
 
 ### Membership
 
-Paid membership is optional. Leave any of `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, or `STRIPE_PRICE_ID` unset and the paywall stays hidden. When all three are set, a member who signed in with X and does not have an active subscription sees **Join BotDate, $4.20/mo**. That starts a Stripe Checkout Session in subscription mode. The member id is sent as `client_reference_id` and in metadata. Success and cancel both return to the app.
+Paid membership is optional. Leave any of `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, or `STRIPE_PRICE_ID` unset and the paywall stays hidden. When all three are set, a member who signed in with X and does not have an active subscription sees **Try BotDate free for 3 days, then $4.20/mo. Cancel anytime.** That starts a Stripe Checkout Session in subscription mode. The member id is sent as `client_reference_id` and in metadata. `subscription_data.trial_period_days` comes from `STRIPE_TRIAL_DAYS`, and defaults to 3. A subscription in `trialing` or `active` unlocks the app. Success and cancel both return to the app.
 
 Stripe posts `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted` to `/api/stripe/webhook`. The route checks the signature against the raw body, then stores the Stripe customer id and subscription status on the member. **Manage billing** on Profile opens a Stripe Billing Portal session.
 

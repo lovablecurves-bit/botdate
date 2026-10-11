@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { appOrigin } from "@/lib/http/origin";
 import { checkoutSessionParams } from "@/lib/stripe/checkout";
 import { getStripe } from "@/lib/stripe/client";
-import { stripeConfig } from "@/lib/stripe/config";
+import { stripeConfig, trialDays } from "@/lib/stripe/config";
 
 export async function startCheckoutAction() {
   const member = await requireUser();
@@ -22,6 +22,7 @@ export async function startCheckoutAction() {
         priceId: config.priceId,
         customerId: member.stripeCustomerId,
         origin,
+        trialPeriodDays: trialDays(),
       }),
     );
     if (!session.url) throw new Error("Stripe did not return a checkout link.");

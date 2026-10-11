@@ -5,6 +5,7 @@ export function checkoutSessionParams(input: {
   priceId: string;
   customerId: string | null;
   origin: string;
+  trialPeriodDays: number;
 }): Stripe.Checkout.SessionCreateParams {
   const origin = input.origin.replace(/\/$/, "");
   const params: Stripe.Checkout.SessionCreateParams = {
@@ -16,6 +17,7 @@ export function checkoutSessionParams(input: {
     cancel_url: `${origin}/join?checkout=cancel`,
     subscription_data: {
       metadata: { memberId: input.memberId },
+      trial_period_days: input.trialPeriodDays,
     },
   };
   if (input.customerId) params.customer = input.customerId;

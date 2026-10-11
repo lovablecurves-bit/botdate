@@ -252,7 +252,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   flex-direction: column;
   gap: 28px;
 }
-.paywall h1 { color: var(--pop); }
+.paywall h1 { color: var(--pop); font-size: 1.85rem; line-height: 1.2; }
 .paywall .credit { margin-top: auto; }
 .paywall-card {
   background: white;

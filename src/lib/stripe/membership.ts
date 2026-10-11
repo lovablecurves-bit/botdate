@@ -31,8 +31,8 @@ function metadataMemberId(record: Record<string, unknown>): string | null {
 function inferredCheckoutStatus(record: Record<string, unknown>): string | null {
   const subscription = asRecord(record.subscription);
   if (subscription && typeof subscription.status === "string" && subscription.status.length > 0) return subscription.status;
-  const paid = record.payment_status === "paid" || record.payment_status === "no_payment_required";
-  if (record.status === "complete" && paid) return "active";
+  if (record.status === "complete" && record.payment_status === "no_payment_required") return "trialing";
+  if (record.status === "complete" && record.payment_status === "paid") return "active";
   return null;
 }
 

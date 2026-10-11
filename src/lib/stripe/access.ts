@@ -1,5 +1,5 @@
 import type { Member } from "../types";
-import { stripeConfig, type StripeEnv } from "./config";
+import { DEFAULT_TRIAL_DAYS, stripeConfig, type StripeEnv } from "./config";
 
 /** Always complimentary, in addition to the founder flag and FREE_X_HANDLES. */
 export const FOUNDER_HANDLE = "lovablecurves";
@@ -8,6 +8,12 @@ export const FOUNDER_HANDLE = "lovablecurves";
 export const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
 
 export const MEMBERSHIP_LABEL = "Join BotDate, $4.20/mo";
+
+/** Paywall pitch. Three days is the default, and the Vercel value. */
+export function paywallCopy(days = DEFAULT_TRIAL_DAYS): string {
+  const length = days === 1 ? "1 day" : `${days} days`;
+  return `Try BotDate free for ${length}, then $4.20/mo. Cancel anytime.`;
+}
 
 export function normalizeHandle(handle: string): string {
   return handle.trim().replace(/^@+/, "").toLowerCase();
