@@ -16,6 +16,14 @@ type SqlDatabase = InstanceType<SqlJsStatic["Database"]>;
 
 type PendingStatement = { sql: string; args: InValue[] };
 
+/** `error` means Turso was configured but connection or migration failed and the process is serving memory. */
+export type DbMode = "turso" | "memory" | "error";
+
+export type DatabaseHealth = {
+  ok: boolean;
+  db: DbMode;
+};
+
 export type BotDateDb = {
   db: SQLJsDatabase<typeof schema>;
   sqlite: {
@@ -38,7 +46,25 @@ type DbGlobal = {
   sqlJs?: Promise<SqlJsStatic>;
   /** Set by tests so a request can run against an isolated database. */
   testDb?: BotDateDb | null;
+  /** Database mode serving this process. Unset until the first open settles. */
+  mode?: DbMode;
+  /** Turso was configured and connection or migration failed. Later opens skip the remote. */
+  remoteFailed?: boolean;
 };
+
+type RemoteConfig = { url: string; authToken: string };
+type RemoteClientFactory = (config: RemoteConfig) => Client;
+
+function defaultRemoteClient(config: RemoteConfig): Client {
+  return createClient({ url: config.url, authToken: config.authToken, intMode: "number" });
+}
+
+let remoteClientFactory: RemoteClientFactory = defaultRemoteClient;
+
+/** Tests substitute a client that fails the way an invalid Turso token does. */
+export function setRemoteClientFactoryForTests(factory: RemoteClientFactory | null): void {
+  remoteClientFactory = factory ?? defaultRemoteClient;
+}
 
 const globalForDb = globalThis as { __botdate?: DbGlobal };
 
@@ -100,15 +126,44 @@ export async function applyRemoteSchema(client: Client): Promise<void> {
   await client.execute(STRIPE_CUSTOMER_INDEX);
 }
 
+function errorText(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "libSQL request failed";
+}
+
+/** Drop the auth token if a driver error echoes it. The database URL is not a credential. */
+export function redactSecrets(text: string): string {
+  const token = process.env.TURSO_AUTH_TOKEN?.trim() ?? "";
+  if (!token) return text;
+  return text.split(token).join("[redacted]");
+}
+
+function rememberLibsqlFailure(error: unknown): void {
+  const state = globals();
+  if (state.remoteFailed) return;
+  state.remoteFailed = true;
+  console.error("[botdate] libSQL connection or migration failed; using the in-memory database.", redactSecrets(errorText(error)));
+}
+
 /** Create tables on Turso when both variables are set. Returns false when persistence is not configured. */
 export async function migrateLibsqlIfConfigured(): Promise<boolean> {
+  const state = globals();
+  if (state.remoteFailed) return false;
   const remote = tursoConfig();
   if (!remote) return false;
-  const client = createClient({ url: remote.url, authToken: remote.authToken, intMode: "number" });
+  const client = remoteClientFactory(remote);
   try {
     await applyRemoteSchema(client);
+  } catch (error) {
+    rememberLibsqlFailure(error);
+    throw error;
   } finally {
-    client.close();
+    try {
+      client.close();
+    } catch {
+      // The request already failed; closing is best-effort.
+    }
   }
   console.info("libSQL schema migration finished for members, subscriptions, and bot data.");
   return true;
@@ -393,28 +448,112 @@ export function useAppDatabaseForTests(ctx: BotDateDb | null) {
   globals().testDb = ctx;
 }
 
+function localFilePath(): string | null {
+  return process.env.VERCEL ? null : path.join(process.cwd(), "data", "botdate.sqlite");
+}
+
+function openMemoryDatabase(): Promise<BotDateDb> {
+  return createSqlDatabase({ filePath: null, client: null, seed: demoMode() });
+}
+
+async function openAppDatabase(): Promise<BotDateDb> {
+  const state = globals();
+  if (state.remoteFailed) {
+    state.mode = "error";
+    return openMemoryDatabase();
+  }
+  const remote = tursoConfig();
+  if (!remote) {
+    const ctx = await createSqlDatabase({ filePath: localFilePath(), client: null, seed: demoMode() });
+    state.mode = "memory";
+    return ctx;
+  }
+  let client: Client | null = null;
+  try {
+    client = remoteClientFactory(remote);
+    const ctx = await createSqlDatabase({ filePath: null, client, seed: demoMode() });
+    state.mode = "turso";
+    return ctx;
+  } catch (error) {
+    if (client) {
+      try {
+        client.close();
+      } catch {
+        // The request already failed; closing is best-effort.
+      }
+    }
+    rememberLibsqlFailure(error);
+    try {
+      const ctx = await openMemoryDatabase();
+      state.mode = "error";
+      return ctx;
+    } catch (fallbackError) {
+      state.mode = "error";
+      console.error("[botdate] In-memory database fallback failed.", redactSecrets(errorText(fallbackError)));
+      throw fallbackError;
+    }
+  }
+}
+
 async function openApp(): Promise<BotDateDb> {
   logColdStartNote();
   const state = globals();
   if (state.testDb) return state.testDb;
   if (!state.opening) {
-    state.opening = (async () => {
-      const remote = tursoConfig();
-      const client = remote ? createClient({ url: remote.url, authToken: remote.authToken, intMode: "number" }) : null;
-      const filePath = client || process.env.VERCEL ? null : path.join(process.cwd(), "data", "botdate.sqlite");
-      // X sign-in is the production roster. Demo members are seeded only when those env vars are missing.
-      return createSqlDatabase({ filePath, client, seed: demoMode() });
-    })().catch((error) => {
+    state.opening = openAppDatabase().catch((error) => {
       state.opening = undefined;
+      state.mode = "error";
       throw error;
     });
   }
   return state.opening;
 }
 
+/** Mode of the database serving this process, or null before the first open. */
+export function databaseMode(): DbMode | null {
+  return globals().mode ?? null;
+}
+
+/**
+ * Report whether this process is on Turso, the local/in-memory database, or a failed Turso init.
+ * A failed init still serves memory, so the status stays 200 and `db` is `error`.
+ * Status 503 is only when no database could be opened. The body never includes secrets.
+ */
+export async function databaseHealth(): Promise<{ status: number; body: DatabaseHealth }> {
+  try {
+    await openApp();
+  } catch {
+    return { status: 503, body: { ok: false, db: "error" } };
+  }
+  const db = globals().mode;
+  if (db !== "turso" && db !== "memory" && db !== "error") {
+    return { status: 503, body: { ok: false, db: "error" } };
+  }
+  return { status: 200, body: { ok: db !== "error", db } };
+}
+
+/** Drop the cached app database so the next open reads the current env and client factory. */
+export async function resetAppDatabaseForTests(): Promise<void> {
+  const state = globals();
+  const opening = state.opening;
+  state.opening = undefined;
+  state.mode = undefined;
+  state.remoteFailed = false;
+  state.gate = Promise.resolve();
+  remoteClientFactory = defaultRemoteClient;
+  if (!opening) return;
+  try {
+    const ctx = await opening;
+    ctx.close();
+  } catch {
+    // A failed open has nothing to close.
+  }
+}
+
 /**
  * Run read or write work against the app database.
  * Turso/libSQL is used when TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are both set.
+ * If that connection or migration fails, the error is logged once and this process serves an in-memory database.
  * Otherwise dev keeps data/botdate.sqlite and Vercel keeps an in-memory database.
  * Sign-in does not depend on that database: the signed session cookie carries the member.
  * Requests take turns so an in-memory database cannot interleave, and Turso
