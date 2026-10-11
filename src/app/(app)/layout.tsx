@@ -4,11 +4,13 @@ import { Shell } from "@/components/shell";
 import { needsConnectPrompt, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { countOpenOffers, listRoster } from "@/lib/domain";
+import { needsPaywall } from "@/lib/stripe/access";
 import { demoMode } from "@/lib/x/config";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const member = await requireUser();
   const pathname = (await headers()).get("x-pathname") ?? "";
+  if (needsPaywall(member)) redirect("/join");
   if (needsConnectPrompt(member) && pathname && pathname !== "/connect") redirect("/connect");
   const showDemoSwitcher = demoMode();
   const { roster, pending } = await withDb((db) => ({

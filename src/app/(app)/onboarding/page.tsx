@@ -6,6 +6,7 @@ import { OnboardingForm } from "@/components/onboarding-form";
 import { SubmitButton } from "@/components/submit-button";
 import { WipeControl } from "@/components/wipe-control";
 import { needsConnectPrompt, requireUser } from "@/lib/auth";
+import { canManageBilling } from "@/lib/stripe/access";
 import { demoMode } from "@/lib/x/config";
 
 const NOTICES: Record<string, string> = {
@@ -38,6 +39,17 @@ export default async function OnboardingPage({
       <Banner tone="good">{query.notice ? NOTICES[query.notice] : null}</Banner>
       <Banner>{query.error}</Banner>
       <OnboardingForm member={member} />
+      {canManageBilling(member) ? (
+        <section className="stack tight">
+          <div>
+            <h2>Membership</h2>
+            <p className="help">$4.20 a month. Update the card or cancel in Stripe.</p>
+          </div>
+          <p className="text-links">
+            <a href="/api/stripe/portal">Manage billing</a>
+          </p>
+        </section>
+      ) : null}
       <section className="stack tight">
         <div>
           <h2>Matchmaker</h2>

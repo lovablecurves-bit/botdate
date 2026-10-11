@@ -20,7 +20,7 @@ Open [http://localhost:3000](http://localhost:3000). There is no password. Pick 
 
 The first request creates `data/botdate.sqlite` and seeds it with Avery Chen and the rest of the demo roster, unless Sign in with X is configured. That file is local and gitignored. **Reset demo data** on Profile (or the signed-out login screen) restores the seed. It is hidden when X sign-in is on, so a reset cannot wipe real members.
 
-`npm test` covers hard filters, bot notes sent without a draft queue, date-offer approve / tweak / pass, intro opt-in, wipe, X profile import, and the Grok bot agent API. No API keys are required for the tests. Sign in with X stays off until its three environment variables are set.
+`npm test` covers hard filters, bot notes sent without a draft queue, date-offer approve / tweak / pass, intro opt-in, wipe, X profile import, the Grok bot agent API, and Stripe membership. No API keys are required for the tests. Sign in with X stays off until its three environment variables are set. The paywall stays off until the three Stripe variables are set.
 
 ## Demo path
 
@@ -88,6 +88,14 @@ The X app needs the scopes `users.read` and `tweet.read`, and the callback URL h
 
 The first login then opens **Connect your Grok Bot**. The member can issue a token or skip. The step is not shown again. The Grok bot token is not an environment variable.
 
+### Membership
+
+Paid membership is optional. Leave any of `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, or `STRIPE_PRICE_ID` unset and the paywall stays hidden. When all three are set, a member who signed in with X and does not have an active subscription sees **Try BotDate free for 3 days, then $4.20/mo. Cancel anytime.** That starts a Stripe Checkout Session in subscription mode. The member id is sent as `client_reference_id` and in metadata. `subscription_data.trial_period_days` comes from `STRIPE_TRIAL_DAYS`, and defaults to 3. A subscription in `trialing` or `active` unlocks the app. Success and cancel both return to the app.
+
+Stripe posts `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted` to `/api/stripe/webhook`. The route checks the signature against the raw body, then stores the Stripe customer id and subscription status on the member. **Manage billing** on Profile opens a Stripe Billing Portal session.
+
+The founder is free: the founder flag (member #1), the X handle `@lovablecurves` (any case), or any handle listed in `FREE_X_HANDLES` (comma-separated). Demo members are not asked to pay.
+
 `npm run dev` on your machine still stores `data/botdate.sqlite` so a local session survives a restart.
 
 ### Optional: one shared database with Turso
@@ -122,7 +130,7 @@ SQLite via [Drizzle ORM](https://orm.drizzle.team/) and [sql.js](https://sql.js.
 
 | Table | Holds |
 | --- | --- |
-| `users` | Member, pause flag, optional X handle and avatar, founder flag, and member number |
+| `users` | Member, pause flag, optional X handle and avatar, founder flag, member number, and Stripe customer and subscription status |
 | `profiles` | Age, city, bio, kids, intent, smoking, interests |
 | `prefs` | Dealbreakers, nice-to-haves, lock |
 | `matches` | Pair, intro opt-in, human vs bot channel |
@@ -134,4 +142,4 @@ SQLite via [Drizzle ORM](https://orm.drizzle.team/) and [sql.js](https://sql.js.
 
 ## Out of scope
 
-Payments, video, a social feed, scraping other apps, and asking a member to approve every bot note.
+Video, a social feed, scraping other apps, and asking a member to approve every bot note.

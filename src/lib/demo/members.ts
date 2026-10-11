@@ -46,6 +46,9 @@ function member(seed: Seed): Member {
     founder: false,
     memberNumber: null,
     connectSeen: true,
+    stripeCustomerId: null,
+    stripeSubscriptionId: null,
+    subscriptionStatus: null,
   };
 }
 

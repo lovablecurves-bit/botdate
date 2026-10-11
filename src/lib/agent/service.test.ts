@@ -23,6 +23,8 @@ test("agent routes, the X callback, and the legal pages are outside the demo ses
   assert.equal(isOpenPath("/api/agent/v1/me"), true);
   assert.equal(isOpenPath("/api/mcp"), true);
   assert.equal(isOpenPath("/api/auth/x/callback"), true);
+  assert.equal(isOpenPath("/api/stripe/webhook"), true);
+  assert.equal(isOpenPath("/api/stripe/portal"), false);
   assert.equal(isOpenPath("/privacy"), true);
   assert.equal(isOpenPath("/privacy/"), true);
   assert.equal(isOpenPath("/terms"), true);

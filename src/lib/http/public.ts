@@ -2,6 +2,7 @@ const OPEN = [
   /^\/api\/auth\/x(?:\/|$)/,
   /^\/api\/agent(?:\/|$)/,
   /^\/api\/mcp(?:\/|$)/,
+  /^\/api\/stripe\/webhook\/?$/,
   /^\/api\/waitlist\/count\/?$/,
   /^\/privacy\/?$/,
   /^\/terms\/?$/,

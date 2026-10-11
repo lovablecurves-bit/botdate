@@ -2,10 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { guestLoginUrl, isOpenPath } from "@/lib/http/public";
 
 export function middleware(request: NextRequest) {
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-pathname", request.nextUrl.pathname);
-  const loggedIn = Boolean(request.cookies.get("botdate_uid")?.value);
   const { pathname } = request.nextUrl;
+  // Leave the raw body untouched so Stripe can verify the signature.
+  if (pathname === "/api/stripe/webhook") return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+  const loggedIn = Boolean(request.cookies.get("botdate_uid")?.value);
   if (isOpenPath(pathname)) return NextResponse.next({ request: { headers: requestHeaders } });
   if (!loggedIn && pathname !== "/login") {
     return NextResponse.redirect(guestLoginUrl(request.url));

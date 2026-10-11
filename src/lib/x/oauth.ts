@@ -11,6 +11,28 @@ export class XAuthError extends Error {
   }
 }
 
+export type XCallbackError = {
+  error: string;
+  error_description: string | null;
+};
+
+/** Exact `error` and `error_description` query params from X's authorize redirect. */
+export function readOAuthCallbackError(params: URLSearchParams): XCallbackError | null {
+  const error = params.get("error");
+  if (!error) return null;
+  return { error, error_description: params.get("error_description") };
+}
+
+export function logOAuthCallbackError(callbackError: XCallbackError): void {
+  console.error(`X OAuth callback error=${callbackError.error} error_description=${callbackError.error_description ?? ""}`);
+}
+
+/** Login-page copy. Includes both X values when the callback received them. */
+export function loginErrorText(error?: string | null, errorDescription?: string | null): string | null {
+  if (error && errorDescription) return `${error}: ${errorDescription}`;
+  return error || errorDescription || null;
+}
+
 function basicAuth(credentials: XCredentials): string {
   return `Basic ${Buffer.from(`${credentials.clientId}:${credentials.clientSecret}`).toString("base64")}`;
 }

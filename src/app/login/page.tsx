@@ -9,19 +9,24 @@ import { DEMO_NOTES, DEMO_ORDER } from "@/lib/demo/members";
 import { withDb } from "@/lib/db/open";
 import { listRoster } from "@/lib/domain";
 import { joinedWaitlistIntent, waitlistIntent, waitlistReferralUrl } from "@/lib/share";
+import { paywallCopy } from "@/lib/stripe/access";
+import { stripeConfig, trialDays } from "@/lib/stripe/config";
 import { findWaitlistByCode, normalizeReferralCode, peopleWaitingLabel, waitlistCount } from "@/lib/waitlist";
 import { coldStartNote, xAuthConfigured } from "@/lib/x/config";
+import { loginErrorText } from "@/lib/x/oauth";
 
 export const metadata = { title: "Enter" };
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; ref?: string; joined?: string; already?: string }>;
+  searchParams: Promise<{ error?: string; error_description?: string; ref?: string; joined?: string; already?: string }>;
 }) {
-  const { error, ref: refParam, joined: joinedParam, already } = await searchParams;
+  const { error, error_description: errorDescription, ref: refParam, joined: joinedParam, already } = await searchParams;
+  const notice = loginErrorText(error, errorDescription);
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
   const xReady = xAuthConfigured();
+  const billing = stripeConfig() !== null;
   const note = coldStartNote();
   const invite = waitlistIntent();
   const ref = normalizeReferralCode(refParam);
@@ -47,7 +52,7 @@ export default async function LoginPage({
         <h1>Your matchmaker does the first pass.</h1>
         <p className="lede">The bots do the small talk. You only step in when there is a date to approve, tweak, or pass.</p>
       </header>
-      <Banner>{error}</Banner>
+      <Banner>{notice}</Banner>
       <section className="waitlist-card" aria-labelledby="waitlist-title" data-testid="waitlist">
         <div>
           <h2 id="waitlist-title">{joined ? "You're on the list" : "Join the waitlist"}</h2>
@@ -103,7 +108,11 @@ export default async function LoginPage({
           <a className="btn primary wide" href="/api/auth/x/start">
             Sign in with X
           </a>
-          <p className="help">Next you'll connect your Grok bot. The first person to sign in becomes member #1.</p>
+          <p className="help">
+            {billing
+              ? `${paywallCopy(trialDays())} The first person to sign in is the founder and joins free. Next you'll connect your Grok bot.`
+              : "Next you'll connect your Grok bot. The first person to sign in becomes member #1."}
+          </p>
           {note ? <p className="help">{note}</p> : null}
         </section>
       ) : null}
