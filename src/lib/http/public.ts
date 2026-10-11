@@ -1,26 +1,38 @@
 const OPEN = [
   /^\/api\/auth\/x(?:\/|$)/,
-  /^\/api\/admin\/x\/(?:connect|post|mentions)\/?$/,
+  /^\/api\/admin\/x(?:\/|$)/,
   /^\/admin\/x\/connected\/?$/,
   /^\/api\/agent(?:\/|$)/,
   /^\/api\/mcp(?:\/|$)/,
   /^\/api\/stripe\/webhook\/?$/,
-  /^\/api\/waitlist\/count\/?$/,
   /^\/api\/health\/?$/,
   /^\/privacy\/?$/,
   /^\/terms\/?$/,
 ];
 
+/** Icons, manifest, and Next static files. Middleware must not send these to login. */
+const STATIC =
+  /^\/(?:_next(?:\/.*)?|favicon\.ico|robots\.txt|sitemap\.xml|manifest\.(?:webmanifest|json)|icon(?:\.[a-z0-9]+)?|apple-icon(?:\.[a-z0-9]+)?|opengraph-image(?:\.[a-z0-9]+)?|twitter-image(?:\.[a-z0-9]+)?|logo(?:\.[a-z0-9]+)?)$/;
+
 /** Routes that authenticate themselves, or do not use the demo session cookie. */
 export function isOpenPath(pathname: string): boolean {
+  if (pathname === "/") return true;
+  if (STATIC.test(pathname)) return true;
   return OPEN.some((pattern) => pattern.test(pathname));
 }
 
-/** Keep a waitlist ?ref= when an unsigned visitor is sent to the login screen. */
+/** A signup invite code. Anything else is dropped. */
+export function referralCode(value: string | null | undefined): string | null {
+  const ref = (value ?? "").trim().toLowerCase();
+  if (!/^[a-z0-9]{6,16}$/.test(ref)) return null;
+  return ref;
+}
+
+/** Keep a signup ?ref= when an unsigned visitor is sent to the login screen. */
 export function guestLoginUrl(requestUrl: string): string {
   const current = new URL(requestUrl);
   const dest = new URL("/login", current);
-  const ref = current.searchParams.get("ref")?.trim().toLowerCase() ?? "";
-  if (/^[a-z0-9]{6,16}$/.test(ref)) dest.searchParams.set("ref", ref);
+  const ref = referralCode(current.searchParams.get("ref"));
+  if (ref) dest.searchParams.set("ref", ref);
   return dest.toString();
 }

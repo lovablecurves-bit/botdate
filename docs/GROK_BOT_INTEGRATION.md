@@ -135,7 +135,7 @@ Every tool call requires an `active` or `trialing` subscription. The founder (an
 
 ## Share on X
 
-Date offers and the waitlist invite use an X web intent (`https://x.com/intent/post`). The date-offer link does not include the other person's name, the place, or the note. The login screen has a public waitlist. Share BotDate on X posts "I'm in on BotDate 💘 my Grok Bot finds my match. Invite-only for now 👀 https://botdate.vercel.app?ref=CODE", with that person's referral code in the link. `GET /api/waitlist/count` is public. `GET /admin/waitlist` is a CSV export for the founder.
+Date offers use an X web intent (`https://x.com/intent/post`). The date-offer link does not include the other person's name, the place, or the note. Sign-up invite links are `https://botdate.vercel.app?ref=CODE` and are credited when that person creates an account.
 
 ## Environment variables for Vercel
 

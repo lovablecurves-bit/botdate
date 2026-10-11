@@ -1,11 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { memberHome, safePostLoginPath } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { getMember } from "@/lib/domain";
 import {
   OAUTH_STATE_COOKIE,
   OAUTH_VERIFIER_COOKIE,
+  REFERRAL_COOKIE,
   SESSION_COOKIE,
   claimsFromMember,
   memberFromClaims,
@@ -69,10 +69,12 @@ export async function GET(request: Request) {
   try {
     const accessToken = await exchangeAuthorizationCode(credentials, code, verifier);
     const profile = await fetchXProfile(accessToken);
-    const member = await memberFromSignIn(profile);
-    const dest = new URL(safePostLoginPath(memberHome(member)), request.url);
+    const ref = readRequestCookie(request, REFERRAL_COOKIE);
+    const member = await memberFromSignIn(profile, ref);
+    const dest = new URL("/profile", request.url);
     const response = NextResponse.redirect(dest);
     response.cookies.set(SESSION_COOKIE, signSession(claimsFromMember(member)), sessionCookieOptions(secure));
+    response.cookies.set(REFERRAL_COOKIE, "", { ...oauthCookieOptions(secure), maxAge: 0 });
     return clearOauth(response, secure);
   } catch (error) {
     const message = error instanceof XAuthError ? error.message : "X sign-in did not finish. Try again.";
@@ -84,10 +86,10 @@ export async function GET(request: Request) {
  * One GET /2/users/me already happened. Upsert that snapshot and do not call X again.
  * If the database is down, the signed cookie still carries the profile.
  */
-async function memberFromSignIn(profile: XProfile) {
+async function memberFromSignIn(profile: XProfile, ref: string | null) {
   try {
     const saved = await withDb((db) => {
-      const upserted = upsertXMember(db, profile);
+      const upserted = upsertXMember(db, profile, ref);
       return getMember(db, upserted.userId);
     });
     if (saved) return saved;

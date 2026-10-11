@@ -1,7 +1,13 @@
 import { redirect } from "next/navigation";
-import { currentMember, memberHome, safePostLoginPath } from "@/lib/auth";
+import { SignInScreen } from "@/components/sign-in-screen";
+import { currentMember } from "@/lib/auth";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; error_description?: string; ref?: string }>;
+}) {
   const member = await currentMember();
-  redirect(member ? safePostLoginPath(memberHome(member)) : "/login");
+  if (member) redirect("/profile");
+  return <SignInScreen searchParams={searchParams} />;
 }

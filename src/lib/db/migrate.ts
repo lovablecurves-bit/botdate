@@ -10,10 +10,13 @@ export const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "users", column: "stripe_customer_id", ddl: "TEXT" },
   { table: "users", column: "stripe_subscription_id", ddl: "TEXT" },
   { table: "users", column: "stripe_subscription_status", ddl: "TEXT" },
+  { table: "users", column: "referral_code", ddl: "TEXT" },
+  { table: "users", column: "referred_by", ddl: "TEXT" },
   { table: "agent_tokens", column: "last_used_at", ddl: "TEXT" },
 ];
 
 export const X_USER_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_x_user_idx ON users(x_user_id)";
+export const REFERRAL_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_referral_idx ON users(referral_code)";
 export const STRIPE_CUSTOMER_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_customer_idx ON users(stripe_customer_id)";
 
 export function missingColumnStatements(columnsByTable: Record<string, readonly string[]>): string[] {

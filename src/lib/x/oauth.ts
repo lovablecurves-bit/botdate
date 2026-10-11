@@ -132,6 +132,7 @@ export async function refreshBotAccessToken(
   return requireRefreshToken(await requestOAuthToken(credentials, body, fetchImpl));
 }
 
+/** One users/me call per OAuth callback. Page loads and session checks read the stored row. */
 export async function fetchXProfile(accessToken: string, fetchImpl: FetchLike = fetch): Promise<XProfile> {
   const url = new URL(X_ME_URL);
   url.searchParams.set("user.fields", "description,profile_image_url");

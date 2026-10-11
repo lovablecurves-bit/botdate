@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE, oauthCookieOptions, requestIsSecureSync } from "@/lib/session";
+import { referralCode } from "@/lib/http/public";
+import { OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE, REFERRAL_COOKIE, oauthCookieOptions, requestIsSecureSync } from "@/lib/session";
 import { xCredentials } from "@/lib/x/config";
 import { authorizeUrl, randomState, randomVerifier } from "@/lib/x/pkce";
 
@@ -27,5 +28,7 @@ export function GET(request: Request) {
   const cookie = oauthCookieOptions(secure);
   response.cookies.set(OAUTH_STATE_COOKIE, state, cookie);
   response.cookies.set(OAUTH_VERIFIER_COOKIE, verifier, cookie);
+  const ref = referralCode(new URL(request.url).searchParams.get("ref"));
+  if (ref) response.cookies.set(REFERRAL_COOKIE, ref, cookie);
   return response;
 }

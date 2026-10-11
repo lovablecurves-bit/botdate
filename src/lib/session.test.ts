@@ -154,6 +154,8 @@ test("public pages do not render the cold-start developer note", () => {
     "src/app/join/page.tsx",
     "src/app/privacy/page.tsx",
     "src/app/terms/page.tsx",
+    "src/app/error.tsx",
+    "src/app/not-found.tsx",
     "src/app/(app)/members/page.tsx",
     "src/app/(app)/members/[memberId]/page.tsx",
     "src/app/(app)/connect/page.tsx",
@@ -161,7 +163,10 @@ test("public pages do not render the cold-start developer note", () => {
   for (const file of files) {
     const source = readFileSync(file, "utf8");
     assert.equal(source.includes("won't survive"), false, file);
+    assert.equal(source.includes("local database"), false, file);
     assert.equal(/\bcoldStartNote\(/.test(source), false, file);
+    assert.equal(/\berror\.message\b/.test(source), false, file);
+    assert.equal(/\berror\.stack\b/.test(source), false, file);
   }
   const previous = {
     vercel: process.env.VERCEL,

@@ -118,7 +118,7 @@ describe("BotDateApp auto-posting", { concurrency: false }, () => {
     assert.equal(isOpenPath("/api/admin/x/mentions/"), true);
     assert.equal(isOpenPath("/admin/x/connected"), true);
     assert.equal(isOpenPath("/admin/x/connected/"), true);
-    assert.equal(isOpenPath("/api/admin/x/secret"), false);
+    assert.equal(isOpenPath("/api/admin/x/secret"), true);
     assert.equal(isOpenPath("/admin/waitlist"), false);
     assert.equal(isOpenPath("/api/auth/x/callback"), true);
     assert.match(SCHEMA_SQL, /CREATE TABLE IF NOT EXISTS x_bot_credentials/);

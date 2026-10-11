@@ -11,24 +11,11 @@ export function dateOfferShareText(): string {
 
 export const BOTDATE_PUBLIC_URL = "https://botdate.vercel.app";
 
-/** Invite-only line. A referral code is appended as ?ref= so the next person is tracked. */
-export function waitlistShareText(code?: string): string {
-  const link = code ? `${BOTDATE_PUBLIC_URL}?ref=${code}` : BOTDATE_PUBLIC_URL;
-  return `I'm in on BotDate 💘 my Grok Bot finds my match. Invite-only for now 👀 ${link}`;
-}
-
 export function dateOfferIntent(origin: string): string {
   return xWebIntent(dateOfferShareText(), `${origin}/login`);
 }
 
-export function waitlistIntent(): string {
-  return xWebIntent(waitlistShareText());
-}
-
-export function waitlistReferralUrl(code: string): string {
+/** Signup invite. The code is credited when that person creates an account. */
+export function signupReferralUrl(code: string): string {
   return `${BOTDATE_PUBLIC_URL}?ref=${code}`;
-}
-
-export function joinedWaitlistIntent(code: string): string {
-  return xWebIntent(waitlistShareText(code));
 }

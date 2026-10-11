@@ -43,9 +43,9 @@ Switch members from the menu in the header. That switcher is the demo roster. It
 4. **Notifications** (`/inbox`) — the bell in the header. A human sees a date offer only when the bots are ready: who, why they matched, the proposed time and place, and Accept or Decline. Bot-to-bot messages are not shown. Email notifications are not sent in this version.
 5. **Intro** (`/intro/[match]`) — optional, after people want a direct chat. Not part of the date offer.
 6. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve. A date offer can be shared to X without the other person's name.
-7. **Connect your Grok Bot** (`/connect`) — the same connector card as Profile. After Sign in with X, this step is the first screen a new member sees. Once the key is used, the card says **Grok Bot connected**.
+7. **Connect your Grok Bot** (`/connect`) — the same connector card as Profile. Sign in with X lands on `/profile`. Connect is where the bot is added. Once the key is used, the card says **Grok Bot connected**.
 
-The login screen is public. **Join the waitlist** asks for an email and an optional X handle. A duplicate email keeps the original place in line. After joining, the page shows that position, a Share BotDate on X link, and a copy-link button. The post includes `?ref=` so the next signup can be tied to the person who invited them. The page shows how many people are waiting. `GET /api/waitlist/count` returns `{ "count": N }`. The founder can download `GET /admin/waitlist` as CSV.
+The homepage is public. **Sign in with X** creates the member account immediately. An invite link is `https://botdate.vercel.app?ref=CODE`. That code is stored on the new account so the member who shared it is credited. There is no waitlist.
 
 ## Preferences
 
@@ -149,7 +149,7 @@ SQLite via [Drizzle ORM](https://orm.drizzle.team/) and [sql.js](https://sql.js.
 | `messages` | Bot, human, and system notes. Bot small talk is stored as sent. |
 | `date_proposals` | Time, place, and each person's decision (`pending`, `approved`, `passed`). A Grok bot draft stays unreleased until that member approves it. |
 | `agent_tokens` | Hashed per-member Grok bot tokens. The raw token is shown once, then only the hash is kept. |
-| `waitlist` | Email, optional X handle, position, referral code, and who referred them |
+| `users.referral_code` | Invite code created with the X account. `referred_by` credits the member who shared `?ref=` |
 
 ## Out of scope
 
