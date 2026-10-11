@@ -15,6 +15,8 @@ export const users = sqliteTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripeSubscriptionStatus: text("stripe_subscription_status"),
+  /** Member agreed that their bot may talk with other bots in BotDate's shared space. */
+  botSpaceConsent: integer("bot_space_consent", { mode: "boolean" }).notNull().default(false),
 });
 
 export const profiles = sqliteTable("profiles", {
@@ -107,6 +109,23 @@ export const waitlistSignups = sqliteTable("waitlist", {
   createdAt: text("created_at").notNull(),
 });
 
+/** Photos the member's bot uploaded. The website has no photo gallery. */
+export const memberPhotos = sqliteTable("member_photos", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  url: text("url").notNull(),
+  sortOrder: integer("sort_order").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+/** Windows the member's bot set. The website has no calendar. */
+export const availability = sqliteTable("availability", {
+  userId: text("user_id").primaryKey(),
+  timezone: text("timezone").notNull(),
+  windows: text("windows").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 /** Singleton row `botdateapp`. Tokens are AES-GCM ciphertext, never plaintext. */
 export const xBotCredentials = sqliteTable("x_bot_credentials", {
   id: text("id").primaryKey(),
@@ -133,7 +152,8 @@ CREATE TABLE IF NOT EXISTS users (
   connect_seen INTEGER NOT NULL DEFAULT 0,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,
-  stripe_subscription_status TEXT
+  stripe_subscription_status TEXT,
+  bot_space_consent INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS profiles (
   user_id TEXT PRIMARY KEY REFERENCES users(id),
@@ -218,6 +238,19 @@ CREATE TABLE IF NOT EXISTS waitlist (
   referred_by TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS member_photos (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  url TEXT NOT NULL,
+  sort_order INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS availability (
+  user_id TEXT PRIMARY KEY REFERENCES users(id),
+  timezone TEXT NOT NULL,
+  windows TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS x_bot_credentials (
   id TEXT PRIMARY KEY,
   x_user_id TEXT NOT NULL,
@@ -230,6 +263,7 @@ CREATE TABLE IF NOT EXISTS x_bot_credentials (
 CREATE INDEX IF NOT EXISTS messages_match_idx ON messages(match_id);
 CREATE INDEX IF NOT EXISTS proposals_match_idx ON date_proposals(match_id);
 CREATE INDEX IF NOT EXISTS agent_tokens_user_idx ON agent_tokens(user_id);
+CREATE INDEX IF NOT EXISTS member_photos_user_idx ON member_photos(user_id);
 CREATE INDEX IF NOT EXISTS waitlist_referred_idx ON waitlist(referred_by);
 CREATE UNIQUE INDEX IF NOT EXISTS waitlist_handle_idx ON waitlist(x_handle COLLATE NOCASE);
 `;

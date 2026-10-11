@@ -14,6 +14,7 @@ import {
 } from "../domain";
 import { representedBy } from "../labels";
 import { matchIdFor, type Intent, type KidsStance, type Member, type SmokingFilter } from "../types";
+import { botSpaceBlock, memberBotSpace, otherMemberOnMatch, setAvailability, setMemberPhotos } from "./bot-space";
 import type { AgentResponse } from "./dispatch";
 
 function text(value: unknown): string | undefined {
@@ -36,6 +37,14 @@ function stringList(value: unknown): string[] | undefined {
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
   return typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+}
+
+function counterpartId(ctx: BotDateDb, selfId: string, args: Record<string, unknown>): string | null {
+  const explicit = text(args.memberId);
+  if (explicit) return explicit;
+  const matchId = text(args.matchId);
+  if (!matchId) return null;
+  return otherMemberOnMatch(ctx, selfId, matchId);
 }
 
 function profileBody(member: Member, self: boolean) {
@@ -209,7 +218,7 @@ function profilePatch(args: Record<string, unknown>): BotProfilePatch | { error:
 
 export function callTool(ctx: BotDateDb, member: Member, name: string, args: Record<string, unknown>): AgentResponse | null {
   if (name === "get_my_profile") {
-    return { status: 200, body: { member: profileBody(member, true) } };
+    return { status: 200, body: { member: { ...profileBody(member, true), ...memberBotSpace(ctx, member.id) } } };
   }
   if (name === "update_my_profile" || name === "update_preferences") {
     const patch = profilePatch(args);
@@ -217,7 +226,17 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
     const result = applyBotProfile(ctx, member.id, patch);
     if (!result.ok) return { status: 400, body: { error: result.error } };
     const updated = getMember(ctx, member.id);
-    return { status: 200, body: { member: updated ? profileBody(updated, true) : null } };
+    return { status: 200, body: { member: updated ? { ...profileBody(updated, true), ...memberBotSpace(ctx, member.id) } : null } };
+  }
+  if (name === "upload_photos") {
+    const result = setMemberPhotos(ctx, member.id, args.photos);
+    if (!result.ok) return { status: 400, body: { error: result.error } };
+    return { status: 200, body: { photos: result.photos } };
+  }
+  if (name === "set_availability") {
+    const result = setAvailability(ctx, member.id, args);
+    if (!result.ok) return { status: 400, body: { error: result.error } };
+    return { status: 200, body: { availability: result.availability } };
   }
   if (name === "browse_members" || name === "get_shortlist") {
     if (name === "get_shortlist") {
@@ -257,9 +276,14 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
     if (!person || person.id === member.id || subscriptionBlocks(person)) {
       return { status: 404, body: { error: "That member is not available." } };
     }
-    return { status: 200, body: { member: profileBody(person, false) } };
+    return { status: 200, body: { member: { ...profileBody(person, false), ...memberBotSpace(ctx, person.id) } } };
   }
   if (name === "send_bot_message" || name === "send_desk_message") {
+    const otherId = counterpartId(ctx, member.id, args);
+    if (otherId) {
+      const blocked = botSpaceBlock(ctx, member.id, otherId);
+      if (blocked) return { status: 400, body: { error: blocked } };
+    }
     const body = text(args.body);
     if (body === undefined) return { status: 400, body: { error: "Send a body." } };
     const matchId = text(args.matchId) || (text(args.memberId) ? matchIdFor(member.id, text(args.memberId) as string) : "");
@@ -280,6 +304,11 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
     return { status: 200, body: { inbox: listBotInbox(ctx, member.id, matchId) } };
   }
   if (name === "propose_date") {
+    const otherId = counterpartId(ctx, member.id, args);
+    if (otherId) {
+      const blocked = botSpaceBlock(ctx, member.id, otherId);
+      if (blocked) return { status: 400, body: { error: blocked } };
+    }
     const matchId = text(args.matchId) || (text(args.memberId) ? matchIdFor(member.id, text(args.memberId) as string) : "");
     const local = text(args.local);
     const place = text(args.place);

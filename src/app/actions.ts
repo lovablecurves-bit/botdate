@@ -12,6 +12,7 @@ import { demoMode } from "@/lib/x/config";
 import { issueAgentToken, revokeAgentTokens } from "@/lib/agent/tokens";
 import { resetDatabase } from "@/lib/db/seed";
 import { withDb } from "@/lib/db/open";
+import { BOT_SPACE_CONSENT_ERROR, recordBotSpaceConsent, storedBotSpaceConsent } from "@/lib/agent/bot-space";
 import { joinWaitlist, normalizeReferralCode } from "@/lib/waitlist";
 import {
   approveDraft,
@@ -181,8 +182,20 @@ export async function logoutAction() {
   redirect("/login");
 }
 
-export async function continueFromConnectAction() {
+export async function continueFromConnectAction(formData: FormData) {
   const user = await requireUser();
+  const agreed = formData.get("botSpace") === "on";
+  if (!agreed) {
+    const stored = await withDb((db) => storedBotSpaceConsent(db, user.id));
+    if (!stored) redirect(`/connect?error=${encodeURIComponent(BOT_SPACE_CONSENT_ERROR)}`);
+  } else {
+    try {
+      await withDb((db) => recordBotSpaceConsent(db, user.id));
+    } catch (error) {
+      console.error("Could not store bot space consent.", error);
+      redirect(`/connect?error=${encodeURIComponent("Could not save that agreement. Try again.")}`);
+    }
+  }
   try {
     await withDb((db) => markConnectSeen(db, user.id));
   } catch (error) {

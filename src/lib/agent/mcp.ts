@@ -109,6 +109,56 @@ const TOOLS = [
     },
   },
   {
+    name: "upload_photos",
+    description:
+      "Replace this member's photos. Send up to 6 https URLs in display order. An empty list clears them. The website has no photo gallery; the bot owns the photos.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        photos: {
+          type: "array",
+          maxItems: 6,
+          items: {
+            type: "object",
+            properties: { url: { type: "string" } },
+            required: ["url"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["photos"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "set_availability",
+    description:
+      "Set when this member can meet. Send an IANA timezone and windows. Each window is a weekday (mon–sun) or a YYYY-MM-DD date, plus start and end as HH:mm. The website has no calendar; the bot owns scheduling.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        timezone: { type: "string" },
+        windows: {
+          type: "array",
+          maxItems: 21,
+          items: {
+            type: "object",
+            properties: {
+              weekday: { type: "string", enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] },
+              date: { type: "string" },
+              start: { type: "string" },
+              end: { type: "string" },
+            },
+            required: ["start", "end"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["timezone", "windows"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "respond_to_date",
     description: "Accept or decline a date offer for this member.",
     inputSchema: {
