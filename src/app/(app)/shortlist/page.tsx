@@ -36,7 +36,7 @@ export default async function ShortlistPage() {
       <header className="page-head">
         <h1>Shortlist</h1>
         <p className="lede">Your bots are working. You only get pinged when they are ready to offer a date.</p>
-        <Link href="/desk">Activity</Link>
+        <Link href="/inbox">Notifications</Link>
       </header>
       {list.cards.length === 0 ? (
         <section className="empty">
@@ -58,6 +58,7 @@ export default async function ShortlistPage() {
                 local={card.offer.local}
                 place={card.offer.place}
                 note={card.offer.note}
+                why={card.why}
                 shareHref={shareHref}
               />
             ) : null,
@@ -78,8 +79,8 @@ export default async function ShortlistPage() {
                       <p className="meta">{statusLine(card)}</p>
                     </div>
                     <div className="text-links">
-                      <Link href={`/desk/${card.matchId}`}>Activity</Link>
                       {card.dateStatus === "confirmed" ? <Link href={`/dates/${card.matchId}`}>View date</Link> : null}
+                      <Link href="/members">Browse members</Link>
                     </div>
                     <details className="more">
                       <summary>More about {first}</summary>

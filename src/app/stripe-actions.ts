@@ -2,14 +2,16 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { memberHome, requireUser } from "@/lib/auth";
 import { appOrigin } from "@/lib/http/origin";
 import { checkoutSessionParams } from "@/lib/stripe/checkout";
+import { isComplimentary } from "@/lib/stripe/access";
 import { getStripe } from "@/lib/stripe/client";
 import { stripeConfig, trialDays } from "@/lib/stripe/config";
 
 export async function startCheckoutAction() {
   const member = await requireUser();
+  if (isComplimentary(member)) redirect(memberHome(member));
   const config = stripeConfig();
   if (!config) redirect("/join?error=Membership+is+not+available+yet.");
 

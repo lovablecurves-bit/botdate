@@ -1,10 +1,7 @@
 import Link from "next/link";
 
 export function MatchNav({ matchId, current }: { matchId: string; current?: "desk" | "date" }) {
-  const links = [
-    { id: "desk", href: `/desk/${matchId}`, label: "Activity" },
-    { id: "date", href: `/dates/${matchId}`, label: "Date" },
-  ] as const;
+  const links = [{ id: "date", href: `/dates/${matchId}`, label: "Date" }] as const;
   return (
     <div className="match-nav" role="navigation" aria-label="This match">
       {links.map((link) => (

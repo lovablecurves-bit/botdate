@@ -173,8 +173,13 @@ test("MCP tools/call uses the same token and will not release a date", async () 
     message: { jsonrpc: "2.0", id: 1, method: "tools/list" },
   });
   const tools = ((listed.body as { result: { tools: { name: string }[] } }).result.tools).map((tool) => tool.name);
+  assert.equal(tools.includes("get_my_profile"), true);
+  assert.equal(tools.includes("update_my_profile"), true);
+  assert.equal(tools.includes("browse_members"), true);
+  assert.equal(tools.includes("send_bot_message"), true);
+  assert.equal(tools.includes("list_bot_messages"), true);
+  assert.equal(tools.includes("respond_to_date"), true);
   assert.equal(tools.includes("propose_date"), true);
-  assert.equal(tools.includes("send_desk_message"), true);
 
   const called = handleMcp({
     ctx,
@@ -193,7 +198,7 @@ test("MCP tools/call uses the same token and will not release a date", async () 
   const text = (called.body as { result: { content: { text: string }[]; isError: boolean } }).result.content[0]?.text ?? "";
   const parsed = JSON.parse(text) as { released: boolean; message: string };
   assert.equal(parsed.released, false);
-  assert.match(parsed.message, /until they approve/);
+  assert.match(parsed.message, /until they accept/);
   assert.equal(listShortlist(ctx, "avery").cards.find((card) => card.person.id === "riley")?.offerWaiting, true);
   assert.equal(listShortlist(ctx, "riley").cards.find((card) => card.person.id === "avery")?.offerWaiting, false);
   ctx.close();
@@ -209,5 +214,66 @@ test("the Grok prompt and the integration doc describe the agent API", () => {
   assert.match(doc, /tweet\.read/);
   assert.match(doc, /X_CLIENT_ID/);
   assert.match(doc, /propose_date/);
+  assert.match(doc, /get_my_profile/);
+  assert.match(doc, /list_bot_messages/);
+  assert.match(doc, /FOUNDER_X_IDS/);
+  assert.match(doc, /subscription inactive/);
   assert.match(doc, /BOTDATE_AGENT_TOKEN/);
+  assert.equal(isOpenPath("/api/stripe/webhook"), true);
+});
+
+test("update_my_profile accepts free-text fields and the inbox stays bot-only", async () => {
+  const ctx = await fresh();
+  const issued = issueAgentToken(ctx, "avery");
+  assert.ok(issued);
+  const updated = handleMcp({
+    ctx,
+    authorization: auth(issued.token),
+    message: {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: {
+        name: "update_my_profile",
+        arguments: { city: "Lisbon", bio: "Ferry mornings.", interests: ["ferries", "soup"] },
+      },
+    },
+  });
+  assert.equal(updated.status, 200);
+  const body = JSON.parse((updated.body as { result: { content: { text: string }[] } }).result.content[0]?.text ?? "{}") as {
+    member: { profile: { city: string; bio: string; interests: string[] } };
+  };
+  assert.equal(body.member.profile.city, "Lisbon");
+  assert.equal(body.member.profile.bio, "Ferry mornings.");
+  assert.deepEqual(body.member.profile.interests, ["ferries", "soup"]);
+
+  ctx.db
+    .insert(messages)
+    .values({
+      id: "msg_human_hidden",
+      matchId: "match_avery_sam",
+      channel: "human",
+      authorUserId: "avery",
+      authorKind: "human",
+      body: "A private human line.",
+      approvalStatus: "sent",
+      scriptStep: null,
+      edited: false,
+      createdAt: new Date().toISOString(),
+    })
+    .run();
+  const inbox = handleMcp({
+    ctx,
+    authorization: auth(issued.token),
+    message: {
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/call",
+      params: { name: "list_bot_messages", arguments: { matchId: "match_avery_sam" } },
+    },
+  });
+  assert.equal(inbox.status, 200);
+  const inboxText = (inbox.body as { result: { content: { text: string }[] } }).result.content[0]?.text ?? "";
+  assert.equal(inboxText.includes("A private human line."), false);
+  ctx.close();
 });

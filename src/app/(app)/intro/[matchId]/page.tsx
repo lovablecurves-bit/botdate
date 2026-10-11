@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { chooseChannelAction, optInAction, sendHumanAction } from "@/app/actions";
 import { Banner } from "@/components/banner";
@@ -88,17 +89,12 @@ export default async function IntroPage({
           </form>
         ) : null}
       </section>
-      <section className="stack tight">
-        <h2>Already sent</h2>
-        {intro.recap.length === 0 ? <p className="help">No bot notes yet. They show up here as the matchmakers talk.</p> : null}
-        <div className="thread">
-          {intro.recap.map((note) => (
-            <article key={note.id} className="bubble">
-              <p className="who">{note.authorName}</p>
-              <p>{note.body}</p>
-            </article>
-          ))}
-        </div>
+      <section className="stack tight" data-testid="bots-private">
+        <h2>Bot conversation</h2>
+        <p className="help">That thread stays with the two bots. You are notified here only when they are ready to offer a date.</p>
+        <Link className="btn ghost wide" href="/inbox">
+          Date notifications
+        </Link>
       </section>
       {both && intro.channelChoice === "human" ? (
         <section className="stack" aria-label="Human chat">

@@ -94,6 +94,7 @@ export const agentTokens = sqliteTable("agent_tokens", {
   tokenPrefix: text("token_prefix").notNull(),
   createdAt: text("created_at").notNull(),
   revokedAt: text("revoked_at"),
+  lastUsedAt: text("last_used_at"),
 });
 
 export const waitlistSignups = sqliteTable("waitlist", {
@@ -194,7 +195,8 @@ CREATE TABLE IF NOT EXISTS agent_tokens (
   token_hash TEXT NOT NULL UNIQUE,
   token_prefix TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  revoked_at TEXT
+  revoked_at TEXT,
+  last_used_at TEXT
 );
 CREATE TABLE IF NOT EXISTS waitlist (
   id TEXT PRIMARY KEY,

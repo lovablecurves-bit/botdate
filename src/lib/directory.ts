@@ -1,3 +1,4 @@
+import { subscriptionBlocks } from "./billing/access";
 import type { BotDateDb } from "./db/open";
 import { getMember, listMembers } from "./domain";
 import { mutualPass, softRank } from "./matchmaker/filters";
@@ -80,6 +81,7 @@ function toEntry(member: Member): DirectoryEntry | null {
 export function listDirectory(ctx: BotDateDb): DirectoryEntry[] {
   ensureRealMemberNumbers(ctx);
   return listMembers(ctx)
+    .filter((member) => !subscriptionBlocks(member))
     .map(toEntry)
     .filter((entry): entry is DirectoryEntry => entry !== null)
     .sort(byMemberNumber);
@@ -116,5 +118,6 @@ export function memberProfile(ctx: BotDateDb, viewerId: string, memberId: string
   const viewer = getMember(ctx, viewerId);
   const person = getMember(ctx, memberId);
   if (!viewer || !person) return null;
+  if (viewer.id !== person.id && subscriptionBlocks(person)) return null;
   return profileView(viewer, person);
 }
