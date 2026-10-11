@@ -18,6 +18,12 @@ const OPEN = [
   "/video/botdate-how-it-works.png",
   "/api/health",
   "/api/mcp",
+  "/.well-known/oauth-authorization-server",
+  "/.well-known/oauth-protected-resource",
+  "/.well-known/oauth-protected-resource/api/mcp",
+  "/oauth/authorize",
+  "/oauth/token",
+  "/oauth/register",
   "/api/auth/x/start",
   "/api/auth/x/callback",
   "/api/admin/x/connect",
@@ -65,6 +71,7 @@ test("the public homepage offers Sign in with X and no waitlist", () => {
   const root = path.resolve(import.meta.dirname, "../../..");
   const files = ["src/app/page.tsx", "src/app/login/page.tsx", "src/components/sign-in-screen.tsx", "src/app/profile/page.tsx"];
   const screen = fs.readFileSync(path.join(root, "src/components/sign-in-screen.tsx"), "utf8");
+  assert.match(screen, /Add BotDate to your Grok Bot\. Your bot does the dating; you show up to the date\./);
   assert.match(screen, /Sign in with X/);
   assert.match(screen, /data-testid="sign-in-x"/);
   assert.equal(screen.includes("Join the waitlist"), false);

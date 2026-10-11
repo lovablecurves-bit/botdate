@@ -15,6 +15,7 @@ import {
   sessionCookieOptions,
   signSession,
 } from "@/lib/session";
+import { MCP_OAUTH_COOKIE, mcpOauthCodeLocation, mcpOauthErrorLocation, storeMcpAuthorizationCode, verifyPendingMcpOauth } from "@/lib/agent/oauth";
 import { upsertXMember } from "@/lib/x/account";
 import { xCredentials } from "@/lib/x/config";
 import { finishBotOAuthCallback, isBotOAuthCallback } from "@/lib/x/bot-callback";
@@ -35,6 +36,7 @@ function clearOauth(response: NextResponse, secure: boolean) {
   const expired = { ...oauthCookieOptions(secure), maxAge: 0 };
   response.cookies.set(OAUTH_STATE_COOKIE, "", expired);
   response.cookies.set(OAUTH_VERIFIER_COOKIE, "", expired);
+  response.cookies.set(MCP_OAUTH_COOKIE, "", expired);
   return response;
 }
 
@@ -43,8 +45,10 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const secure = requestIsSecureSync(request.url, request.headers.get("x-forwarded-proto"));
   const login = new URL("/login", request.url);
-  const fail = (message: string) => {
-    login.searchParams.set("error", message);
+  const pending = verifyPendingMcpOauth(readRequestCookie(request, MCP_OAUTH_COOKIE));
+  const fail = (message: string, oauthError = "access_denied") => {
+    if (pending) return clearOauth(NextResponse.redirect(mcpOauthErrorLocation(pending, oauthError, message)), secure);
+    login.searchParams.set("error", message.slice(0, 180));
     return clearOauth(NextResponse.redirect(login), secure);
   };
 
@@ -53,6 +57,9 @@ export async function GET(request: Request) {
   const oauthError = readOAuthCallbackError(url.searchParams);
   if (oauthError) {
     logOAuthCallbackError(oauthError);
+    if (pending) {
+      return clearOauth(NextResponse.redirect(mcpOauthErrorLocation(pending, oauthError.error, oauthError.error_description ?? "X sign-in did not finish.")), secure);
+    }
     login.searchParams.set("error", oauthError.error);
     if (oauthError.error_description) login.searchParams.set("error_description", oauthError.error_description);
     return clearOauth(NextResponse.redirect(login), secure);
@@ -71,7 +78,9 @@ export async function GET(request: Request) {
     const profile = await fetchXProfile(accessToken);
     const ref = readRequestCookie(request, REFERRAL_COOKIE);
     const member = await memberFromSignIn(profile, ref);
-    const dest = new URL("/profile", request.url);
+    const mcpCode = pending ? await withDb((db) => storeMcpAuthorizationCode(db, pending, member.id)) : null;
+    if (pending && !mcpCode) return fail("Could not finish connecting your Grok Bot.", "server_error");
+    const dest = pending && mcpCode ? new URL(mcpOauthCodeLocation(pending, mcpCode)) : new URL("/profile", request.url);
     const response = NextResponse.redirect(dest);
     response.cookies.set(SESSION_COOKIE, signSession(claimsFromMember(member)), sessionCookieOptions(secure));
     response.cookies.set(REFERRAL_COOKIE, "", { ...oauthCookieOptions(secure), maxAge: 0 });

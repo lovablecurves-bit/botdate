@@ -6,14 +6,14 @@ test("migrations add X profile columns and the held-offer flag only when they ar
   const fresh = missingColumnStatements({
     users: ["id", "email", "display_name", "bot_paused", "created_at", "x_user_id", "x_handle", "x_avatar_url", "founder", "member_number", "connect_seen", "stripe_customer_id", "stripe_subscription_id", "stripe_subscription_status", "referral_code", "referred_by"],
     date_proposals: ["id", "released"],
-    agent_tokens: ["id", "user_id", "token_hash", "token_prefix", "created_at", "revoked_at", "last_used_at"],
+    agent_tokens: ["id", "user_id", "token_hash", "token_prefix", "created_at", "revoked_at", "last_used_at", "expires_at"],
   });
   assert.deepEqual(fresh, []);
   const legacy = missingColumnStatements({
     users: ["id", "email", "display_name", "bot_paused", "created_at"],
     date_proposals: ["id"],
   });
-  assert.equal(legacy.length, 13);
+  assert.equal(legacy.length, 14);
   assert.match(legacy[0] ?? "", /x_user_id/);
   assert.match(legacy[3] ?? "", /released/);
   assert.match(legacy.join("\n"), /founder/);
@@ -23,6 +23,7 @@ test("migrations add X profile columns and the held-offer flag only when they ar
   assert.match(legacy.join("\n"), /stripe_subscription_id/);
   assert.match(legacy.join("\n"), /stripe_subscription_status/);
   assert.match(legacy.join("\n"), /last_used_at/);
+  assert.match(legacy.join("\n"), /expires_at/);
   assert.match(legacy.join("\n"), /referral_code/);
   assert.match(legacy.join("\n"), /referred_by/);
 });

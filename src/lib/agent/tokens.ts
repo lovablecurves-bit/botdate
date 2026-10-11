@@ -48,9 +48,40 @@ export function issueAgentToken(ctx: BotDateDb, userId: string): IssuedToken | n
       tokenPrefix: prefix,
       createdAt: now,
       revokedAt: null,
+      expiresAt: null,
     })
     .run();
   return { id, token, prefix, createdAt: now };
+}
+
+/** A second live key. Does not revoke the member's existing bearer bot key. */
+export function issueCompanionAgentToken(ctx: BotDateDb, userId: string, expiresAt: string): IssuedToken | null {
+  if (!getMember(ctx, userId)) return null;
+  const now = new Date().toISOString();
+  const token = `bd_${randomBytes(32).toString("base64url")}`;
+  const prefix = `${token.slice(0, 11)}…`;
+  const id = `tok_${crypto.randomUUID()}`;
+  ctx.db
+    .insert(agentTokens)
+    .values({
+      id,
+      userId,
+      tokenHash: hashAgentToken(token),
+      tokenPrefix: prefix,
+      createdAt: now,
+      revokedAt: null,
+      expiresAt,
+    })
+    .run();
+  return { id, token, prefix, createdAt: now };
+}
+
+export function revokeAgentTokenId(ctx: BotDateDb, tokenId: string): void {
+  ctx.db
+    .update(agentTokens)
+    .set({ revokedAt: new Date().toISOString() })
+    .where(and(eq(agentTokens.id, tokenId), isNull(agentTokens.revokedAt)))
+    .run();
 }
 
 export function revokeAgentTokens(ctx: BotDateDb, userId: string): boolean {
@@ -102,6 +133,7 @@ export function memberForAgentToken(ctx: BotDateDb, token: string): Member | nul
   if (!token.startsWith("bd_") || token.length < 20) return null;
   const row = ctx.db.select().from(agentTokens).where(eq(agentTokens.tokenHash, hashAgentToken(token))).get();
   if (!row || row.revokedAt) return null;
+  if (row.expiresAt && Date.parse(row.expiresAt) <= Date.now()) return null;
   if (!hashesEqual(row.tokenHash, hashAgentToken(token))) return null;
   ctx.db.update(agentTokens).set({ lastUsedAt: new Date().toISOString() }).where(eq(agentTokens.id, row.id)).run();
   return getMember(ctx, row.userId);

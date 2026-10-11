@@ -13,6 +13,8 @@ import { stripeConfig, trialDays } from "@/lib/stripe/config";
 import { xAuthConfigured } from "@/lib/x/config";
 import { loginErrorText } from "@/lib/x/oauth";
 
+const LANDING_LINE = "Add BotDate to your Grok Bot. Your bot does the dating; you show up to the date.";
+
 export async function SignInScreen({
   searchParams,
 }: {
@@ -38,8 +40,8 @@ export async function SignInScreen({
         <p className="wordmark splash">
           <Wordmark />
         </p>
-        <h1>Your matchmaker does the first pass.</h1>
-        <p className="lede">The bots do the small talk. You only step in when there is a date to approve, tweak, or pass.</p>
+        <h1>{LANDING_LINE.slice(0, LANDING_LINE.indexOf(". ") + 1)}</h1>
+        <p className="lede">{LANDING_LINE.slice(LANDING_LINE.indexOf(". ") + 2)}</p>
       </header>
       <Banner>{notice}</Banner>
       <section className="stack tight">
@@ -49,8 +51,8 @@ export async function SignInScreen({
         <p className="help">
           {xReady
             ? billing
-              ? `${paywallCopy(trialDays())} The first person to sign in is the founder and joins free. Next you'll connect your Grok bot.`
-              : "Signing in creates your account. Next you'll connect your Grok bot. The first person to sign in becomes member #1."
+              ? `${paywallCopy(trialDays())} The first person to sign in is the founder and joins free.`
+              : "The first person to sign in becomes member #1."
             : "Sign in with X creates your account. Demo members below are only for this local copy."}
         </p>
       </section>
