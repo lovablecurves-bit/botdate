@@ -47,6 +47,8 @@ Switch members from the menu in the header. That switcher is the demo roster. It
 8. **Dates** (`/dates`) — the matchmakers' offer. Approve, tweak the time or place, or pass. It confirms when both people approve. A date offer shows the X handle and verified badge when they exist, a safety tip, and Report / Block. It can be shared to X without the other person's name.
 9. **Connect your Grok Bot** (`/connect`) — the same **Copy connector line** card as Profile. After Sign in with X, this step is the first screen a new member sees. Once the key is used, the card says **Grok Bot connected**.
 
+BotDate is an installable app. The manifest names it BotDate, uses theme `#E8173A`, a pink background, standalone display, and heart icons at 192 and 512 (including maskable) plus an Apple touch icon. On iOS Safari and Android, a small **Add BotDate to your Home Screen** hint can be dismissed.
+
 The login screen is public. **Join the waitlist** asks for an email and an optional X handle. A duplicate email keeps the original place in line. The public page shows **Invite-only · Austin opening first** and does not show a count or a place in line. After joining, the page offers a Share BotDate on X link and a copy-link button. The post includes `?ref=` so the next signup can be tied to the person who invited them. `GET /api/waitlist/count` is public and returns that same line, not a number. The founder CSV at `GET /admin/waitlist` is where the real count and positions live.
 
 ## Preferences

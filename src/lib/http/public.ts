@@ -11,6 +11,10 @@ const OPEN = [
   /^\/api\/health\/?$/,
   /^\/privacy\/?$/,
   /^\/terms\/?$/,
+  /^\/manifest\.webmanifest$/,
+  /^\/icons\//,
+  /^\/apple-icon/,
+  /^\/apple-touch-icon/,
 ];
 
 /** Routes that authenticate themselves, or do not use the demo session cookie. */

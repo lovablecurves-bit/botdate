@@ -751,6 +751,27 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .question-list .done { color: var(--good); text-align: right; }
 .question-list .todo { color: var(--ink-soft); }
 
+.install-hint {
+  position: fixed;
+  z-index: 8;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  width: min(440px, calc(100% - 20px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: white;
+  border: 2px solid #e8173a;
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+.install-hint.raised { bottom: calc(84px + env(safe-area-inset-bottom)); }
+.install-hint strong { display: block; font-size: 0.95rem; line-height: 1.25; }
+.install-hint p { color: var(--ink-soft); font-size: 0.82rem; line-height: 1.3; }
+.install-hint .btn { flex: none; min-height: 40px; padding: 8px 12px; }
+
 @media (min-width: 420px) {
   .grid-2 { grid-template-columns: 1fr 1fr; }
 }
