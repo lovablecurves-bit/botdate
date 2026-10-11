@@ -5,6 +5,14 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/video/embed",
+        headers: [{ key: "Content-Security-Policy", value: "frame-ancestors *" }],
+      },
+    ];
+  },
   serverExternalPackages: ["sql.js", "stripe"],
   outputFileTracingIncludes: {
     "*": ["./node_modules/sql.js/dist/sql-wasm.wasm"],

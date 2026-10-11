@@ -1,0 +1,40 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { test } from "node:test";
+import { howItWorksMetadata, HOW_IT_WORKS_POSTER_PATH, HOW_IT_WORKS_VIDEO_PATH, VIDEO_PLAYER_HEIGHT, VIDEO_PLAYER_WIDTH } from "./video";
+
+test("the how-it-works page is a player card with an inline video and Sign in with X", () => {
+  const root = path.resolve(import.meta.dirname, "../..");
+  const page = fs.readFileSync(path.join(root, "src/app/video/page.tsx"), "utf8");
+  const embed = fs.readFileSync(path.join(root, "src/app/video/embed/page.tsx"), "utf8");
+  const player = fs.readFileSync(path.join(root, "src/components/how-it-works-video.tsx"), "utf8");
+  assert.match(player, /autoPlay/);
+  assert.match(player, /muted/);
+  assert.match(player, /loop/);
+  assert.match(player, /playsInline/);
+  assert.match(page, /Sign in with X/);
+  assert.match(page, /data-testid="sign-in-x"/);
+  assert.match(embed, /HowItWorksVideo/);
+  assert.equal(embed.includes("Sign in with X"), false);
+  assert.equal(fs.existsSync(path.join(root, "public", HOW_IT_WORKS_VIDEO_PATH)), true);
+  assert.equal(fs.existsSync(path.join(root, "public", HOW_IT_WORKS_POSTER_PATH)), true);
+
+  const meta = howItWorksMetadata();
+  const twitter = meta.twitter;
+  const openGraph = meta.openGraph;
+  assert.ok(twitter && "card" in twitter);
+  assert.equal(twitter.card, "player");
+  assert.ok("players" in twitter && !Array.isArray(twitter.players));
+  assert.equal(String(twitter.players.playerUrl), "https://botdate.vercel.app/video/embed");
+  assert.equal(String(twitter.players.streamUrl), "https://botdate.vercel.app/video/botdate-how-it-works.mp4");
+  assert.equal(twitter.players.width, VIDEO_PLAYER_WIDTH);
+  assert.equal(twitter.players.height, VIDEO_PLAYER_HEIGHT);
+  assert.equal(VIDEO_PLAYER_WIDTH, 720);
+  assert.equal(VIDEO_PLAYER_HEIGHT, 1280);
+  const image = Array.isArray(twitter.images) ? twitter.images[0] : twitter.images;
+  assert.equal(typeof image === "object" && image && "url" in image ? String(image.url) : "", "https://botdate.vercel.app/video/botdate-how-it-works.png");
+  assert.ok(openGraph && openGraph.videos);
+  const video = Array.isArray(openGraph.videos) ? openGraph.videos[0] : openGraph.videos;
+  assert.equal(typeof video === "object" && video && "url" in video ? String(video.url) : "", "https://botdate.vercel.app/video/botdate-how-it-works.mp4");
+});
