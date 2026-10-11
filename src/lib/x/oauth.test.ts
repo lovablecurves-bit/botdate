@@ -4,27 +4,74 @@ import { openDatabase } from "../db/open";
 import { getMember } from "../domain";
 import { upsertXMember } from "./account";
 import { demoMode, xAuthConfigured, xCredentials } from "./config";
-import { XAuthError, exchangeAuthorizationCode, fetchXProfile } from "./oauth";
-import { X_SCOPES, authorizeUrl, codeChallenge } from "./pkce";
+import { XAuthError, exchangeAuthorizationCode, fetchXProfile, loginErrorText, logOAuthCallbackError, readOAuthCallbackError } from "./oauth";
+import { X_AUTHORIZE_URL, X_SCOPES, X_TOKEN_URL, authorizeUrl, codeChallenge, randomVerifier } from "./pkce";
 import { safeAvatarUrl, xProfileFromPayload } from "./profile";
 
 const VERIFIER = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
 
 test("PKCE S256 matches the RFC 7636 vector and the authorize URL asks for both scopes", () => {
-  assert.equal(codeChallenge(VERIFIER), "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
-  const url = new URL(
+  assert.equal(VERIFIER.length, 43);
+  const challenge = codeChallenge(VERIFIER);
+  assert.equal(challenge, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+  assert.equal(challenge.includes("="), false);
+  assert.match(challenge, /^[A-Za-z0-9_-]+$/);
+  const raw = authorizeUrl({
+    clientId: "client",
+    redirectUri: "http://localhost:3000/api/auth/x/callback",
+    state: "state",
+    verifier: VERIFIER,
+  });
+  const expected = `https://x.com/i/oauth2/authorize?${[
+    ["response_type", "code"],
+    ["client_id", "client"],
+    ["redirect_uri", "http://localhost:3000/api/auth/x/callback"],
+    ["scope", X_SCOPES],
+    ["state", "state"],
+    ["code_challenge", challenge],
+    ["code_challenge_method", "S256"],
+  ]
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join("&")}`;
+  assert.equal(raw, expected);
+  assert.equal(X_AUTHORIZE_URL, "https://x.com/i/oauth2/authorize");
+  assert.equal(raw.startsWith("https://x.com/i/oauth2/authorize?"), true);
+  assert.equal(raw.includes("twitter.com"), false);
+  assert.match(raw, /(?:^|&)scope=users\.read%20tweet\.read(?:&|$)/);
+  assert.equal(raw.includes("+"), false);
+  assert.equal(raw.includes("scope=users.read+tweet.read"), false);
+  const url = new URL(raw);
+  assert.equal(url.searchParams.get("code_challenge_method"), "S256");
+  assert.equal(url.searchParams.get("code_challenge"), challenge);
+  assert.equal(url.searchParams.get("scope"), X_SCOPES);
+  assert.match(X_SCOPES, /users\.read/);
+  assert.match(X_SCOPES, /tweet\.read/);
+});
+
+test("PKCE verifier is 43-128 characters and the challenge is unpadded base64url", () => {
+  for (let i = 0; i < 20; i++) {
+    const verifier = randomVerifier();
+    assert.match(verifier, /^[A-Za-z0-9_-]{43,128}$/);
+    const challenge = codeChallenge(verifier);
+    assert.match(challenge, /^[A-Za-z0-9_-]{43}$/);
+    assert.equal(challenge.includes("="), false);
+  }
+  assert.throws(() =>
     authorizeUrl({
       clientId: "client",
       redirectUri: "http://localhost:3000/api/auth/x/callback",
       state: "state",
-      verifier: VERIFIER,
+      verifier: "a".repeat(42),
     }),
   );
-  assert.equal(url.searchParams.get("code_challenge_method"), "S256");
-  assert.equal(url.searchParams.get("code_challenge"), "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
-  assert.equal(url.searchParams.get("scope"), X_SCOPES);
-  assert.match(X_SCOPES, /users\.read/);
-  assert.match(X_SCOPES, /tweet\.read/);
+  assert.throws(() =>
+    authorizeUrl({
+      clientId: "client",
+      redirectUri: "http://localhost:3000/api/auth/x/callback",
+      state: "state",
+      verifier: "a".repeat(129),
+    }),
+  );
 });
 
 test("X sign-in stays off unless client id, secret, and redirect URI are all set", () => {
@@ -82,7 +129,17 @@ test("token exchange and users/me parse through an injected fetch", async () => 
     const url = String(input);
     calls.push(url);
     if (url.includes("/oauth2/token")) {
-      assert.match(String(init?.headers && (init.headers as Record<string, string>).Authorization), /^Basic /);
+      assert.equal(url, X_TOKEN_URL);
+      assert.equal(X_TOKEN_URL, "https://api.x.com/2/oauth2/token");
+      const headers = init?.headers as Record<string, string>;
+      assert.equal(headers.Authorization, `Basic ${Buffer.from("id:secret").toString("base64")}`);
+      assert.equal(headers["Content-Type"], "application/x-www-form-urlencoded");
+      const body = String(init?.body);
+      assert.match(body, /grant_type=authorization_code/);
+      assert.match(body, /code=code/);
+      assert.match(body, new RegExp(`code_verifier=${VERIFIER}`));
+      assert.equal(body.includes("client_id"), false);
+      assert.equal(body.includes("client_secret"), false);
       return new Response(JSON.stringify({ access_token: "access" }), { status: 200 });
     }
     return new Response(
@@ -106,6 +163,59 @@ test("token exchange and users/me parse through an injected fetch", async () => 
     () => exchangeAuthorizationCode({ clientId: "id", clientSecret: "secret", redirectUri: "http://localhost/callback" }, "code", VERIFIER, async () => new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 })),
     XAuthError,
   );
+});
+
+test("callback logs the exact error and error_description and the login page shows both", async () => {
+  const parsed = readOAuthCallbackError(
+    new URLSearchParams("error=access_denied&error_description=You%20were%20not%20able%20to%20give%20access%20to%20the%20App"),
+  );
+  assert.deepEqual(parsed, {
+    error: "access_denied",
+    error_description: "You were not able to give access to the App",
+  });
+  assert.equal(loginErrorText(parsed?.error, parsed?.error_description), "access_denied: You were not able to give access to the App");
+  assert.equal(loginErrorText("That X sign-in expired. Try again.", null), "That X sign-in expired. Try again.");
+  assert.equal(loginErrorText(undefined, undefined), null);
+  assert.equal(readOAuthCallbackError(new URLSearchParams("code=abc")), null);
+
+  const logs: unknown[][] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => {
+    logs.push(args);
+  };
+  const previous = {
+    id: process.env.X_CLIENT_ID,
+    secret: process.env.X_CLIENT_SECRET,
+    redirect: process.env.X_REDIRECT_URI,
+  };
+  process.env.X_CLIENT_ID = "id";
+  process.env.X_CLIENT_SECRET = "secret";
+  process.env.X_REDIRECT_URI = "http://localhost:3000/api/auth/x/callback";
+  try {
+    logOAuthCallbackError(parsed!);
+    assert.deepEqual(logs, [["X OAuth callback error=access_denied error_description=You were not able to give access to the App"]]);
+    const { GET } = await import("../../app/api/auth/x/callback/route.ts");
+    const response = await GET(
+      new Request("https://botdate.example/api/auth/x/callback?error=access_denied&error_description=You%20were%20not%20able%20to%20give%20access%20to%20the%20App"),
+    );
+    assert.equal(response.status, 307);
+    const location = response.headers.get("location");
+    assert.ok(location);
+    const dest = new URL(location);
+    assert.equal(dest.origin + dest.pathname, "https://botdate.example/login");
+    assert.equal(dest.searchParams.get("error"), "access_denied");
+    assert.equal(dest.searchParams.get("error_description"), "You were not able to give access to the App");
+    assert.equal(
+      logs[1]?.[0],
+      "X OAuth callback error=access_denied error_description=You were not able to give access to the App",
+    );
+  } finally {
+    console.error = original;
+    for (const [key, value] of Object.entries({ X_CLIENT_ID: previous.id, X_CLIENT_SECRET: previous.secret, X_REDIRECT_URI: previous.redirect })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });
 
 test("signing in with X creates an unlocked member and refreshes the avatar without clobbering a locked name", async () => {

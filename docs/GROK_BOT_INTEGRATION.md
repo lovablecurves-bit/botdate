@@ -12,12 +12,14 @@ OAuth 2.0 authorization-code flow with PKCE (`S256`).
 
 | | |
 | --- | --- |
-| Authorize | `https://twitter.com/i/oauth2/authorize` |
+| Authorize | `https://x.com/i/oauth2/authorize` |
 | Token | `https://api.x.com/2/oauth2/token` |
 | Profile | `https://api.x.com/2/users/me` |
 | Scopes | `users.read` and `tweet.read` |
 | Start | `GET /api/auth/x/start` |
 | Callback | `GET /api/auth/x/callback` |
+
+The authorize query percent-encodes every parameter, so the space between `users.read` and `tweet.read` is `%20`. The token request stays a confidential-client call: HTTP Basic of `client_id:client_secret` against `https://api.x.com/2/oauth2/token`. If X redirects back with `error` and `error_description`, those values are logged and shown on the login page.
 
 `users.read` loads the member once, at sign-in. The app stores their handle, name, avatar, and bio. `tweet.read` is requested on the same consent screen so the X app is granted it. This version does not copy posts into the profile. Opening a member profile later reads BotDate's database. It does not call X.
 
