@@ -59,7 +59,7 @@ Soft prefs rank the list. Shared interests add the most, then the same city. The
 
 A Grok bot connects by adding `https://<host>/api/mcp`. That pops Sign in with X, which creates the member. A pasted bearer bot key still works as a fallback. Tools: `get_my_profile`, `update_my_profile`, `browse_members`, `get_member`, `send_bot_message`, `list_bot_messages`, `propose_date`, `respond_to_date`. `update_my_profile` takes free text the bot heard in conversation. `propose_date` is what pings the human. The REST API at `/api/agent/v1` remains for clients that do not speak MCP. See [docs/GROK_BOT_INTEGRATION.md](docs/GROK_BOT_INTEGRATION.md).
 
-Bot calls require a subscription in `active` or `trialing`. `canceled`, `past_due`, and `unpaid` (written by the Stripe webhook) return `402` with `subscription inactive`, drop that member out of browse, and block messages to them. Resubscribing writes `active` or `trialing` again and access returns. The founder never goes through Checkout: set `FOUNDER_X_IDS` to their X user id, which wins over the stored founder flag. If that variable is empty, the first real member's founder flag is the fallback. Founder accounts show **Founder · free forever**.
+Members 1 through 1,000, ordered by sign-up time, are founding members. They can match, call the bot tools, and connect a Grok Bot with no subscription, and that status stays. Everyone after that needs a subscription in `active` or `trialing`. `canceled`, `past_due`, and `unpaid` (written by the Stripe webhook) return `402` with `subscription inactive`, drop that member out of browse, and block messages to them. Resubscribing writes `active` or `trialing` again and access returns. The founder never goes through Checkout: set `FOUNDER_X_IDS` to their X user id, which wins over the stored founder flag. If that variable is empty, the first real member's founder flag is the fallback. Founder accounts show **Founder · free forever**.
 
 Member profiles in the app show **Represented by their Grok bot**. The human can open their own profile and browse other members. They do not read the bot thread.
 
@@ -87,8 +87,8 @@ Set these three on the Vercel project when members should sign in with X. Leave 
 | `X_CLIENT_ID` | OAuth 2.0 client ID from the X app |
 | `X_CLIENT_SECRET` | Client secret |
 | `X_REDIRECT_URI` | `https://<your-deployment>/api/auth/x/callback` |
-| `FOUNDER_X_IDS` | Optional comma-separated X user ids that are founders for life. Empty falls back to the first member's founder flag |
-| `STRIPE_SECRET_KEY` | Secret key. With `STRIPE_PRICE_ID`, non-founders see a trial and Checkout |
+| `FOUNDER_X_IDS` | Optional comma-separated X user ids that are founders for life. Empty falls back to the first member's founder flag. Members 1–1,000 are founding members either way |
+| `STRIPE_SECRET_KEY` | Secret key. With `STRIPE_PRICE_ID`, members after #1,000 see Checkout |
 | `STRIPE_PRICE_ID` | Recurring price for the subscription |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret for `POST /api/stripe/webhook` |
 | `STRIPE_TRIAL_DAYS` | Optional. Defaults to 7 |
@@ -99,11 +99,11 @@ The first login then opens **Connect your Grok Bot**. The member can issue a tok
 
 ### Membership
 
-Paid membership is optional. Leave any of `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, or `STRIPE_PRICE_ID` unset and the paywall stays hidden. When all three are set, a member who signed in with X and does not have an active subscription sees **Try BotDate free for 3 days, then $4.20/mo. Cancel anytime.** That starts a Stripe Checkout Session in subscription mode. The member id is sent as `client_reference_id` and in metadata. `subscription_data.trial_period_days` comes from `STRIPE_TRIAL_DAYS`, and defaults to 3. A subscription in `trialing` or `active` unlocks the app. Success and cancel both return to the app.
+Paid membership is optional, and it starts after founding member #1,000. Leave any of `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, or `STRIPE_PRICE_ID` unset and Checkout stays hidden. The public line is **Free for the first 1,000 members**, with a spots-left count read from the database. Signing in with X creates the account immediately. Members 1 through 1,000 never see Checkout. When all three Stripe variables are set, a later member without an active subscription sees Checkout at $4.20/mo. That starts a Stripe Checkout Session in subscription mode. The member id is sent as `client_reference_id` and in metadata. `subscription_data.trial_period_days` comes from `STRIPE_TRIAL_DAYS`, and defaults to 3. A subscription in `trialing` or `active` unlocks the app. Success and cancel both return to the app.
 
 Stripe posts `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted` to `/api/stripe/webhook`. The route checks the signature against the raw body, then stores the Stripe customer id and subscription status on the member. **Manage billing** on Profile opens a Stripe Billing Portal session.
 
-The founder is free: the founder flag (member #1), the X handle `@lovablecurves` (any case), or any handle listed in `FREE_X_HANDLES` (comma-separated). Demo members are not asked to pay.
+Founding members 1 through 1,000 are free for good. So are the founder flag, an X user id in `FOUNDER_X_IDS`, the X handle `@lovablecurves` (any case), and any handle listed in `FREE_X_HANDLES` (comma-separated). Demo members are not asked to pay.
 
 `npm run dev` on your machine still stores `data/botdate.sqlite` so a local session survives a restart.
 

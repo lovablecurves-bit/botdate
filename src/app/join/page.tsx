@@ -7,11 +7,15 @@ import { Wordmark } from "@/components/wordmark";
 import { memberHome, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { getMember } from "@/lib/domain";
-import { canManageBilling, paywallCopy, needsPaywall } from "@/lib/stripe/access";
-import { trialDays } from "@/lib/stripe/config";
+import { FOUNDING_PITCH, foundingSpotCopy } from "@/lib/founding";
+import { loadFoundingSpotsLeft } from "@/lib/founding-count";
+import { canManageBilling, MEMBERSHIP_LABEL, needsPaywall } from "@/lib/stripe/access";
 import { fulfillCheckoutSession } from "@/lib/stripe/fulfill";
 
-export const metadata = { title: "Join" };
+export const metadata = {
+  title: "Join",
+  description: "Free for the first 1,000 members.",
+};
 
 export default async function JoinPage({
   searchParams,
@@ -26,10 +30,11 @@ export default async function JoinPage({
   }
   if (!needsPaywall(member)) redirect(memberHome(member));
 
+  const spotsLeft = await loadFoundingSpotsLeft();
   const notice =
     query.error ??
     (query.checkout === "cancel" ? "Checkout was cancelled. You can join whenever you're ready." : null) ??
-    (query.checkout === "success" ? "Stripe has the trial. Membership unlocks as soon as it confirms." : null);
+    (query.checkout === "success" ? "Stripe has the membership. It unlocks as soon as it confirms." : null);
 
   return (
     <main className="paywall">
@@ -37,14 +42,23 @@ export default async function JoinPage({
         <p className="wordmark splash">
           <Wordmark />
         </p>
-        <h1>{paywallCopy(trialDays())}</h1>
-        <p className="lede">Your matchmaker does the small talk. You step in when there is a date to approve.</p>
+        <h1>{FOUNDING_PITCH}</h1>
+        {spotsLeft === null ? null : (
+          <p className="founding-spots" data-testid="founding-spots">
+            {foundingSpotCopy(spotsLeft)}
+          </p>
+        )}
+        <p className="lede">
+          {spotsLeft === 0
+            ? "Founding spots are full. Membership is $4.20/mo."
+            : "Your matchmaker does the small talk. You step in when there is a date to approve."}
+        </p>
       </header>
       <Banner>{notice}</Banner>
       <section className="paywall-card">
         <form action={startCheckoutAction}>
           <SubmitButton className="btn primary wide" pendingLabel="Opening checkout…" testId="join-botdate">
-            Start free trial
+            {MEMBERSHIP_LABEL}
           </SubmitButton>
         </form>
         {canManageBilling(member) ? (

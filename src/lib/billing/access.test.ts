@@ -10,6 +10,7 @@ import { users } from "../db/schema";
 import { listDirectory } from "../directory";
 import { getMember } from "../domain";
 import { upsertXMember } from "../x/account";
+import { isFoundingMember } from "../founding";
 import { checkoutAllowed, isFounderAccount, needsPaywall, subscriptionBlocks } from "./access";
 import { applyStripeEvent, setSubscription, verifyStripeSignature } from "./stripe";
 
@@ -47,6 +48,10 @@ test("founder is the X id in FOUNDER_X_IDS, then the founder flag, and never hit
     assert.equal(needsPaywall(getMember(ctx, lisa.userId)!), false);
 
     assert.equal(isFounderAccount(getMember(ctx, first.userId)!), true);
+    assert.equal(isFoundingMember(getMember(ctx, later.userId)!), true);
+    assert.equal(checkoutAllowed(getMember(ctx, later.userId)!), false);
+    ctx.db.update(users).set({ memberNumber: 1001 }).where(eq(users.id, later.userId)).run();
+    assert.equal(isFoundingMember(getMember(ctx, later.userId)!), false);
     assert.equal(checkoutAllowed(getMember(ctx, later.userId)!), true);
   } finally {
     ctx.close();
@@ -114,6 +119,8 @@ test("stripe webhooks store status and a resubscribe reactivates", async () => {
     upsertXMember(ctx, person("42", "ada", "Ada"));
     const created = upsertXMember(ctx, person("77", "grace", "Grace"));
     assert.equal(getMember(ctx, created.userId)?.founder, false);
+    ctx.db.update(users).set({ memberNumber: 1001 }).where(eq(users.id, created.userId)).run();
+    assert.equal(isFoundingMember(getMember(ctx, created.userId)!), false);
     assert.equal(
       applyStripeEvent(ctx, {
         type: "checkout.session.completed",

@@ -7,9 +7,10 @@ import { SubmitButton } from "@/components/submit-button";
 import { DEMO_NOTES, DEMO_ORDER } from "@/lib/demo/members";
 import { withDb } from "@/lib/db/open";
 import { listRoster } from "@/lib/domain";
+import { FOUNDING_PITCH, foundingSpotCopy } from "@/lib/founding";
+import { loadFoundingSpotsLeft } from "@/lib/founding-count";
 import { referralCode } from "@/lib/http/public";
-import { paywallCopy } from "@/lib/stripe/access";
-import { stripeConfig, trialDays } from "@/lib/stripe/config";
+import { stripeConfig } from "@/lib/stripe/config";
 import { xAuthConfigured } from "@/lib/x/config";
 import { loginErrorText } from "@/lib/x/oauth";
 
@@ -25,6 +26,7 @@ export async function SignInScreen({
   const order = new Map(DEMO_ORDER.map((id, index) => [id, index]));
   const xReady = xAuthConfigured();
   const billing = stripeConfig() !== null;
+  const spotsLeft = await loadFoundingSpotsLeft();
   const ref = referralCode(refParam);
   const startHref = ref ? `/api/auth/x/start?ref=${ref}` : "/api/auth/x/start";
   const roster = xReady
@@ -48,12 +50,20 @@ export async function SignInScreen({
         <a className="btn primary wide" href={startHref} data-testid="sign-in-x">
           Sign in with X
         </a>
+        <p className="founding-pitch" data-testid="founding-pitch">
+          {FOUNDING_PITCH}
+        </p>
+        {spotsLeft === null ? null : (
+          <p className="founding-spots" data-testid="founding-spots">
+            {foundingSpotCopy(spotsLeft)}
+          </p>
+        )}
         <p className="help">
-          {xReady
-            ? billing
-              ? `${paywallCopy(trialDays())} ${LANDING_LINE}`
-              : LANDING_LINE
-            : "Sign in with X creates your account. Demo members below are only for this local copy."}
+          {spotsLeft === 0 && billing
+            ? "Founding spots are full. Membership is $4.20/mo."
+            : xReady
+              ? "Sign in with X creates your account. Founding members skip checkout."
+              : "Sign in with X creates your account. Demo members below are only for this local copy."}
         </p>
       </section>
       {featured ? (

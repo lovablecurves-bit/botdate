@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { SignInScreen } from "@/components/sign-in-screen";
-import { currentMember } from "@/lib/auth";
+import { currentMember, memberHome } from "@/lib/auth";
 
 export default async function Home({
   searchParams,
@@ -8,6 +8,6 @@ export default async function Home({
   searchParams: Promise<{ error?: string; error_description?: string; ref?: string }>;
 }) {
   const member = await currentMember();
-  if (member) redirect("/profile");
+  if (member) redirect(memberHome(member));
   return <SignInScreen searchParams={searchParams} />;
 }

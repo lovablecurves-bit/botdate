@@ -290,7 +290,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .member-copy .founder-flag { margin-top: 4px; }
 
 .page-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
-.lede, .help, .meta, .note, .credit { color: var(--ink-soft); }
+.lede, .help, .meta, .note, .credit, .founding-spots { color: var(--ink-soft); }
+.founding-pitch { color: var(--pop); font-weight: 600; margin: 0; }
+.founding-spots { font-size: 0.95rem; margin: 0; }
 .lede { font-size: 1.125rem; }
 .note { font-size: 1.05rem; }
 .help { font-size: 1.05rem; }

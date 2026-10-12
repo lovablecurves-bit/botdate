@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Outfit } from "next/font/google";
+import { FOUNDING_PITCH } from "@/lib/founding";
+import { BOTDATE_PUBLIC_URL } from "@/lib/share";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -14,9 +16,24 @@ const fraunces = Fraunces({
   weight: ["500", "600", "700"],
 });
 
+const description = `${FOUNDING_PITCH}. A matchmaker for dating. Bots do the small talk. You step in when there is a date to approve.`;
+
 export const metadata: Metadata = {
+  metadataBase: new URL(BOTDATE_PUBLIC_URL),
   title: { default: "BotDate", template: "%s · BotDate" },
-  description: "A matchmaker for dating. Bots do the small talk. You step in when there is a date to approve.",
+  description,
+  openGraph: {
+    title: "BotDate",
+    description: `${FOUNDING_PITCH}. Add BotDate to your Grok Bot. Your bot does the dating; you show up to the date.`,
+    url: BOTDATE_PUBLIC_URL,
+    siteName: "BotDate",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BotDate",
+    description: FOUNDING_PITCH,
+  },
 };
 
 export const viewport: Viewport = {
