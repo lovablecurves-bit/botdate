@@ -16,6 +16,7 @@ import {
   signSession,
 } from "@/lib/session";
 import { MCP_OAUTH_COOKIE, mcpOauthCodeLocation, mcpOauthErrorLocation, storeMcpAuthorizationCode, verifyPendingMcpOauth } from "@/lib/agent/oauth";
+import { checkoutDestination } from "@/lib/auth";
 import { upsertXMember } from "@/lib/x/account";
 import { xCredentials } from "@/lib/x/config";
 import { finishBotOAuthCallback, isBotOAuthCallback } from "@/lib/x/bot-callback";
@@ -78,9 +79,10 @@ export async function GET(request: Request) {
     const profile = await fetchXProfile(accessToken);
     const ref = readRequestCookie(request, REFERRAL_COOKIE);
     const member = await memberFromSignIn(profile, ref);
-    const mcpCode = pending ? await withDb((db) => storeMcpAuthorizationCode(db, pending, member.id)) : null;
-    if (pending && !mcpCode) return fail("Could not finish connecting your Grok Bot.", "server_error");
-    const dest = pending && mcpCode ? new URL(mcpOauthCodeLocation(pending, mcpCode)) : new URL("/profile", request.url);
+    const checkout = checkoutDestination(member);
+    const mcpCode = pending && !checkout ? await withDb((db) => storeMcpAuthorizationCode(db, pending, member.id)) : null;
+    if (pending && !checkout && !mcpCode) return fail("Could not finish connecting your Grok Bot.", "server_error");
+    const dest = pending && mcpCode ? new URL(mcpOauthCodeLocation(pending, mcpCode)) : new URL(checkout ?? "/profile", request.url);
     const response = NextResponse.redirect(dest);
     response.cookies.set(SESSION_COOKIE, signSession(claimsFromMember(member)), sessionCookieOptions(secure));
     response.cookies.set(REFERRAL_COOKIE, "", { ...oauthCookieOptions(secure), maxAge: 0 });

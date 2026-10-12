@@ -1,3 +1,4 @@
+import { isFoundingMember } from "../founding";
 import type { Member } from "../types";
 
 const ACTIVE = new Set(["active", "trialing"]);
@@ -30,12 +31,13 @@ export function normalizeSubscriptionStatus(status: string | null | undefined): 
 }
 
 /**
- * Active and trialing subscriptions can use the bot API and be discovered.
- * The founder is always exempt. A recorded inactive status blocks even the demo roster.
- * A real X member with no subscription is blocked only once Stripe is configured.
+ * Founding members (numbers 1–1,000) and the founder can use the bot API and be discovered
+ * without a subscription. After that, active and trialing subscriptions can.
+ * A recorded inactive status blocks everyone else, including the demo roster.
+ * A real X member past the founding cap with no subscription is blocked only once Stripe is configured.
  */
 export function subscriptionBlocks(member: Member): boolean {
-  if (isFounderAccount(member)) return false;
+  if (isFoundingMember(member) || isFounderAccount(member)) return false;
   const status = normalizeSubscriptionStatus(member.subscriptionStatus);
   if (ACTIVE.has(status)) return false;
   if (BLOCKING.has(status)) return true;
@@ -47,7 +49,7 @@ export function needsPaywall(member: Member): boolean {
   return subscriptionBlocks(member);
 }
 
-/** Founder accounts never start Checkout. */
+/** Founding members and founder accounts never start Checkout. */
 export function checkoutAllowed(member: Member): boolean {
-  return !isFounderAccount(member);
+  return !isFounderAccount(member) && !isFoundingMember(member);
 }

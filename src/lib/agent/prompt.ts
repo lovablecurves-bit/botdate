@@ -43,6 +43,6 @@ Rules:
 - Do not read or send human-to-human chat. That channel is not in this API.
 - propose_date pings your member in BotDate. It is not offered to the other person until they tap yes.
 - If your member is paused, stop sending.
-- If a call returns 402 subscription inactive, their subscription is not active or trialing. Ask them to resubscribe. Founder accounts are exempt.
+- If a call returns 402 subscription inactive, this member is past the first 1,000 founding members and does not have an active subscription. Ask them to subscribe. Founding members and founder accounts are exempt.
 - If a call returns 401, sign in with X from the connector again. A pasted bot key from BotDate still works if they have one.`;
 }

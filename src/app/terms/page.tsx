@@ -46,9 +46,10 @@ export default function TermsPage() {
       <section>
         <h2>Membership</h2>
         <p>
-          A new membership starts with a free trial, then $4.20 per month, billed by Stripe until you cancel. Manage
-          billing opens Stripe, where you can update a card or cancel. Access stays while the subscription is trialing
-          or active. The founder is not charged.
+          The first 1,000 members, in sign-up order, are founding members. Founding membership is free and stays free.
+          After that, membership is $4.20 per month, billed by Stripe until you cancel. Manage billing opens Stripe,
+          where you can update a card or cancel. Access for a paid membership stays while the subscription is active,
+          including a Stripe trial when Checkout starts one. Founding members are not charged.
         </p>
       </section>
       <section>

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { checkoutAllowed, isFounderAccount, needsPaywall } from "@/lib/billing/access";
 import { createBillingPortalSession, createCheckoutSession } from "@/lib/billing/stripe";
-import { clearSession, memberHome, requireOnboarded, requireUser, setSession } from "@/lib/auth";
+import { checkoutDestination, clearSession, memberHome, requireOnboarded, requireUser, setSession } from "@/lib/auth";
 import { appOrigin } from "@/lib/http/origin";
 import { markConnectSeen } from "@/lib/x/account";
 import { demoMode } from "@/lib/x/config";
@@ -98,6 +98,8 @@ function rethrowRedirect(error: unknown): void {
 
 export async function issueAgentTokenAction(formData: FormData) {
   const user = await requireUser();
+  const checkout = checkoutDestination(user);
+  if (checkout) redirect(checkout);
   const issued = await withDb((db) => issueAgentToken(db, user.id));
   const dest = nextPath(formData);
   if (!issued) redirect(`${dest}?error=Could+not+issue+a+token.`);

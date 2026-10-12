@@ -1,8 +1,9 @@
+import { redirect } from "next/navigation";
 import { issueAgentTokenAction } from "@/app/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { Wordmark } from "@/components/wordmark";
 import { agentTokenStatus } from "@/lib/agent/tokens";
-import { requireUser } from "@/lib/auth";
+import { checkoutDestination, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { displayAvatarUrl } from "@/lib/directory";
 
@@ -11,6 +12,8 @@ export const metadata = { title: "You're in" };
 /** Signed-in home. Stored X photo and handle only. No profile form. */
 export default async function ProfilePage() {
   const member = await requireUser();
+  const checkout = checkoutDestination(member);
+  if (checkout) redirect(checkout);
   const handle = member.xAccount?.handle ?? "";
   const avatar = displayAvatarUrl(member.xAccount?.avatarUrl);
   const status = await withDb((db) => agentTokenStatus(db, member.id));

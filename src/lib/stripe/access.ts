@@ -1,6 +1,7 @@
 import { isFounderAccount } from "../billing/access";
+import { FOUNDING_PITCH, isFoundingMember } from "../founding";
 import type { Member } from "../types";
-import { DEFAULT_TRIAL_DAYS, stripeConfig, type StripeEnv } from "./config";
+import { stripeConfig, type StripeEnv } from "./config";
 
 /** Always complimentary, in addition to the founder flag and FREE_X_HANDLES. */
 export const FOUNDER_HANDLE = "lovablecurves";
@@ -10,10 +11,9 @@ export const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
 
 export const MEMBERSHIP_LABEL = "Join BotDate, $4.20/mo";
 
-/** Paywall pitch. Three days is the default, and the Vercel value. */
-export function paywallCopy(days = DEFAULT_TRIAL_DAYS): string {
-  const length = days === 1 ? "1 day" : `${days} days`;
-  return `Try BotDate free for ${length}, then $4.20/mo. Cancel anytime.`;
+/** Sign-in and /join headline. */
+export function foundingPitch(): string {
+  return FOUNDING_PITCH;
 }
 
 export function normalizeHandle(handle: string): string {
@@ -32,19 +32,23 @@ export function hasActiveSubscription(status: string | null | undefined): boolea
   return ACTIVE_SUBSCRIPTION_STATUSES.has((status ?? "").trim().toLowerCase());
 }
 
-/** Founder (flag, FOUNDER_X_IDS, or member #1), @lovablecurves, or a handle listed in FREE_X_HANDLES. */
+/**
+ * Founding members 1–1,000, the founder (flag, FOUNDER_X_IDS), @lovablecurves,
+ * or a handle listed in FREE_X_HANDLES.
+ */
 export function isComplimentary(
   member: Pick<Member, "founder" | "memberNumber" | "xAccount">,
   env: StripeEnv = process.env,
 ): boolean {
-  if (isFounderAccount(member) || member.memberNumber === 1) return true;
+  if (isFounderAccount(member) || isFoundingMember(member)) return true;
   const handle = member.xAccount?.handle ? normalizeHandle(member.xAccount.handle) : "";
   return Boolean(handle && complimentaryHandles(env).has(handle));
 }
 
 /**
- * After X sign-in, a member without a complimentary pass or an active subscription
- * sees the paywall. Demo members, and any deploy missing Stripe env vars, do not.
+ * After X sign-in, a member past the founding cap without a complimentary pass
+ * or an active subscription sees Checkout. Demo members, and any deploy missing
+ * Stripe env vars, do not.
  */
 export function needsPaywall(member: Member, env: StripeEnv = process.env): boolean {
   if (!stripeConfig(env)) return false;

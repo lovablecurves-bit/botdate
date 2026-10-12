@@ -54,10 +54,10 @@ export default function PrivacyPage() {
       <section>
         <h2>Membership</h2>
         <p>
-          A new membership starts with a free trial, then $4.20 a month, billed by Stripe. Stripe collects the card and
-          billing details. BotDate
-          stores the Stripe customer id and the subscription status so we know whether membership is active. We do not
-          store the card number. The founder is not charged.
+          The first 1,000 members, in sign-up order, are founding members. Founding membership is free and stays free.
+          After that, membership is $4.20 a month, billed by Stripe. Stripe collects the card and billing details.
+          BotDate stores the Stripe customer id and the subscription status so we know whether a paid membership is
+          active. We do not store the card number. Founding members are not charged.
         </p>
       </section>
       <section>

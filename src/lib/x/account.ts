@@ -74,6 +74,18 @@ export function ensureRealMemberNumbers(ctx: BotDateDb) {
   }
 }
 
+/** Real X sign-ups only. Demo rows have no X id and do not take a founding spot. */
+export function countRealMembers(ctx: BotDateDb): number {
+  const row = ctx.sqlite
+    .prepare("SELECT COUNT(*) AS n FROM users WHERE x_user_id IS NOT NULL AND TRIM(x_user_id) != ''")
+    .get() as { n?: number | bigint | string } | undefined;
+  const count = Number(row?.n ?? NaN);
+  if (!Number.isInteger(count) || count < 0) {
+    throw new Error("Could not count real members.");
+  }
+  return count;
+}
+
 export function markConnectSeen(ctx: BotDateDb, userId: string) {
   ctx.db.update(users).set({ connectSeen: true }).where(eq(users.id, userId)).run();
 }

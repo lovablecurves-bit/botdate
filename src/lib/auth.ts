@@ -1,5 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { needsPaywall as billingNeedsPaywall } from "./billing/access";
 import { withDb } from "./db/open";
 import { getMember } from "./domain";
 import { needsPaywall } from "./stripe/access";
@@ -22,12 +23,22 @@ export function needsConnectPrompt(member: Member): boolean {
 }
 
 /**
+ * Checkout for members past the founding cap. Null when matching and the Grok
+ * Bot connect flow are already open.
+ */
+export function checkoutDestination(member: Member): "/join" | "/subscribe" | null {
+  if (needsPaywall(member)) return "/join";
+  if (billingNeedsPaywall(member)) return "/subscribe";
+  return null;
+}
+
+/**
  * Where a signed-in member goes after X, checkout, or the home page.
- * One card: logo, X photo, handle, and connect. Never the logged-out home.
+ * Founding members land on the small profile card. Everyone later lands on Checkout.
+ * Never the logged-out home.
  */
 export function memberHome(member: Member): string {
-  if (needsPaywall(member)) return "/join";
-  return "/profile";
+  return checkoutDestination(member) ?? "/profile";
 }
 
 /** Refuse a post-login redirect that would dump the member on the signed-out home. */

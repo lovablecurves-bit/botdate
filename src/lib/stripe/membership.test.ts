@@ -5,7 +5,8 @@ import { openDatabase } from "../db/open";
 import { getMember } from "../domain";
 import type { Member } from "../types";
 import { upsertXMember } from "../x/account";
-import { isComplimentary, MEMBERSHIP_LABEL, needsPaywall, paywallCopy } from "./access";
+import { FOUNDING_PITCH, foundingSpotCopy, foundingSpotsLeft, isFoundingMember } from "../founding";
+import { isComplimentary, MEMBERSHIP_LABEL, needsPaywall, foundingPitch } from "./access";
 import { billingPortalParams, checkoutSessionParams } from "./checkout";
 import { trialDays, type StripeEnv } from "./config";
 import { applyMembership, membershipWriteFromEvent } from "./membership";
@@ -48,7 +49,7 @@ function member(overrides: Partial<Member> = {}): Member {
     },
     xAccount: { userId: "2", handle: "ada", avatarUrl: "" },
     founder: false,
-    memberNumber: 2,
+    memberNumber: 1001,
     connectSeen: true,
     stripeCustomerId: null,
     stripeSubscriptionId: null,
@@ -57,11 +58,23 @@ function member(overrides: Partial<Member> = {}): Member {
   };
 }
 
-test("the paywall is skipped without Stripe, for demo members, the founder, complimentary handles, and an active subscription", () => {
+test("checkout is skipped without Stripe, for demo members, founding members, complimentary handles, and an active subscription", () => {
   assert.equal(MEMBERSHIP_LABEL, "Join BotDate, $4.20/mo");
-  assert.equal(paywallCopy(3), "Try BotDate free for 3 days, then $4.20/mo. Cancel anytime.");
-  assert.equal(paywallCopy(), "Try BotDate free for 3 days, then $4.20/mo. Cancel anytime.");
-  assert.equal(paywallCopy(1), "Try BotDate free for 1 day, then $4.20/mo. Cancel anytime.");
+  assert.equal(foundingPitch(), FOUNDING_PITCH);
+  assert.equal(FOUNDING_PITCH, "Free for the first 1,000 members");
+  assert.equal(foundingSpotCopy(1000), "Free founding spot: 1,000 of 1,000 left");
+  assert.equal(foundingSpotCopy(963), "Free founding spot: 963 of 1,000 left");
+  assert.equal(foundingSpotCopy(0), "Free founding spot: 0 of 1,000 left");
+  assert.equal(foundingSpotsLeft(0), 1000);
+  assert.equal(foundingSpotsLeft(37), 963);
+  assert.equal(foundingSpotsLeft(1000), 0);
+  assert.equal(foundingSpotsLeft(1001), 0);
+  assert.throws(() => foundingSpotsLeft(-1));
+  assert.throws(() => foundingSpotCopy(-1));
+  assert.equal(isFoundingMember({ memberNumber: 1 }), true);
+  assert.equal(isFoundingMember({ memberNumber: 1000 }), true);
+  assert.equal(isFoundingMember({ memberNumber: 1001 }), false);
+  assert.equal(isFoundingMember({ memberNumber: null }), false);
   assert.equal(trialDays({}), 3);
   assert.equal(trialDays({ STRIPE_TRIAL_DAYS: "3" }), 3);
   assert.equal(trialDays({ STRIPE_TRIAL_DAYS: " 14 " }), 14);
@@ -73,7 +86,11 @@ test("the paywall is skipped without Stripe, for demo members, the founder, comp
   assert.equal(needsPaywall(member(), BILLING), true);
   assert.equal(needsPaywall(member({ founder: true, memberNumber: 8 }), BILLING), false);
   assert.equal(needsPaywall(member({ founder: false, memberNumber: 1 }), BILLING), false);
+  assert.equal(needsPaywall(member({ founder: false, memberNumber: 1000 }), BILLING), false);
+  assert.equal(needsPaywall(member({ founder: false, memberNumber: 2, subscriptionStatus: "canceled" }), BILLING), false);
   assert.equal(isComplimentary(member({ founder: false, memberNumber: 1 })), true);
+  assert.equal(isComplimentary(member({ founder: false, memberNumber: 1000 })), true);
+  assert.equal(isComplimentary(member({ founder: false, memberNumber: 1001 })), false);
   assert.equal(
     needsPaywall(member({ xAccount: { userId: "9", handle: "@LovableCurves", avatarUrl: "" } }), BILLING),
     false,
@@ -199,6 +216,10 @@ test("a signed webhook stores the customer and subscription, and an older cancel
   assert.equal(getMember(ctx, founder.userId)?.founder, true);
   assert.equal(getMember(ctx, founder.userId)?.memberNumber, 1);
   assert.equal(needsPaywall(getMember(ctx, founder.userId)!, BILLING), false);
+  assert.equal(needsPaywall(getMember(ctx, second.userId)!, BILLING), false);
+  const { users } = await import("../db/schema");
+  const { eq } = await import("drizzle-orm");
+  ctx.db.update(users).set({ memberNumber: 1001 }).where(eq(users.id, second.userId)).run();
   assert.equal(needsPaywall(getMember(ctx, second.userId)!, BILLING), true);
 
   const secret = "whsec_test_secret";

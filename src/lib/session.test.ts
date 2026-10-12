@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { memberHome, safePostLoginPath } from "./auth";
+import { FOUNDING_PITCH } from "./founding";
 import { coldStartNote } from "./x/config";
 import { needsPaywall } from "./stripe/access";
 import {
@@ -120,19 +121,23 @@ test("a signed snapshot signs the member in when the database has no row", () =>
   assert.equal(safePostLoginPath("/"), "/profile");
   assert.equal(safePostLoginPath("/login"), "/profile");
 
-  const guest = memberFromClaims(sample({ founder: false, memberNumber: 2, handle: "grace", name: "Grace", connectSeen: true, locked: true }));
+  const founding = memberFromClaims(sample({ founder: false, memberNumber: 2, handle: "grace", name: "Grace", connectSeen: true, locked: true }));
+  const guest = memberFromClaims(sample({ founder: false, memberNumber: 1001, handle: "grace", name: "Grace", connectSeen: true, locked: true }));
   assert.equal(needsPaywall(guest, {}), false);
   process.env.STRIPE_SECRET_KEY = BILLING.STRIPE_SECRET_KEY;
   process.env.STRIPE_WEBHOOK_SECRET = BILLING.STRIPE_WEBHOOK_SECRET;
   process.env.STRIPE_PRICE_ID = BILLING.STRIPE_PRICE_ID;
   try {
+    assert.equal(needsPaywall(founding), false);
+    assert.equal(memberHome(founding), "/profile");
     assert.equal(needsPaywall(guest), true);
     assert.equal(memberHome(guest), "/join");
     assert.notEqual(memberHome(guest), "/");
     assert.notEqual(memberHome(guest), "/login");
-    const subscribed = memberFromClaims(sample({ founder: false, memberNumber: 2, connectSeen: true, locked: true, subscriptionStatus: "trialing" }));
+    const subscribed = memberFromClaims(sample({ founder: false, memberNumber: 1001, connectSeen: true, locked: true, subscriptionStatus: "trialing" }));
     assert.equal(needsPaywall(subscribed), false);
     assert.equal(memberHome(subscribed), "/profile");
+    assert.equal(FOUNDING_PITCH, "Free for the first 1,000 members");
   } finally {
     if (previous.key === undefined) delete process.env.STRIPE_SECRET_KEY;
     else process.env.STRIPE_SECRET_KEY = previous.key;
