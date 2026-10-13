@@ -47,6 +47,7 @@ test("GET /api/admin/signups requires ADMIN_TOKEN and lists users newest first",
         ageMax: 45,
         cities: ["Austin"],
         seeking: "either",
+        dealbreakers: [],
       }).ok,
       true,
     );

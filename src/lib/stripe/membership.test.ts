@@ -46,6 +46,7 @@ function member(overrides: Partial<Member> = {}): Member {
       intent: "any",
       seeking: null,
       niceToHaves: "",
+      dealbreakers: null,
       locked: true,
     },
     xAccount: { userId: "2", handle: "ada", avatarUrl: "" },

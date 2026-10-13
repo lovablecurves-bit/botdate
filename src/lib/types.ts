@@ -42,6 +42,11 @@ export type Prefs = {
   /** men, women, or either. Null until the member sets it. */
   seeking: Seeking | null;
   niceToHaves: string;
+  /**
+   * Private free-text dealbreakers. Null until this member's bot saves them.
+   * An empty list means they have none. Never shown to other members.
+   */
+  dealbreakers: string[] | null;
   locked: boolean;
 };
 
@@ -91,6 +96,8 @@ export type MemberInput = {
   intentFilter: IntentFilter;
   seeking: Seeking | null;
   niceToHaves: string;
+  /** Null until saved. An empty list means none. */
+  dealbreakers: string[] | null;
   locked: boolean;
 };
 
@@ -144,13 +151,29 @@ export function parseSeeking(value: string): Seeking | null {
   return null;
 }
 
-/** Age, city, gender, who they are seeking, and a real preference range are set. Until then the member is not browsable or matchable. */
+/** Free-text dealbreakers a bot can save. Short lines, and not more than ten. */
+export const MAX_DEALBREAKERS = 10;
+export const MAX_DEALBREAKER_LENGTH = 80;
+
+export function normalizeDealbreakers(value: readonly string[]): { ok: true; dealbreakers: string[] } | { ok: false; error: string } {
+  const dealbreakers: string[] = [];
+  for (const item of value) {
+    const line = item.trim();
+    if (!line) continue;
+    if (line.length > MAX_DEALBREAKER_LENGTH) return { ok: false, error: "Each dealbreaker needs to stay under 80 characters." };
+    dealbreakers.push(line);
+  }
+  if (dealbreakers.length > MAX_DEALBREAKERS) return { ok: false, error: "Keep dealbreakers to 10 short lines." };
+  return { ok: true, dealbreakers };
+}
+
+/** Age, city, gender, who they are seeking, a real preference range, and saved dealbreakers are set. An empty dealbreakers list counts. Until then the member is not browsable or matchable. */
 export function isProfileComplete(member: {
   profile: Pick<Profile, "age" | "city" | "gender">;
-  prefs: Pick<Prefs, "ageMin" | "ageMax" | "cities" | "seeking">;
+  prefs: Pick<Prefs, "ageMin" | "ageMax" | "cities" | "seeking" | "dealbreakers">;
 }): boolean {
   const { age, city, gender } = member.profile;
-  const { ageMin, ageMax, cities, seeking } = member.prefs;
+  const { ageMin, ageMax, cities, seeking, dealbreakers } = member.prefs;
   return (
     isAllowedMemberAge(age) &&
     typeof city === "string" &&
@@ -165,7 +188,8 @@ export function isProfileComplete(member: {
     ageMax <= MAX_MEMBER_AGE &&
     ageMin <= ageMax &&
     Array.isArray(cities) &&
-    cities.length > 0
+    cities.length > 0 &&
+    Array.isArray(dealbreakers)
   );
 }
 

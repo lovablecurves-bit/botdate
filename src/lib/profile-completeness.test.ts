@@ -38,6 +38,7 @@ test("a new X signup stores unknown age, city, gender, and preferences", async (
     assert.equal(member.prefs.ageMax, null);
     assert.equal(member.prefs.cities, null);
     assert.equal(member.prefs.seeking, null);
+    assert.equal(member.prefs.dealbreakers, null);
     assert.equal(member.prefs.smoking, "any");
     assert.equal(listDirectory(ctx).some((card) => card.id === created.userId), false);
 
@@ -103,11 +104,18 @@ test("browse, get_member, and matching skip an incomplete profile until update_m
 
     const filled = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", { seeking: "Women" });
     assert.equal(filled?.status, 200);
-    const body = filled?.body as { member: { profile: { gender: string; city: string; age: number }; preferences: { seeking: string } } };
+    const body = filled?.body as { profileComplete: boolean; member: { profile: { gender: string; city: string; age: number }; preferences: { seeking: string; dealbreakers: string[] | null } } };
     assert.equal(body.member.profile.gender, "woman");
     assert.equal(body.member.profile.city, "San Francisco");
     assert.equal(body.member.profile.age, 32);
     assert.equal(body.member.preferences.seeking, "women");
+    assert.equal(body.member.preferences.dealbreakers, null);
+    assert.equal(body.profileComplete, false);
+    assert.equal((callTool(ctx, viewer, "browse_members", { city: "San Francisco" })?.body as { members: { id: string }[] }).members.some((member) => member.id === created.userId), false);
+
+    const withDealbreakers = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", { dealbreakers: [] });
+    assert.equal(withDealbreakers?.status, 200);
+    assert.equal((withDealbreakers?.body as { profileComplete: boolean }).profileComplete, true);
 
     const visible = callTool(ctx, viewer, "browse_members", { city: "San Francisco" });
     assert.equal((visible?.body as { members: { id: string }[] }).members.some((member) => member.id === created.userId), true);
@@ -288,6 +296,76 @@ test("profile writes reject ages under 18 or over 99, and a stored minor stays u
     assert.equal(callTool(ctx, viewer, "get_member", { memberId: created.userId })?.status, 404);
     assert.equal(listShortlist(ctx, "avery").cards.some((card) => card.person.id === created.userId), false);
     assert.equal(listDirectory(ctx).some((card) => card.id === created.userId), false);
+  } finally {
+    ctx.close();
+  }
+});
+
+test("dealbreakers save on an unlocked profile and stay off other members", async () => {
+  const ctx = await openDatabase(":memory:", { seed: false });
+  try {
+    const created = upsertXMember(ctx, ada);
+    const viewer = upsertXMember(ctx, grace);
+    const token = issueAgentToken(ctx, created.userId);
+    assert.ok(token);
+    const auth = `Bearer ${token.token}`;
+    const patch = (body: unknown) =>
+      dispatchAgent({ ctx, authorization: auth, method: "PATCH", pathname: "/api/agent/v1/preferences", body });
+
+    const tooMany = patch({ dealbreakers: Array.from({ length: 11 }, (_, index) => `Line ${index + 1}`) });
+    assert.equal(tooMany.status, 400);
+    const tooLong = patch({ dealbreakers: ["x".repeat(81)] });
+    assert.equal(tooLong.status, 400);
+    const notAList = patch({ dealbreakers: "Non-smoker" });
+    assert.equal(notAList.status, 400);
+    assert.equal(getMember(ctx, created.userId)?.prefs.dealbreakers, null);
+    assert.equal(getMember(ctx, created.userId)?.prefs.locked, false);
+
+    const saved = patch({ dealbreakers: ["  No last-minute canceling  ", "", "Wants a real relationship"] });
+    assert.equal(saved.status, 200);
+    const preferences = (saved.body as { preferences: { dealbreakers: string[]; locked: boolean } }).preferences;
+    assert.deepEqual(preferences.dealbreakers, ["No last-minute canceling", "Wants a real relationship"]);
+    assert.equal(preferences.locked, false);
+    assert.deepEqual(getMember(ctx, created.userId)?.prefs.dealbreakers, ["No last-minute canceling", "Wants a real relationship"]);
+
+    const me = dispatchAgent({ ctx, authorization: auth, method: "GET", pathname: "/api/agent/v1/me", body: null });
+    assert.deepEqual((me.body as { member: { preferences: { dealbreakers: string[] } } }).member.preferences.dealbreakers, [
+      "No last-minute canceling",
+      "Wants a real relationship",
+    ]);
+
+    const owner = getMember(ctx, created.userId);
+    assert.ok(owner);
+    const stillOpen = callTool(ctx, owner, "get_my_profile", {});
+    assert.equal((stillOpen?.body as { profileComplete: boolean }).profileComplete, false);
+
+    const finished = callTool(ctx, owner, "update_my_profile", {
+      age: 29,
+      city: "Austin",
+      gender: "woman",
+      seeking: "men",
+      ageMin: 25,
+      ageMax: 40,
+      cities: ["Austin"],
+      locked: true,
+    });
+    assert.equal(finished?.status, 200);
+    const done = finished?.body as { profileComplete: boolean; member: { preferences: { dealbreakers: string[]; locked: boolean } } };
+    assert.equal(done.profileComplete, true);
+    assert.equal(done.member.preferences.locked, true);
+    assert.deepEqual(done.member.preferences.dealbreakers, ["No last-minute canceling", "Wants a real relationship"]);
+
+    const kept = saveMember(ctx, created.userId, { ...memberToInput(getMember(ctx, created.userId)!), bio: "Still analytical." });
+    assert.equal(kept.ok, true);
+    assert.deepEqual(getMember(ctx, created.userId)?.prefs.dealbreakers, ["No last-minute canceling", "Wants a real relationship"]);
+
+    const looked = callTool(ctx, getMember(ctx, viewer.userId)!, "get_member", { memberId: created.userId });
+    assert.equal(looked?.status, 200);
+    const viewed = looked?.body as { member: { preferences: Record<string, unknown> } };
+    assert.equal("dealbreakers" in viewed.member.preferences, false);
+    assert.equal(JSON.stringify(looked?.body).includes("No last-minute canceling"), false);
+    const browsed = callTool(ctx, getMember(ctx, viewer.userId)!, "browse_members", {});
+    assert.equal(JSON.stringify(browsed?.body).includes("No last-minute canceling"), false);
   } finally {
     ctx.close();
   }

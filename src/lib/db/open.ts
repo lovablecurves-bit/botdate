@@ -118,6 +118,7 @@ export async function applyRemoteSchema(client: Client): Promise<void> {
   for (const column of ADDED_COLUMNS) {
     try {
       await client.execute(`ALTER TABLE ${column.table} ADD COLUMN ${column.column} ${column.ddl}`);
+      if (column.after) await client.execute(column.after);
     } catch (error) {
       if (!isBenignMigrationError(error)) throw error;
     }
@@ -314,7 +315,10 @@ async function createSqlDatabase(options: { filePath: string | null; client: Cli
     const names: string[] = [];
     while (info.step()) names.push(String(info.getAsObject().name));
     info.free();
-    if (!names.includes(column.column)) raw.run(`ALTER TABLE ${column.table} ADD COLUMN ${column.column} ${column.ddl}`);
+    if (!names.includes(column.column)) {
+      raw.run(`ALTER TABLE ${column.table} ADD COLUMN ${column.column} ${column.ddl}`);
+      if (column.after) raw.run(column.after);
+    }
   }
   raw.run(X_USER_INDEX);
   raw.run(STRIPE_CUSTOMER_INDEX);

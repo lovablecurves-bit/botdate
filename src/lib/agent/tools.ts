@@ -13,7 +13,7 @@ import {
   type BotProfilePatch,
 } from "../domain";
 import { representedBy } from "../labels";
-import { isAllowedMemberAge, isProfileComplete, matchIdFor, MEMBER_AGE_ERROR, parseSeeking, type Gender, type Intent, type KidsStance, type Member, type Seeking, type SmokingFilter } from "../types";
+import { isAllowedMemberAge, isProfileComplete, matchIdFor, MEMBER_AGE_ERROR, normalizeDealbreakers, parseSeeking, type Gender, type Intent, type KidsStance, type Member, type Seeking, type SmokingFilter } from "../types";
 import type { AgentResponse } from "./dispatch";
 import { onboardingGuidance } from "./onboarding";
 
@@ -74,6 +74,7 @@ function profileBody(member: Member, self: boolean) {
       intent: member.prefs.intent,
       seeking: member.prefs.seeking,
       niceToHaves: member.prefs.niceToHaves,
+      ...(self ? { dealbreakers: member.prefs.dealbreakers } : {}),
       locked: member.prefs.locked,
     },
   };
@@ -173,6 +174,14 @@ function profilePatch(args: Record<string, unknown>): BotProfilePatch | { error:
   if (args.niceToHaves !== undefined) {
     if (text(args.niceToHaves) === undefined) return { error: "niceToHaves must be a string." };
     patch.niceToHaves = text(args.niceToHaves);
+  }
+  if (args.dealbreakers !== undefined) {
+    if (!Array.isArray(args.dealbreakers) || args.dealbreakers.some((item) => typeof item !== "string")) {
+      return { error: "dealbreakers must be a list of short strings." };
+    }
+    const dealbreakers = normalizeDealbreakers(args.dealbreakers);
+    if (!dealbreakers.ok) return { error: dealbreakers.error };
+    patch.dealbreakers = dealbreakers.dealbreakers;
   }
   if (args.smokes !== undefined) {
     const smoking = bool(args.smokes);

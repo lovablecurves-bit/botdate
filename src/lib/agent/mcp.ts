@@ -22,7 +22,7 @@ const TOOLS = [
   {
     name: "update_my_profile",
     description:
-      "Call get_my_profile first. Save answers in interview order: age and city, then gender and who they're seeking, then age range and areas they'd date in, then what they want (Love is datingIntent serious, Casual is datingIntent casual, Friends in niceToHaves), then kids and smoking, last nice-to-haves and dealbreakers. Anything intimate stays private with the member's own bot and never goes on the profile. Do not write intimate details into bio, occupation, interests, or niceToHaves. Age is a whole number from 18 to 99. Gender is man or woman. Seeking is men, women, or either. Age range is ageMin and ageMax. Areas they'd date in go in cities. Set locked true when dealbreakers are saved. Photos are not accepted; ask for up to 6 photos if supported by another tool. Omitted fields stay as they are. City, bio, occupation, interests, and nice-to-haves are free text.",
+      "Call get_my_profile first. Save answers in interview order: age and city, then gender and who they're seeking, then age range and areas they'd date in, then what they want (Love is datingIntent serious, Casual is datingIntent casual, Friends in niceToHaves), then kids and smoking, last nice-to-haves and dealbreakers. Anything intimate stays private with the member's own bot and never goes on the profile. Do not write intimate details into bio, occupation, interests, or niceToHaves. Age is a whole number from 18 to 99. Gender is man or woman. Seeking is men, women, or either. Age range is ageMin and ageMax. Areas they'd date in go in cities. dealbreakers is an array of up to 10 short lines, or an empty array if there are none. Saving dealbreakers works while the profile is still unlocked. They stay private and are never shown to other members. Set locked true when dealbreakers are saved. Photos are not accepted; ask for up to 6 photos if supported by another tool. Omitted fields stay as they are. City, bio, occupation, interests, and nice-to-haves are free text.",
     inputSchema: {
       type: "object",
       properties: {
@@ -50,6 +50,12 @@ const TOOLS = [
         niceToHaves: {
           type: "string",
           description: "Must-haves, Friends, and a distance limit.",
+        },
+        dealbreakers: {
+          type: "array",
+          maxItems: 10,
+          items: { type: "string", maxLength: 80 },
+          description: "Up to 10 short private dealbreakers. Send an empty array if there are none. Never shown to other members. Can be saved before the profile is locked.",
         },
         locked: { type: "boolean" },
       },

@@ -197,6 +197,7 @@ export function upsertXMember(
       intent: "any",
       seeking: null,
       niceToHaves: "",
+      dealbreakers: null,
       locked: false,
     })
     .run();

@@ -11,7 +11,7 @@ export const PRIVATE_INTIMATE =
 
 /** What a fresh bot does when get_my_profile says the profile is not ready. */
 export const INTERVIEW_DIRECTIVE =
-  "Interview this member right away, one question at a time and briefly, in this order: age (18+) and city first; then their gender (man or woman) and who they're seeking (men, women, or either); then the age range and areas they'd date in; then what they want (Love, Casual, or Friends); then kids and smoking; last, nice-to-haves and dealbreakers. Save each answer with update_my_profile. Age is a whole number from 18 to 99. City is free text. Gender is man or woman. Seeking is men, women, or either. Age range is ageMin and ageMax. Areas they'd date in go in cities. What they want: Love is datingIntent serious, Casual is datingIntent casual, and Friends goes in niceToHaves. Kids is kidsStance wants, open, or doesnt, and the kids filter is kids wants, doesnt, or any. Smoking is smokes true or false, and the smoking filter is smoking no or any. Nice-to-haves go in niceToHaves. Set locked to true when dealbreakers are saved. Ask for up to 6 photos if supported. This server does not store photos. " +
+  "Interview this member right away, one question at a time and briefly, in this order: age (18+) and city first; then their gender (man or woman) and who they're seeking (men, women, or either); then the age range and areas they'd date in; then what they want (Love, Casual, or Friends); then kids and smoking; last, nice-to-haves and dealbreakers. Save each answer with update_my_profile. Age is a whole number from 18 to 99. City is free text. Gender is man or woman. Seeking is men, women, or either. Age range is ageMin and ageMax. Areas they'd date in go in cities. What they want: Love is datingIntent serious, Casual is datingIntent casual, and Friends goes in niceToHaves. Kids is kidsStance wants, open, or doesnt, and the kids filter is kids wants, doesnt, or any. Smoking is smokes true or false, and the smoking filter is smoking no or any. Nice-to-haves go in niceToHaves. Dealbreakers go in dealbreakers, an array of up to 10 short lines, or an empty array if there are none. Saving dealbreakers works before the profile is locked. They stay private and are never shown to other members. Set locked to true when dealbreakers are saved. Ask for up to 6 photos if supported. This server does not store photos. " +
   PRIVATE_INTIMATE +
   " Then call get_my_profile, confirm the profile is complete, and start screening matches. Only ping the human when a date is ready to offer. Keep profiles private.";
 
@@ -22,7 +22,7 @@ const READY =
   "The profile is complete. Start screening matches. Only ping the human when a date is ready to offer. Keep profiles private. " + PRIVATE_INTIMATE;
 
 const LOCK_DEALBREAKERS =
-  "Save nice-to-haves and dealbreakers with update_my_profile and set locked to true. Then call get_my_profile, confirm the profile is complete, and start screening matches. Only ping the human when a date is ready to offer. Keep profiles private. " +
+  "Save dealbreakers with update_my_profile as an array of up to 10 short lines, or an empty array if there are none, and set locked to true. Saving dealbreakers works before the profile is locked. Then call get_my_profile, confirm the profile is complete, and start screening matches. Only ping the human when a date is ready to offer. Keep profiles private. Dealbreakers stay private and are never shown to other members. " +
   PRIVATE_INTIMATE;
 
 /** Fields the interview still has to collect before matching can start. */
@@ -45,12 +45,13 @@ export function missingOnboarding(member: Member): string[] {
     ageMin <= ageMax;
   if (!ageRange) missing.push("preferred age range");
   if (!Array.isArray(member.prefs.cities) || member.prefs.cities.length === 0) missing.push("areas they'd date in");
+  if (!Array.isArray(member.prefs.dealbreakers)) missing.push("dealbreakers");
   if (!member.prefs.locked) missing.push("nice-to-haves and dealbreakers (set locked true)");
   return missing;
 }
 
 /**
- * profileComplete means the member can be screened: required fields are set and dealbreakers are locked.
+ * profileComplete means the member can be screened: required fields are set, dealbreakers are saved, and the profile is locked.
  * next_step is the bot's next action. Incomplete profiles get the interview. A finished profile starts screening.
  */
 export function onboardingGuidance(member: Member): { profileComplete: boolean; next_step: string } {

@@ -100,8 +100,8 @@ test("a founding member keeps matching and MCP after a canceled subscription; me
     const first = upsertXMember(ctx, { xUserId: "10", handle: "ada", name: "Ada", bio: "First.", avatarUrl: "" });
     const second = upsertXMember(ctx, { xUserId: "11", handle: "grace", name: "Grace", bio: "Later.", avatarUrl: "" });
     ctx.db.update(users).set({ memberNumber: 1001, founder: false }).where(eq(users.id, second.userId)).run();
-    assert.equal(applyBotProfile(ctx, first.userId, { age: 36, city: "Austin", gender: "woman", occupation: "Engineer", ageMin: 28, ageMax: 45, cities: ["Austin"], seeking: "either" }).ok, true);
-    assert.equal(applyBotProfile(ctx, second.userId, { age: 36, city: "Austin", gender: "woman", occupation: "Engineer", ageMin: 28, ageMax: 45, cities: ["Austin"], seeking: "either" }).ok, true);
+    assert.equal(applyBotProfile(ctx, first.userId, { age: 36, city: "Austin", gender: "woman", occupation: "Engineer", ageMin: 28, ageMax: 45, cities: ["Austin"], seeking: "either", dealbreakers: [] }).ok, true);
+    assert.equal(applyBotProfile(ctx, second.userId, { age: 36, city: "Austin", gender: "woman", occupation: "Engineer", ageMin: 28, ageMax: 45, cities: ["Austin"], seeking: "either", dealbreakers: [] }).ok, true);
     const freeMember = getMember(ctx, first.userId)!;
     const paidMember = getMember(ctx, second.userId)!;
     assert.equal(isFoundingMember(freeMember), true);
