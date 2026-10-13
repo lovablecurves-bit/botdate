@@ -143,7 +143,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .connect-reveal > summary::-webkit-details-marker { display: none; }
 .connect-reveal > summary::marker { content: ""; }
-.connect-fallback {
+.connect-reveal > .connect-fallback {
+  display: none;
+}
+.connect-reveal[open] > .connect-fallback {
   display: flex;
   flex-direction: column;
   align-items: stretch;

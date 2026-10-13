@@ -23,17 +23,17 @@ function copyFromField(field: HTMLInputElement | null): boolean {
   }
 }
 
-/** Try the app scheme without navigating this page away from the MCP URL. */
+/** Try the app scheme in a new context so this page, and the MCP URL, stay put. */
 function tryGrokBotLink(href: string) {
   try {
-    const frame = document.createElement("iframe");
-    frame.hidden = true;
-    frame.setAttribute("aria-hidden", "true");
-    frame.tabIndex = -1;
-    frame.style.cssText = "position:absolute;width:0;height:0;border:0;opacity:0";
-    frame.src = href;
-    document.body.appendChild(frame);
-    window.setTimeout(() => frame.remove(), 1500);
+    const link = document.createElement("a");
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.hidden = true;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   } catch {
     // The URL under the button is the fallback.
   }
@@ -45,19 +45,16 @@ export function ConnectGrokButton({ mcpUrl }: { mcpUrl: string }) {
 
   function onCopy() {
     const field = fieldRef.current;
+    // Select first, while the tap is still a user gesture. In-app browsers often
+    // reject clipboard.writeText, and that rejection can arrive too late to select.
+    selectField(field);
     const synced = copyFromField(field);
+    if (synced) setCopied(true);
     const writer = navigator.clipboard?.writeText?.(mcpUrl);
-    if (!writer) {
-      setCopied(synced);
-      if (!synced) selectField(field);
-      return;
-    }
+    if (!writer) return;
     void writer.then(
       () => setCopied(true),
-      () => {
-        setCopied(synced);
-        if (!synced) selectField(field);
-      },
+      () => setCopied(synced),
     );
   }
 

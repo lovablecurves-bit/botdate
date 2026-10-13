@@ -125,7 +125,8 @@ test("the post-login button reveals the MCP URL and does not treat a tap as conn
   assert.match(button, /readOnly/);
   assert.match(button, /<details/);
   assert.match(button, /grokBotConnectLink/);
-  assert.match(button, /iframe/);
+  assert.match(button, /target = "_blank"/);
+  assert.equal(button.includes("iframe"), false);
   assert.equal(button.includes("location.href"), false);
   assert.equal(button.includes("location.assign"), false);
   assert.equal(button.includes("window.open"), false);
