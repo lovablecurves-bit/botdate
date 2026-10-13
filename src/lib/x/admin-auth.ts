@@ -25,3 +25,8 @@ export function adminKeyAuthorized(key: string | null): boolean {
 export function posterAuthorized(authorization: string | null): boolean {
   return secretMatches(process.env.POSTER_SECRET, bearerToken(authorization));
 }
+
+/** GET /api/admin/signups. Unset ADMIN_TOKEN never authorizes. */
+export function adminTokenAuthorized(authorization: string | null): boolean {
+  return secretMatches(process.env.ADMIN_TOKEN, bearerToken(authorization));
+}

@@ -1,6 +1,7 @@
 const OPEN = [
   /^\/api\/auth\/x(?:\/|$)/,
   /^\/api\/admin\/x(?:\/|$)/,
+  /^\/api\/admin\/signups\/?$/,
   /^\/admin\/x\/connected\/?$/,
   /^\/api\/agent(?:\/|$)/,
   /^\/api\/mcp(?:\/|$)/,

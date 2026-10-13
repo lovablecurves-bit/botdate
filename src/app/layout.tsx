@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Fraunces, Outfit } from "next/font/google";
 import { FOUNDING_PITCH } from "@/lib/founding";
 import { BOTDATE_PUBLIC_URL } from "@/lib/share";
@@ -48,7 +49,10 @@ export const runtime = "nodejs";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${outfit.variable} ${fraunces.variable}`}>
-      <body className={outfit.className}>{children}</body>
+      <body className={outfit.className}>
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
