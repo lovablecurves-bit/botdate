@@ -23,6 +23,7 @@ function fillProfile(ctx: Awaited<ReturnType<typeof openDatabase>>, userId: stri
     ageMax: 45,
     cities: [city],
     seeking: "either",
+    dealbreakers: [],
   });
   assert.equal(result.ok, true);
 }

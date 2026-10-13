@@ -135,6 +135,7 @@ async function memberFromSignIn(profile: XProfile, ref: string | null) {
         intent: "any",
         seeking: null,
         niceToHaves: "",
+        dealbreakers: null,
         locked: false,
       },
       xAccount: { userId: profile.xUserId, handle: profile.handle, avatarUrl: profile.avatarUrl },

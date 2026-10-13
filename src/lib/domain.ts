@@ -26,6 +26,7 @@ import {
   type KidsStance,
   type Member,
   type MemberInput,
+  normalizeDealbreakers,
   parseSeeking,
   type ProposalStatus,
   type Seeking,
@@ -165,6 +166,21 @@ function asBool(value: unknown): boolean {
   return value === true || value === 1;
 }
 
+function storedDealbreakers(raw: string | null | undefined): string[] | null {
+  if (raw == null || raw === "") return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter((item): item is string => typeof item === "string");
+  } catch {
+    return null;
+  }
+}
+
+function dealbreakersJson(value: string[] | null): string | null {
+  return value == null ? null : JSON.stringify(value);
+}
+
 function parseJson<T>(value: string, fallback: T): T {
   try {
     return JSON.parse(value) as T;
@@ -242,6 +258,7 @@ export function listMembers(ctx: BotDateDb): Member[] {
         intent: pref.intent as IntentFilter,
         seeking: pref.seeking === "men" || pref.seeking === "women" || pref.seeking === "either" ? pref.seeking : null,
         niceToHaves: pref.niceToHaves,
+        dealbreakers: storedDealbreakers(pref.dealbreakers),
         locked: asBool(pref.locked),
       },
       founder: asBool(user.founder),
@@ -279,6 +296,7 @@ export function memberToInput(member: Member): MemberInput {
     intentFilter: member.prefs.intent,
     seeking: member.prefs.seeking,
     niceToHaves: member.prefs.niceToHaves,
+    dealbreakers: member.prefs.dealbreakers ? [...member.prefs.dealbreakers] : member.prefs.dealbreakers,
     locked: member.prefs.locked,
   };
 }
@@ -1132,6 +1150,7 @@ export type BotProfilePatch = {
   kidsFilter?: KidsFilter;
   intentFilter?: IntentFilter;
   seeking?: Seeking | null;
+  dealbreakers?: string[] | null;
   locked?: boolean;
 };
 
@@ -1225,6 +1244,15 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
     const niceToHaves = cleanFreeText(patch.niceToHaves, 400);
     next.niceToHaves = niceToHaves;
   }
+  if (patch.dealbreakers !== undefined) {
+    if (patch.dealbreakers === null) {
+      next.dealbreakers = null;
+    } else {
+      const dealbreakers = normalizeDealbreakers(patch.dealbreakers);
+      if (!dealbreakers.ok) return fail(dealbreakers.error);
+      next.dealbreakers = dealbreakers.dealbreakers;
+    }
+  }
   if (patch.locked !== undefined) next.locked = patch.locked;
   const voice = voiceForGender(next.gender);
   ctx.db.update(users).set({ displayName: next.displayName }).where(eq(users.id, userId)).run();
@@ -1255,6 +1283,7 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
       intent: next.intentFilter,
       seeking: next.seeking,
       niceToHaves: next.niceToHaves,
+      dealbreakers: dealbreakersJson(next.dealbreakers),
       locked: next.locked,
     })
     .where(eq(prefs.userId, userId))
@@ -1287,6 +1316,12 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
   if (input.seeking !== null && !parseSeeking(input.seeking)) return fail("seeking must be men, women, or either.");
   const niceToHaves = input.niceToHaves.trim();
   if (niceToHaves.length > 400) return fail("Keep nice-to-haves under 400 characters.");
+  let dealbreakers = input.dealbreakers;
+  if (dealbreakers !== null) {
+    const cleaned = normalizeDealbreakers(dealbreakers);
+    if (!cleaned.ok) return fail(cleaned.error);
+    dealbreakers = cleaned.dealbreakers;
+  }
   const voice = voiceForGender(input.gender);
   ctx.db.update(users).set({ displayName }).where(eq(users.id, userId)).run();
   ctx.db
@@ -1316,6 +1351,7 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
       intent: input.intentFilter,
       seeking: input.seeking,
       niceToHaves,
+      dealbreakers: dealbreakersJson(dealbreakers),
       locked: input.locked,
     })
     .where(eq(prefs.userId, userId))

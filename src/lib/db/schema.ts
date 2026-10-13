@@ -44,6 +44,8 @@ export const prefs = sqliteTable("prefs", {
   intent: text("intent").notNull(),
   seeking: text("seeking"),
   niceToHaves: text("nice_to_haves").notNull(),
+  /** JSON string array. Null until the member's bot saves dealbreakers. */
+  dealbreakers: text("dealbreakers"),
   locked: integer("locked", { mode: "boolean" }).notNull().default(false),
 });
 
@@ -197,7 +199,8 @@ CREATE TABLE IF NOT EXISTS prefs (
   intent TEXT NOT NULL,
   nice_to_haves TEXT NOT NULL,
   locked INTEGER NOT NULL DEFAULT 0,
-  seeking TEXT
+  seeking TEXT,
+  dealbreakers TEXT
 );
 CREATE TABLE IF NOT EXISTS matches (
   id TEXT PRIMARY KEY,

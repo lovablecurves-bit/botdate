@@ -1,5 +1,5 @@
 /** Columns added after the first demo schema. CREATE TABLE IF NOT EXISTS will not add them. */
-export const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
+export const ADDED_COLUMNS: { table: string; column: string; ddl: string; after?: string }[] = [
   { table: "users", column: "x_user_id", ddl: "TEXT" },
   { table: "users", column: "x_handle", ddl: "TEXT" },
   { table: "users", column: "x_avatar_url", ddl: "TEXT" },
@@ -15,6 +15,7 @@ export const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "agent_tokens", column: "last_used_at", ddl: "TEXT" },
   { table: "agent_tokens", column: "expires_at", ddl: "TEXT" },
   { table: "prefs", column: "seeking", ddl: "TEXT" },
+  { table: "prefs", column: "dealbreakers", ddl: "TEXT", after: "UPDATE prefs SET dealbreakers = '[]' WHERE dealbreakers IS NULL" },
 ];
 
 export const X_USER_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_x_user_idx ON users(x_user_id)";
@@ -83,9 +84,10 @@ CREATE TABLE prefs__migrated (
   intent TEXT NOT NULL,
   nice_to_haves TEXT NOT NULL,
   locked INTEGER NOT NULL DEFAULT 0,
-  seeking TEXT
+  seeking TEXT,
+  dealbreakers TEXT
 );
-INSERT INTO prefs__migrated (user_id, age_min, age_max, cities, smoking, kids, intent, nice_to_haves, locked, seeking)
+INSERT INTO prefs__migrated (user_id, age_min, age_max, cities, smoking, kids, intent, nice_to_haves, locked, seeking, dealbreakers)
 SELECT
   p.user_id,
   CASE WHEN ${matched} THEN NULL ELSE p.age_min END,
@@ -96,7 +98,8 @@ SELECT
   p.intent,
   p.nice_to_haves,
   p.locked,
-  NULL
+  NULL,
+  '[]'
 FROM prefs p
 LEFT JOIN profiles pr ON pr.user_id = p.user_id AND ${profileMatch("pr", usePronouns)};
 DROP TABLE prefs;

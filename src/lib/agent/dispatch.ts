@@ -10,7 +10,7 @@ import {
   saveMember,
   sendBotNote,
 } from "../domain";
-import { isAllowedMemberAge, MEMBER_AGE_ERROR, parseSeeking, type Gender, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
+import { isAllowedMemberAge, MEMBER_AGE_ERROR, normalizeDealbreakers, parseSeeking, type Gender, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
 import { authenticateAgent } from "./tokens";
 
 export type AgentResponse = { status: number; body: unknown };
@@ -108,6 +108,7 @@ export function dispatchAgent(input: {
             intent: member.prefs.intent,
             seeking: member.prefs.seeking,
             niceToHaves: member.prefs.niceToHaves,
+            dealbreakers: member.prefs.dealbreakers,
             locked: member.prefs.locked,
           },
         },
@@ -134,6 +135,13 @@ export function dispatchAgent(input: {
     if (patch.niceToHaves !== undefined && text(patch.niceToHaves) === undefined) {
       return { status: 400, body: { error: "niceToHaves must be a string." } };
     }
+    const dealbreakers =
+      patch.dealbreakers === undefined
+        ? undefined
+        : Array.isArray(patch.dealbreakers) && patch.dealbreakers.every((item) => typeof item === "string")
+          ? normalizeDealbreakers(patch.dealbreakers)
+          : { ok: false as const, error: "dealbreakers must be a list of short strings." };
+    if (dealbreakers && !dealbreakers.ok) return { status: 400, body: { error: dealbreakers.error } };
     const gender = patch.gender === undefined ? undefined : genderOf(patch.gender);
     const kidsStance = patch.kidsStance === undefined ? undefined : oneOf(patch.kidsStance, ["wants", "open", "doesnt"] as const);
     const datingIntent = patch.datingIntent === undefined ? undefined : oneOf(patch.datingIntent, ["serious", "casual"] as const);
@@ -170,6 +178,7 @@ export function dispatchAgent(input: {
       intentFilter: (intent ?? current.intentFilter) as IntentFilter,
       seeking: seeking ?? current.seeking,
       niceToHaves: text(patch.niceToHaves) ?? current.niceToHaves,
+      dealbreakers: dealbreakers?.ok ? dealbreakers.dealbreakers : current.dealbreakers,
       locked: bool(patch.locked) ?? current.locked,
     });
     if (!result.ok) return { status: 400, body: { error: result.error } };
@@ -186,6 +195,7 @@ export function dispatchAgent(input: {
           intent: updated.prefs.intent,
           seeking: updated.prefs.seeking,
           niceToHaves: updated.prefs.niceToHaves,
+          dealbreakers: updated.prefs.dealbreakers,
           locked: updated.prefs.locked,
         },
       },

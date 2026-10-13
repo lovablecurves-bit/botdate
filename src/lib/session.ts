@@ -170,6 +170,7 @@ export function memberFromClaims(claims: SessionClaims): Member {
       intent: "any",
       seeking: null,
       niceToHaves: "",
+      dealbreakers: null,
       locked: claims.locked,
     },
     xAccount: handle

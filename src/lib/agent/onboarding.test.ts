@@ -103,6 +103,7 @@ test("initialize instructions and tool descriptions send a fresh bot to get_my_p
     }
     assert.match(byName.get("propose_date") ?? "", /only when a date is ready to offer/);
     assert.match(byName.get("browse_members") ?? "", /Incomplete profiles stay private/);
+    assert.match(byName.get("update_my_profile") ?? "", /dealbreakers is an array of up to 10 short lines/);
     assert.match(byName.get("update_my_profile") ?? "", /Photos are not accepted/);
     assert.match(byName.get("update_my_profile") ?? "", /never goes on the profile/);
     assert.match(byName.get("get_my_profile") ?? "", /age and city first/);
@@ -132,7 +133,7 @@ test("get_my_profile interviews an incomplete member, then confirms a private co
     assert.match(opening.next_step, /Keep profiles private/);
     assert.match(opening.next_step, /Still missing: age \(18\+\), city or location/);
 
-    const saved = callTool(ctx, member, "update_my_profile", {
+    const unlocked = callTool(ctx, member, "update_my_profile", {
       age: 29,
       city: "Austin",
       gender: "woman",
@@ -142,11 +143,29 @@ test("get_my_profile interviews an incomplete member, then confirms a private co
       ageMax: 40,
       cities: ["Austin"],
       niceToHaves: "Friends nearby, within 15 miles.",
-      locked: true,
+      dealbreakers: ["Non-smoker", "Looking for love"],
     });
+    assert.equal(unlocked?.status, 200);
+    const drafted = unlocked?.body as {
+      profileComplete: boolean;
+      next_step: string;
+      member: { preferences: { dealbreakers: string[]; locked: boolean } };
+    };
+    assert.equal(drafted.profileComplete, false);
+    assert.deepEqual(drafted.member.preferences.dealbreakers, ["Non-smoker", "Looking for love"]);
+    assert.equal(drafted.member.preferences.locked, false);
+    assert.equal(getMember(ctx, created.userId)?.prefs.locked, false);
+    assert.match(drafted.next_step, /set locked to true/);
+
+    const saved = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", { locked: true });
     assert.equal(saved?.status, 200);
-    const done = saved?.body as { profileComplete: boolean; next_step: string; member: { id: string } };
+    const done = saved?.body as {
+      profileComplete: boolean;
+      next_step: string;
+      member: { id: string; preferences: { dealbreakers: string[] } };
+    };
     assert.equal(done.profileComplete, true);
+    assert.deepEqual(done.member.preferences.dealbreakers, ["Non-smoker", "Looking for love"]);
     assert.equal(done.member.id, created.userId);
     assert.match(done.next_step, /^The profile is complete\. Start screening matches\./);
     assert.match(done.next_step, /Only ping the human when a date is ready to offer/);
@@ -160,15 +179,22 @@ test("get_my_profile interviews an incomplete member, then confirms a private co
     assert.equal((hidden?.body as { members: { id: string }[] }).members.some((person) => person.id === other.userId), false);
     const privateProfile = callTool(ctx, viewer, "get_member", { memberId: created.userId });
     assert.equal(privateProfile?.status, 200);
-    const viewed = privateProfile?.body as { member: { id: string }; next_step?: string; profileComplete?: boolean };
+    const viewed = privateProfile?.body as {
+      member: { id: string; preferences: Record<string, unknown> };
+      next_step?: string;
+      profileComplete?: boolean;
+    };
     assert.equal(viewed.member.id, created.userId);
     assert.equal(viewed.next_step, undefined);
     assert.equal(viewed.profileComplete, undefined);
+    assert.equal("dealbreakers" in viewed.member.preferences, false);
+    assert.equal(JSON.stringify(privateProfile?.body).includes("Looking for love"), false);
     const listed = callTool(ctx, viewer, "browse_members", {});
-    const cards = (listed?.body as { members: { id: string; next_step?: string }[] }).members;
+    const cards = (listed?.body as { members: { id: string; preferences: Record<string, unknown>; next_step?: string }[] }).members;
     const card = cards.find((person) => person.id === created.userId);
     assert.ok(card);
     assert.equal(card.next_step, undefined);
+    assert.equal("dealbreakers" in card.preferences, false);
 
     const issued = issueAgentToken(ctx, created.userId);
     assert.ok(issued);

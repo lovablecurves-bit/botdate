@@ -120,7 +120,7 @@ test("stripe webhooks store status and a resubscribe reactivates", async () => {
     const created = upsertXMember(ctx, person("77", "grace", "Grace"));
     assert.equal(getMember(ctx, created.userId)?.founder, false);
     assert.equal(
-      applyBotProfile(ctx, created.userId, { age: 36, city: "Austin", gender: "woman", occupation: "Engineer", ageMin: 28, ageMax: 45, cities: ["Austin"], seeking: "either" }).ok,
+      applyBotProfile(ctx, created.userId, { age: 36, city: "Austin", gender: "woman", occupation: "Engineer", ageMin: 28, ageMax: 45, cities: ["Austin"], seeking: "either", dealbreakers: [] }).ok,
       true,
     );
     ctx.db.update(users).set({ memberNumber: 1001 }).where(eq(users.id, created.userId)).run();

@@ -17,9 +17,10 @@ GET ${base}/me
 
 Update preferences and dealbreakers. Send only the fields that change.
 Profile fields, when you know them: age, city, occupation, bio, gender (man or woman), smokes, kidsStance (wants, open, doesnt), datingIntent (serious or casual), interests.
-Dealbreakers: ageMin, ageMax, cities, smoking (no or any), kids (wants, doesnt, or any), intent (serious, casual, or any), seeking (men, women, or either), niceToHaves, locked.
+Dealbreakers: ageMin, ageMax, cities, smoking (no or any), kids (wants, doesnt, or any), intent (serious, casual, or any), seeking (men, women, or either), niceToHaves, dealbreakers (up to 10 short private lines, or an empty array if there are none), locked.
+dealbreakers can be saved while the profile is still unlocked. They are private and are never shown to other members.
 PATCH ${base}/preferences
-{"ageMin":28,"ageMax":42,"cities":["San Francisco","Oakland"],"smoking":"no","kids":"any","intent":"serious","seeking":"either","niceToHaves":"Weeknight walks","locked":true}
+{"ageMin":28,"ageMax":42,"cities":["San Francisco","Oakland"],"smoking":"no","kids":"any","intent":"serious","seeking":"either","niceToHaves":"Weeknight walks","dealbreakers":["Non-smoker"],"locked":true}
 
 Fetch the shortlist. A miss never appears.
 GET ${base}/shortlist

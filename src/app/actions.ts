@@ -61,6 +61,7 @@ function inputFromForm(formData: FormData): MemberInput {
     intentFilter: String(formData.get("intentFilter") ?? "") as IntentFilter,
     seeking: parseSeeking(String(formData.get("seeking") ?? "")),
     niceToHaves: String(formData.get("niceToHaves") ?? ""),
+    dealbreakers: null,
     locked: formData.get("locked") === "on",
   };
 }
@@ -198,9 +199,10 @@ export async function saveOnboardingAction(_prev: FormState, formData: FormData)
   const user = await requireUser();
   const saved = await withDb((db) => {
     const input = inputFromForm(formData);
-    if (!formData.has("seeking")) {
-      const existing = getMember(db, user.id);
-      if (existing) input.seeking = existing.prefs.seeking;
+    const existing = getMember(db, user.id);
+    if (existing) {
+      input.dealbreakers = existing.prefs.dealbreakers;
+      if (!formData.has("seeking")) input.seeking = existing.prefs.seeking;
     }
     const result = saveMember(db, user.id, input);
     return { result, member: result.ok ? getMember(db, user.id) : null };

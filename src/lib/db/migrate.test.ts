@@ -13,14 +13,14 @@ test("migrations add X profile columns and the held-offer flag only when they ar
     users: ["id", "email", "display_name", "bot_paused", "created_at", "x_user_id", "x_handle", "x_avatar_url", "founder", "member_number", "connect_seen", "stripe_customer_id", "stripe_subscription_id", "stripe_subscription_status", "referral_code", "referred_by"],
     date_proposals: ["id", "released"],
     agent_tokens: ["id", "user_id", "token_hash", "token_prefix", "created_at", "revoked_at", "last_used_at", "expires_at"],
-    prefs: ["user_id", "seeking"],
+    prefs: ["user_id", "seeking", "dealbreakers"],
   });
   assert.deepEqual(fresh, []);
   const legacy = missingColumnStatements({
     users: ["id", "email", "display_name", "bot_paused", "created_at"],
     date_proposals: ["id"],
   });
-  assert.equal(legacy.length, 15);
+  assert.equal(legacy.length, 16);
   assert.match(legacy[0] ?? "", /x_user_id/);
   assert.match(legacy[3] ?? "", /released/);
   assert.match(legacy.join("\n"), /founder/);
@@ -34,6 +34,7 @@ test("migrations add X profile columns and the held-offer flag only when they ar
   assert.match(legacy.join("\n"), /referral_code/);
   assert.match(legacy.join("\n"), /referred_by/);
   assert.equal(legacy.find((statement) => statement.includes("seeking")), "ALTER TABLE prefs ADD COLUMN seeking TEXT");
+  assert.equal(legacy.find((statement) => statement.includes("dealbreakers")), "ALTER TABLE prefs ADD COLUMN dealbreakers TEXT");
 });
 
 test("adding seeking leaves existing preference rows null", async () => {
@@ -68,6 +69,7 @@ test("adding seeking leaves existing preference rows null", async () => {
     assert.equal(row.cities, '["Austin"]');
     assert.equal(row.smoking, "no");
     assert.equal(row.niceToHaves, "Walks");
+    assert.equal(row.dealbreakers, "[]");
   } finally {
     ctx.close();
     fs.unlinkSync(file);
