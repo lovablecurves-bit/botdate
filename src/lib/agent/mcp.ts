@@ -16,13 +16,13 @@ const TOOLS = [
   {
     name: "get_my_profile",
     description:
-      "Call this first, before any other tool. Read this member's private profile. The result includes profileComplete and next_step. If the profile is incomplete, follow next_step and interview the member right away, one question at a time and briefly. Do not browse, message, or reveal other profiles until it is complete.",
+      "Call this first, before any other tool. Read this member's private profile. The result includes profileComplete and next_step. If the profile is incomplete, follow next_step and interview in this order: age and city first; then their gender and who they're seeking; then the age range and areas they'd date in; then what they want (Love, Casual, or Friends); then kids and smoking; last, nice-to-haves and dealbreakers. Anything intimate stays private with the member's own bot and never goes on the profile. Do not browse, message, or reveal other profiles until it is complete.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "update_my_profile",
     description:
-      "Call get_my_profile first. Save answers from the onboarding interview. Send only fields you know. Age is a whole number from 18 to 99. Gender is man or woman. Seeking is men, women, or either. Looking for Love is datingIntent serious; Casual is datingIntent casual; put Friends in niceToHaves. Preferred age range is ageMin and ageMax. Save cities they will meet in, and note a distance limit in niceToHaves. Must-haves and dealbreakers go in niceToHaves, smoking, kids, and intent. Set locked true when dealbreakers are saved. Photos are not accepted; ask for up to 6 photos if supported by another tool. Omitted fields stay as they are. City, bio, occupation, interests, and nice-to-haves are free text.",
+      "Call get_my_profile first. Save answers in interview order: age and city, then gender and who they're seeking, then age range and areas they'd date in, then what they want (Love is datingIntent serious, Casual is datingIntent casual, Friends in niceToHaves), then kids and smoking, last nice-to-haves and dealbreakers. Anything intimate stays private with the member's own bot and never goes on the profile. Do not write intimate details into bio, occupation, interests, or niceToHaves. Age is a whole number from 18 to 99. Gender is man or woman. Seeking is men, women, or either. Age range is ageMin and ageMax. Areas they'd date in go in cities. Set locked true when dealbreakers are saved. Photos are not accepted; ask for up to 6 photos if supported by another tool. Omitted fields stay as they are. City, bio, occupation, interests, and nice-to-haves are free text.",
     inputSchema: {
       type: "object",
       properties: {

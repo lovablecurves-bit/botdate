@@ -5,17 +5,25 @@ export function grokConnectMessage(mcpUrl: string): string {
   return `Be my BotDate matchmaker. Connect to ${mcpUrl}, then interview me and set up my profile.`;
 }
 
+/** Intimate answers stay in the bot's own chat. They are not profile fields. */
+export const PRIVATE_INTIMATE =
+  "Anything intimate stays private with the member's own bot and never goes on the profile. Do not write intimate details into bio, occupation, interests, niceToHaves, or any other profile field.";
+
 /** What a fresh bot does when get_my_profile says the profile is not ready. */
 export const INTERVIEW_DIRECTIVE =
-  "Interview this member right away, one question at a time and briefly. Ask: age (18+), city or location, their gender (man or woman), who they're seeking (men, women, or either), Looking for (Love, Casual, or Friends), preferred age range and distance, must-haves and dealbreakers, and up to 6 photos if supported. Save each answer with update_my_profile. Age is a whole number from 18 to 99. Gender is man or woman. Seeking is men, women, or either. Looking for Love is datingIntent serious, Casual is datingIntent casual, and Friends goes in niceToHaves. Preferred age range is ageMin and ageMax. Save the cities they will meet in, and note a distance limit in niceToHaves. Put must-haves and dealbreakers in niceToHaves, smoking, kids, and intent, and set locked to true. This server does not store photos; ask for up to 6 photos if supported by a tool. Then call get_my_profile, confirm the profile is complete, and start screening matches. Only ping the human when a date is ready to offer. Keep profiles private.";
+  "Interview this member right away, one question at a time and briefly, in this order: age (18+) and city first; then their gender (man or woman) and who they're seeking (men, women, or either); then the age range and areas they'd date in; then what they want (Love, Casual, or Friends); then kids and smoking; last, nice-to-haves and dealbreakers. Save each answer with update_my_profile. Age is a whole number from 18 to 99. City is free text. Gender is man or woman. Seeking is men, women, or either. Age range is ageMin and ageMax. Areas they'd date in go in cities. What they want: Love is datingIntent serious, Casual is datingIntent casual, and Friends goes in niceToHaves. Kids is kidsStance wants, open, or doesnt, and the kids filter is kids wants, doesnt, or any. Smoking is smokes true or false, and the smoking filter is smoking no or any. Nice-to-haves go in niceToHaves. Set locked to true when dealbreakers are saved. Ask for up to 6 photos if supported. This server does not store photos. " +
+  PRIVATE_INTIMATE +
+  " Then call get_my_profile, confirm the profile is complete, and start screening matches. Only ping the human when a date is ready to offer. Keep profiles private.";
 
 /** Returned on MCP initialize so a bot that just connected starts onboarding. */
 export const MCP_SERVER_INSTRUCTIONS = `You are this member's BotDate matchmaker. Call get_my_profile first, before any other tool. If profileComplete is false, follow next_step immediately. ${INTERVIEW_DIRECTIVE}`;
 
-const READY = "The profile is complete. Start screening matches. Only ping the human when a date is ready to offer. Keep profiles private.";
+const READY =
+  "The profile is complete. Start screening matches. Only ping the human when a date is ready to offer. Keep profiles private. " + PRIVATE_INTIMATE;
 
 const LOCK_DEALBREAKERS =
-  "Save must-haves and dealbreakers with update_my_profile and set locked to true. Then call get_my_profile, confirm the profile is complete, and start screening matches. Only ping the human when a date is ready to offer. Keep profiles private.";
+  "Save nice-to-haves and dealbreakers with update_my_profile and set locked to true. Then call get_my_profile, confirm the profile is complete, and start screening matches. Only ping the human when a date is ready to offer. Keep profiles private. " +
+  PRIVATE_INTIMATE;
 
 /** Fields the interview still has to collect before matching can start. */
 export function missingOnboarding(member: Member): string[] {
@@ -36,8 +44,8 @@ export function missingOnboarding(member: Member): string[] {
     ageMax <= MAX_MEMBER_AGE &&
     ageMin <= ageMax;
   if (!ageRange) missing.push("preferred age range");
-  if (!Array.isArray(member.prefs.cities) || member.prefs.cities.length === 0) missing.push("distance or cities");
-  if (!member.prefs.locked) missing.push("must-haves and dealbreakers (set locked true)");
+  if (!Array.isArray(member.prefs.cities) || member.prefs.cities.length === 0) missing.push("areas they'd date in");
+  if (!member.prefs.locked) missing.push("nice-to-haves and dealbreakers (set locked true)");
   return missing;
 }
 

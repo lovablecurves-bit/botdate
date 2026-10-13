@@ -21,6 +21,25 @@ function toolText(body: unknown): Record<string, unknown> {
   return JSON.parse(text) as Record<string, unknown>;
 }
 
+const INTERVIEW_ORDER = [
+  "age (18+) and city first",
+  "then their gender (man or woman) and who they're seeking (men, women, or either)",
+  "then the age range and areas they'd date in",
+  "then what they want (Love, Casual, or Friends)",
+  "then kids and smoking",
+  "last, nice-to-haves and dealbreakers",
+];
+
+function assertInterviewOrder(text: string) {
+  let last = -1;
+  for (const step of INTERVIEW_ORDER) {
+    const at = text.indexOf(step);
+    assert.ok(at > last, step);
+    last = at;
+  }
+  assert.match(text, /Anything intimate stays private with the member's own bot and never goes on the profile/);
+}
+
 test("the post-login connect screen shows one paste message and keeps the MCP URL copy", () => {
   assert.equal(grokConnectMessage(MCP_URL), PASTE);
 
@@ -62,13 +81,7 @@ test("initialize instructions and tool descriptions send a fresh bot to get_my_p
     assert.equal(instructions, MCP_SERVER_INSTRUCTIONS);
     assert.match(instructions, /Call get_my_profile first/);
     assert.match(instructions, /one question at a time and briefly/);
-    assert.match(instructions, /age \(18\+\)/);
-    assert.match(instructions, /city or location/);
-    assert.match(instructions, /man or woman/);
-    assert.match(instructions, /men, women, or either/);
-    assert.match(instructions, /Looking for \(Love, Casual, or Friends\)/);
-    assert.match(instructions, /preferred age range and distance/);
-    assert.match(instructions, /must-haves and dealbreakers/);
+    assertInterviewOrder(instructions);
     assert.match(instructions, /up to 6 photos if supported/);
     assert.match(instructions, /update_my_profile/);
     assert.match(instructions, /confirm the profile is complete/);
@@ -91,6 +104,9 @@ test("initialize instructions and tool descriptions send a fresh bot to get_my_p
     assert.match(byName.get("propose_date") ?? "", /only when a date is ready to offer/);
     assert.match(byName.get("browse_members") ?? "", /Incomplete profiles stay private/);
     assert.match(byName.get("update_my_profile") ?? "", /Photos are not accepted/);
+    assert.match(byName.get("update_my_profile") ?? "", /never goes on the profile/);
+    assert.match(byName.get("get_my_profile") ?? "", /age and city first/);
+    assert.match(byName.get("get_my_profile") ?? "", /last, nice-to-haves and dealbreakers/);
   } finally {
     ctx.close();
   }
@@ -109,8 +125,7 @@ test("get_my_profile interviews an incomplete member, then confirms a private co
     assert.equal(opening.member.id, created.userId);
     assert.equal(opening.member.profile.age, null);
     assert.match(opening.next_step, /Interview this member right away, one question at a time and briefly/);
-    assert.match(opening.next_step, /age \(18\+\)/);
-    assert.match(opening.next_step, /Looking for \(Love, Casual, or Friends\)/);
+    assertInterviewOrder(opening.next_step);
     assert.match(opening.next_step, /up to 6 photos if supported/);
     assert.match(opening.next_step, /update_my_profile/);
     assert.match(opening.next_step, /Only ping the human when a date is ready to offer/);
@@ -135,6 +150,7 @@ test("get_my_profile interviews an incomplete member, then confirms a private co
     assert.equal(done.member.id, created.userId);
     assert.match(done.next_step, /^The profile is complete\. Start screening matches\./);
     assert.match(done.next_step, /Only ping the human when a date is ready to offer/);
+    assert.match(done.next_step, /Anything intimate stays private with the member's own bot and never goes on the profile/);
     assert.equal(done.next_step.includes("Interview this member right away"), false);
 
     const other = upsertXMember(ctx, grace);
