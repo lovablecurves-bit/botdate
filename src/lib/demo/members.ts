@@ -17,7 +17,7 @@ type Seed = {
   intent: Intent;
   interests: string[];
   accent: string;
-  prefs: Omit<Prefs, "locked"> & { locked?: boolean };
+  prefs: Omit<Prefs, "locked" | "seeking"> & { locked?: boolean; seeking?: Prefs["seeking"] };
 };
 
 function member(seed: Seed): Member {
@@ -40,7 +40,7 @@ function member(seed: Seed): Member {
     displayName: seed.displayName,
     botPaused: false,
     profile,
-    prefs: { ...seed.prefs, locked: seed.prefs.locked !== false },
+    prefs: { seeking: "either", ...seed.prefs, locked: seed.prefs.locked !== false },
     xAccount: null,
     founder: false,
     memberNumber: null,

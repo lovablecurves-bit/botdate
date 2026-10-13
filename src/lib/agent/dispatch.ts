@@ -10,7 +10,7 @@ import {
   saveMember,
   sendBotNote,
 } from "../domain";
-import { type Gender, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
+import { isAllowedMemberAge, MEMBER_AGE_ERROR, parseSeeking, type Gender, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
 import { authenticateAgent } from "./tokens";
 
 export type AgentResponse = { status: number; body: unknown };
@@ -106,6 +106,7 @@ export function dispatchAgent(input: {
             smoking: member.prefs.smoking,
             kids: member.prefs.kids,
             intent: member.prefs.intent,
+            seeking: member.prefs.seeking,
             niceToHaves: member.prefs.niceToHaves,
             locked: member.prefs.locked,
           },
@@ -138,6 +139,7 @@ export function dispatchAgent(input: {
     const datingIntent = patch.datingIntent === undefined ? undefined : oneOf(patch.datingIntent, ["serious", "casual"] as const);
     if (patch.gender !== undefined && !gender) return { status: 400, body: { error: "gender must be man or woman." } };
     if (patch.age !== undefined && int(patch.age) === undefined) return { status: 400, body: { error: "age must be a whole number." } };
+    if (patch.age !== undefined && !isAllowedMemberAge(int(patch.age))) return { status: 400, body: { error: MEMBER_AGE_ERROR } };
     if (patch.city !== undefined && text(patch.city) === undefined) return { status: 400, body: { error: "city must be a string." } };
     if (patch.occupation !== undefined && text(patch.occupation) === undefined) return { status: 400, body: { error: "occupation must be a string." } };
     if (patch.bio !== undefined && text(patch.bio) === undefined) return { status: 400, body: { error: "bio must be a string." } };
@@ -146,6 +148,8 @@ export function dispatchAgent(input: {
     if (patch.kidsStance !== undefined && !kidsStance) return { status: 400, body: { error: "kidsStance must be wants, open, or doesnt." } };
     if (patch.datingIntent !== undefined && !datingIntent) return { status: 400, body: { error: "datingIntent must be serious or casual." } };
     if (patch.interests !== undefined && !stringList(patch.interests)) return { status: 400, body: { error: "interests must be a list of strings." } };
+    const seeking = patch.seeking === undefined ? undefined : typeof patch.seeking === "string" ? parseSeeking(patch.seeking) : null;
+    if (patch.seeking !== undefined && !seeking) return { status: 400, body: { error: "seeking must be men, women, or either." } };
     const result = saveMember(input.ctx, member.id, {
       ...current,
       displayName: text(patch.displayName) ?? current.displayName,
@@ -164,6 +168,7 @@ export function dispatchAgent(input: {
       smokingFilter: (smoking ?? current.smokingFilter) as SmokingFilter,
       kidsFilter: (kids ?? current.kidsFilter) as KidsFilter,
       intentFilter: (intent ?? current.intentFilter) as IntentFilter,
+      seeking: seeking ?? current.seeking,
       niceToHaves: text(patch.niceToHaves) ?? current.niceToHaves,
       locked: bool(patch.locked) ?? current.locked,
     });
@@ -179,6 +184,7 @@ export function dispatchAgent(input: {
           smoking: updated.prefs.smoking,
           kids: updated.prefs.kids,
           intent: updated.prefs.intent,
+          seeking: updated.prefs.seeking,
           niceToHaves: updated.prefs.niceToHaves,
           locked: updated.prefs.locked,
         },

@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { eq } from "drizzle-orm";
+import { dispatchAgent } from "./agent/dispatch";
+import { issueAgentToken } from "./agent/tokens";
 import { callTool } from "./agent/tools";
 import { applyProfileMigration } from "./db/migrate";
 import { openDatabase } from "./db/open";
 import { profiles, prefs, users } from "./db/schema";
 import { listDirectory } from "./directory";
-import { applyBotProfile, getMember, listShortlist } from "./domain";
-import { CITIES } from "./types";
+import { applyBotProfile, getMember, listShortlist, memberToInput, saveMember } from "./domain";
+import { CITIES, MEMBER_AGE_ERROR } from "./types";
 import { claimsFromMember, memberFromClaims } from "./session";
 import { upsertXMember } from "./x/account";
 
@@ -34,6 +37,7 @@ test("a new X signup stores unknown age, city, gender, and preferences", async (
     assert.equal(member.prefs.ageMin, null);
     assert.equal(member.prefs.ageMax, null);
     assert.equal(member.prefs.cities, null);
+    assert.equal(member.prefs.seeking, null);
     assert.equal(member.prefs.smoking, "any");
     assert.equal(listDirectory(ctx).some((card) => card.id === created.userId), false);
 
@@ -56,6 +60,7 @@ test("a new X signup stores unknown age, city, gender, and preferences", async (
     assert.equal(fallback.profile.occupation, "");
     assert.equal(fallback.prefs.ageMin, null);
     assert.equal(fallback.prefs.cities, null);
+    assert.equal(fallback.prefs.seeking, null);
     assert.equal(fallback.profile.bio, "Analytical.");
   } finally {
     ctx.close();
@@ -76,7 +81,7 @@ test("browse, get_member, and matching skip an incomplete profile until update_m
     assert.equal(missing?.status, 404);
     assert.equal(listShortlist(ctx, "avery").cards.some((card) => card.person.id === created.userId), false);
 
-    const filled = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", {
+    const withoutSeeking = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", {
       age: 32,
       city: "San Francisco",
       gender: "Woman",
@@ -89,11 +94,20 @@ test("browse, get_member, and matching skip an incomplete profile until update_m
       intent: "serious",
       locked: true,
     });
+    assert.equal(withoutSeeking?.status, 200);
+    assert.equal(listShortlist(ctx, "avery").cards.some((card) => card.person.id === created.userId), false);
+    assert.equal(listDirectory(ctx).some((card) => card.id === created.userId), false);
+
+    const rejected = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", { seeking: "everyone" });
+    assert.equal(rejected?.status, 400);
+
+    const filled = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", { seeking: "Women" });
     assert.equal(filled?.status, 200);
-    const body = filled?.body as { member: { profile: { gender: string; city: string; age: number } } };
+    const body = filled?.body as { member: { profile: { gender: string; city: string; age: number }; preferences: { seeking: string } } };
     assert.equal(body.member.profile.gender, "woman");
     assert.equal(body.member.profile.city, "San Francisco");
     assert.equal(body.member.profile.age, 32);
+    assert.equal(body.member.preferences.seeking, "women");
 
     const visible = callTool(ctx, viewer, "browse_members", { city: "San Francisco" });
     assert.equal((visible?.body as { members: { id: string }[] }).members.some((member) => member.id === created.userId), true);
@@ -208,8 +222,72 @@ test("the placeholder backfill nulls only the exact signup defaults", async () =
     assert.equal(realPrefs?.ageMin, 28);
     assert.equal(realPrefs?.cities, '["Oakland"]');
     assert.equal(realPrefs?.smoking, "no");
+    assert.equal(realPrefs?.seeking, null);
+    assert.equal(placeholderPrefs?.seeking, null);
     applyProfileMigration(ctx.sqlite);
     assert.equal(ctx.db.select().from(profiles).all().find((row) => row.userId === "x_real")?.age, 30);
+  } finally {
+    ctx.close();
+  }
+});
+
+test("profile writes reject ages under 18 or over 99, and a stored minor stays unmatched", async () => {
+  const ctx = await openDatabase(":memory:");
+  try {
+    const created = upsertXMember(ctx, ada);
+    const member = getMember(ctx, created.userId);
+    assert.ok(member);
+    for (const age of [17, 100, 0]) {
+      const rejected = callTool(ctx, member, "update_my_profile", { age });
+      assert.equal(rejected?.status, 400);
+      assert.equal((rejected?.body as { error: string }).error, MEMBER_AGE_ERROR);
+      assert.equal(getMember(ctx, created.userId)?.profile.age, null);
+    }
+    assert.equal(callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", { age: 18 })?.status, 200);
+    assert.equal(getMember(ctx, created.userId)?.profile.age, 18);
+    assert.equal(applyBotProfile(ctx, created.userId, { age: 99 }).ok, true);
+    assert.equal(applyBotProfile(ctx, created.userId, { age: 17 }).ok, false);
+    assert.equal(getMember(ctx, created.userId)?.profile.age, 99);
+    const saved = getMember(ctx, created.userId);
+    assert.ok(saved);
+    assert.equal(saveMember(ctx, created.userId, { ...memberToInput(saved), age: 16 }).ok, false);
+    assert.equal(getMember(ctx, created.userId)?.profile.age, 99);
+
+    const token = issueAgentToken(ctx, "avery");
+    assert.ok(token);
+    const patched = dispatchAgent({
+      ctx,
+      authorization: `Bearer ${token.token}`,
+      method: "PATCH",
+      pathname: "/api/agent/v1/preferences",
+      body: { age: 15 },
+    });
+    assert.equal(patched.status, 400);
+    assert.equal((patched.body as { error: string }).error, MEMBER_AGE_ERROR);
+    assert.equal(getMember(ctx, "avery")?.profile.age, 32);
+
+    ctx.db.update(profiles).set({ age: 17 }).where(eq(profiles.userId, created.userId)).run();
+    assert.equal(
+      applyBotProfile(ctx, created.userId, {
+        city: "Austin",
+        gender: "woman",
+        occupation: "Engineer",
+        ageMin: 28,
+        ageMax: 45,
+        cities: ["Austin"],
+        seeking: "either",
+        locked: true,
+      }).ok,
+      true,
+    );
+    assert.equal(getMember(ctx, created.userId)?.profile.age, 17);
+    const viewer = getMember(ctx, "avery");
+    assert.ok(viewer);
+    const hidden = callTool(ctx, viewer, "browse_members", {});
+    assert.equal((hidden?.body as { members: { id: string }[] }).members.some((row) => row.id === created.userId), false);
+    assert.equal(callTool(ctx, viewer, "get_member", { memberId: created.userId })?.status, 404);
+    assert.equal(listShortlist(ctx, "avery").cards.some((card) => card.person.id === created.userId), false);
+    assert.equal(listDirectory(ctx).some((card) => card.id === created.userId), false);
   } finally {
     ctx.close();
   }

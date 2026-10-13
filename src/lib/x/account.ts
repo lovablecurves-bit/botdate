@@ -195,6 +195,7 @@ export function upsertXMember(
       smoking: "any",
       kids: "any",
       intent: "any",
+      seeking: null,
       niceToHaves: "",
       locked: false,
     })

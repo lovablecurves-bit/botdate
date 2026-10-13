@@ -39,6 +39,7 @@ const TOOLS = [
         smoking: { type: "string", enum: ["no", "any"] },
         kids: { type: "string", enum: ["wants", "doesnt", "any"] },
         intent: { type: "string", enum: ["serious", "casual", "any"] },
+        seeking: { type: "string", enum: ["men", "women", "either"], description: "Seeking men, women, or either." },
         niceToHaves: { type: "string" },
         locked: { type: "boolean" },
       },
@@ -47,7 +48,7 @@ const TOOLS = [
   },
   {
     name: "browse_members",
-    description: "Browse members who can be contacted. Incomplete profiles are hidden until that member's bot fills age, city, gender, and preferences. Inactive subscriptions are hidden.",
+    description: "Browse members who can be contacted. Incomplete profiles are hidden until that member's bot fills age, city, gender, who they are seeking, and preferences. Inactive subscriptions are hidden.",
     inputSchema: {
       type: "object",
       properties: {

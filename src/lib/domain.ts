@@ -11,8 +11,12 @@ import { formatPacific, isFutureIso, isoToPacificLocal, pacificLocalToIso } from
 import {
   INTERESTS,
   canonicalPair,
+  isAllowedMemberAge,
   isProfileComplete,
   matchIdFor,
+  MEMBER_AGE_ERROR,
+  MIN_MEMBER_AGE,
+  MAX_MEMBER_AGE,
   voiceForGender,
   type ChannelChoice,
   type Gender,
@@ -22,7 +26,9 @@ import {
   type KidsStance,
   type Member,
   type MemberInput,
+  parseSeeking,
   type ProposalStatus,
+  type Seeking,
   type SmokingFilter,
   type Voice,
 } from "./types";
@@ -234,6 +240,7 @@ export function listMembers(ctx: BotDateDb): Member[] {
         smoking: pref.smoking as SmokingFilter,
         kids: pref.kids as KidsFilter,
         intent: pref.intent as IntentFilter,
+        seeking: pref.seeking === "men" || pref.seeking === "women" || pref.seeking === "either" ? pref.seeking : null,
         niceToHaves: pref.niceToHaves,
         locked: asBool(pref.locked),
       },
@@ -270,6 +277,7 @@ export function memberToInput(member: Member): MemberInput {
     smokingFilter: member.prefs.smoking,
     kidsFilter: member.prefs.kids,
     intentFilter: member.prefs.intent,
+    seeking: member.prefs.seeking,
     niceToHaves: member.prefs.niceToHaves,
     locked: member.prefs.locked,
   };
@@ -1123,6 +1131,7 @@ export type BotProfilePatch = {
   smokingFilter?: SmokingFilter;
   kidsFilter?: KidsFilter;
   intentFilter?: IntentFilter;
+  seeking?: Seeking | null;
   locked?: boolean;
 };
 
@@ -1133,7 +1142,7 @@ function cleanFreeText(value: string, max: number): string {
 function ageRangeOk(min: number | null, max: number | null): boolean {
   if (min == null && max == null) return true;
   if (min == null || max == null) return false;
-  return Number.isInteger(min) && Number.isInteger(max) && min >= 18 && max <= 99 && min <= max;
+  return Number.isInteger(min) && Number.isInteger(max) && min >= MIN_MEMBER_AGE && max <= MAX_MEMBER_AGE && min <= max;
 }
 
 function cleanCities(cities: string[] | null): string[] | null {
@@ -1157,7 +1166,7 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
     next.gender = patch.gender;
   }
   if (patch.age !== undefined) {
-    if (!Number.isInteger(patch.age) || patch.age < 18 || patch.age > 99) return fail("Age needs to be between 18 and 99.");
+    if (!isAllowedMemberAge(patch.age)) return fail(MEMBER_AGE_ERROR);
     next.age = patch.age;
   }
   if (patch.city !== undefined) {
@@ -1208,6 +1217,10 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
     if (!oneOf(patch.intentFilter, ["serious", "casual", "any"] as const)) return fail("intent filter must be serious, casual, or any.");
     next.intentFilter = patch.intentFilter;
   }
+  if (patch.seeking !== undefined) {
+    if (patch.seeking !== null && !parseSeeking(patch.seeking)) return fail("seeking must be men, women, or either.");
+    next.seeking = patch.seeking;
+  }
   if (patch.niceToHaves !== undefined) {
     const niceToHaves = cleanFreeText(patch.niceToHaves, 400);
     next.niceToHaves = niceToHaves;
@@ -1240,6 +1253,7 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
       smoking: next.smokingFilter,
       kids: next.kidsFilter,
       intent: next.intentFilter,
+      seeking: next.seeking,
       niceToHaves: next.niceToHaves,
       locked: next.locked,
     })
@@ -1254,7 +1268,7 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
   const displayName = input.displayName.trim();
   if (displayName.length < 1 || displayName.length > 60) return fail("Use a name under 60 characters.");
   if (input.gender !== null && input.gender !== "man" && input.gender !== "woman") return fail("Choose Man or Woman.");
-  if (input.age !== null && (!Number.isInteger(input.age) || input.age < 18 || input.age > 99)) return fail("Age needs to be between 18 and 99.");
+  if (input.age !== null && !isAllowedMemberAge(input.age)) return fail(MEMBER_AGE_ERROR);
   const city = input.city?.trim() ?? "";
   if (city.length > 80 || (city.length > 0 && city.length < 2)) return fail("Add a city.");
   const occupation = input.occupation.trim();
@@ -1270,6 +1284,7 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
   if (!oneOf(input.smokingFilter, ["no", "any"] as const)) return fail("Choose a smoking dealbreaker.");
   if (!oneOf(input.kidsFilter, ["wants", "doesnt", "any"] as const)) return fail("Choose a kids dealbreaker.");
   if (!oneOf(input.intentFilter, ["serious", "casual", "any"] as const)) return fail("Choose an intent dealbreaker.");
+  if (input.seeking !== null && !parseSeeking(input.seeking)) return fail("seeking must be men, women, or either.");
   const niceToHaves = input.niceToHaves.trim();
   if (niceToHaves.length > 400) return fail("Keep nice-to-haves under 400 characters.");
   const voice = voiceForGender(input.gender);
@@ -1299,6 +1314,7 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
       smoking: input.smokingFilter,
       kids: input.kidsFilter,
       intent: input.intentFilter,
+      seeking: input.seeking,
       niceToHaves,
       locked: input.locked,
     })

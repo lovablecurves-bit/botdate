@@ -168,6 +168,7 @@ export function memberFromClaims(claims: SessionClaims): Member {
       smoking: "any",
       kids: "any",
       intent: "any",
+      seeking: null,
       niceToHaves: "",
       locked: claims.locked,
     },

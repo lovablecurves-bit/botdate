@@ -48,6 +48,7 @@ export function seed(ctx: BotDateDb) {
         smoking: member.prefs.smoking,
         kids: member.prefs.kids,
         intent: member.prefs.intent,
+        seeking: member.prefs.seeking,
         niceToHaves: member.prefs.niceToHaves,
         locked: member.prefs.locked,
       })

@@ -42,6 +42,7 @@ export const prefs = sqliteTable("prefs", {
   smoking: text("smoking").notNull(),
   kids: text("kids").notNull(),
   intent: text("intent").notNull(),
+  seeking: text("seeking"),
   niceToHaves: text("nice_to_haves").notNull(),
   locked: integer("locked", { mode: "boolean" }).notNull().default(false),
 });
@@ -195,7 +196,8 @@ CREATE TABLE IF NOT EXISTS prefs (
   kids TEXT NOT NULL,
   intent TEXT NOT NULL,
   nice_to_haves TEXT NOT NULL,
-  locked INTEGER NOT NULL DEFAULT 0
+  locked INTEGER NOT NULL DEFAULT 0,
+  seeking TEXT
 );
 CREATE TABLE IF NOT EXISTS matches (
   id TEXT PRIMARY KEY,

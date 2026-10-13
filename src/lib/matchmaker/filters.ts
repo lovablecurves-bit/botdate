@@ -1,6 +1,6 @@
-import { isProfileComplete, type KidsFilter, type KidsStance, type Member, type Prefs, type Profile } from "../types";
+import { isAllowedMemberAge, isProfileComplete, type Gender, type KidsFilter, type KidsStance, type Member, type Prefs, type Profile, type Seeking } from "../types";
 
-export type FilterKey = "age" | "city" | "smoking" | "kids" | "intent";
+export type FilterKey = "age" | "city" | "smoking" | "kids" | "intent" | "seeking";
 
 export type FilterCheck = {
   key: FilterKey;
@@ -14,13 +14,33 @@ export const HOLD_LABELS: Record<string, string> = {
   smoking: "Smoking doesn't clear your dealbreaker",
   kids: "Kids stance doesn't clear your dealbreaker",
   intent: "Intent doesn't clear your dealbreaker",
+  seeking: "Outside who you are seeking",
   "their-age": "You are outside their age range",
   "their-city": "You are outside their cities",
   "their-smoking": "You don't clear their smoking dealbreaker",
   "their-kids": "You don't clear their kids dealbreaker",
   "their-intent": "You don't clear their intent dealbreaker",
+  "their-seeking": "You are outside who they are seeking",
   inactive: "Hasn't locked dealbreakers",
 };
+
+/** True when `seeking` accepts the other member's Man or Woman gender. */
+export function seekingMatches(seeking: Seeking | null, gender: Gender | null): boolean {
+  if (gender !== "man" && gender !== "woman") return false;
+  if (seeking === "either") return true;
+  if (seeking === "men") return gender === "man";
+  if (seeking === "women") return gender === "woman";
+  return false;
+}
+
+function seekingDetail(seeking: Seeking | null, gender: Gender | null, pass: boolean): string {
+  if (seeking == null) return "You have not set who you are seeking";
+  if (gender !== "man" && gender !== "woman") return "Gender is not set";
+  const label = gender === "man" ? "Man" : "Woman";
+  if (seeking === "either") return "Seeking either men or women";
+  const wanted = seeking === "men" ? "men" : "women";
+  return pass ? `${label}, which matches seeking ${wanted}` : `${label}, and you are seeking ${wanted}`;
+}
 
 function kidsOk(filter: KidsFilter, stance: KidsStance): boolean {
   if (filter === "any") return true;
@@ -30,7 +50,7 @@ function kidsOk(filter: KidsFilter, stance: KidsStance): boolean {
 
 export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterCheck[] {
   const agePass =
-    profile.age != null &&
+    isAllowedMemberAge(profile.age) &&
     filters.ageMin != null &&
     filters.ageMax != null &&
     profile.age >= filters.ageMin &&
@@ -39,6 +59,7 @@ export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterChe
   const smokingPass = filters.smoking === "any" || profile.smoking === false;
   const kidsPass = kidsOk(filters.kids, profile.kids);
   const intentPass = filters.intent === "any" || filters.intent === profile.intent;
+  const seekingPass = seekingMatches(filters.seeking, profile.gender);
 
   const smokingDetail = smokingPass
     ? filters.smoking === "no"
@@ -62,9 +83,11 @@ export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterChe
     {
       key: "age",
       pass: agePass,
-      detail: agePass
-        ? `Age ${profile.age} is inside ${filters.ageMin}–${filters.ageMax}`
-        : `Age ${profile.age} is outside ${filters.ageMin}–${filters.ageMax}`,
+      detail: profile.age != null && !isAllowedMemberAge(profile.age)
+        ? `Age ${profile.age} must be between 18 and 99`
+        : agePass
+          ? `Age ${profile.age} is inside ${filters.ageMin}–${filters.ageMax}`
+          : `Age ${profile.age} is outside ${filters.ageMin}–${filters.ageMax}`,
     },
     {
       key: "city",
@@ -74,6 +97,7 @@ export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterChe
     { key: "smoking", pass: smokingPass, detail: smokingDetail },
     { key: "kids", pass: kidsPass, detail: kidsDetail },
     { key: "intent", pass: intentPass, detail: intentDetail },
+    { key: "seeking", pass: seekingPass, detail: seekingDetail(filters.seeking, profile.gender, seekingPass) },
   ];
 }
 
@@ -90,6 +114,8 @@ export function primaryHold(viewer: Member, candidate: Member): string | null {
 
 export function mutualPass(viewer: Member, candidate: Member): boolean {
   if (!isProfileComplete(viewer) || !isProfileComplete(candidate)) return false;
+  if (!seekingMatches(viewer.prefs.seeking, candidate.profile.gender)) return false;
+  if (!seekingMatches(candidate.prefs.seeking, viewer.profile.gender)) return false;
   return primaryHold(viewer, candidate) === null;
 }
 
