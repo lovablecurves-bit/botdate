@@ -8,7 +8,7 @@ import { callTool } from "./agent/tools";
 import { openDatabase } from "./db/open";
 import { users } from "./db/schema";
 import { listDirectory } from "./directory";
-import { getMember } from "./domain";
+import { applyBotProfile, getMember } from "./domain";
 import { FOUNDING_MEMBER_LIMIT, FOUNDING_PITCH, foundingSpotCopy, foundingSpotsLeft, isFoundingMember } from "./founding";
 import { subscriptionBlocks } from "./billing/access";
 import { setSubscription } from "./billing/stripe";
@@ -100,6 +100,8 @@ test("a founding member keeps matching and MCP after a canceled subscription; me
     const first = upsertXMember(ctx, { xUserId: "10", handle: "ada", name: "Ada", bio: "First.", avatarUrl: "" });
     const second = upsertXMember(ctx, { xUserId: "11", handle: "grace", name: "Grace", bio: "Later.", avatarUrl: "" });
     ctx.db.update(users).set({ memberNumber: 1001, founder: false }).where(eq(users.id, second.userId)).run();
+    assert.equal(applyBotProfile(ctx, first.userId, { age: 36, city: "Austin", gender: "woman", occupation: "Engineer", ageMin: 28, ageMax: 45, cities: ["Austin"] }).ok, true);
+    assert.equal(applyBotProfile(ctx, second.userId, { age: 36, city: "Austin", gender: "woman", occupation: "Engineer", ageMin: 28, ageMax: 45, cities: ["Austin"] }).ok, true);
     const freeMember = getMember(ctx, first.userId)!;
     const paidMember = getMember(ctx, second.userId)!;
     assert.equal(isFoundingMember(freeMember), true);
@@ -136,6 +138,21 @@ test("a founding member keeps matching and MCP after a canceled subscription; me
     restoreBilling();
     ctx.close();
   }
+});
+
+test("founding access follows member number and does not read the founder flag", () => {
+  assert.equal(isFoundingMember({ memberNumber: 1 }), true);
+  assert.equal(isFoundingMember({ memberNumber: 2 }), true);
+  assert.equal(isFoundingMember({ memberNumber: 1000 }), true);
+  assert.equal(isFoundingMember({ memberNumber: 1001 }), false);
+  assert.equal(isFoundingMember({ memberNumber: null }), false);
+  const source = readFileSync("src/lib/founding.ts", "utf8");
+  const start = source.indexOf("export function isFoundingMember");
+  const end = source.indexOf("export function foundingSpotsLeft");
+  const fn = source.slice(start, end);
+  assert.equal(fn.includes("founder"), false);
+  assert.match(fn, /memberNumber/);
+  assert.match(fn, /FOUNDING_MEMBER_LIMIT/);
 });
 
 test("sign-in, join, and metadata use the founding pitch instead of the trial line", () => {

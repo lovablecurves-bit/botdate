@@ -7,6 +7,7 @@ export const FOUNDING_PITCH = "Free for the first 1,000 members";
 /**
  * Permanent. Member numbers are assigned once, in sign-up order, and are not reused.
  * A number from 1 through 1,000 is founding status for good, even if a subscription later lapses.
+ * This does not read the founder flag. That flag is the owner (member #1) only.
  */
 export function isFoundingMember(member: { memberNumber: number | null }): boolean {
   const number = member.memberNumber;

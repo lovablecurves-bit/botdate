@@ -3,7 +3,7 @@ import type { BotDateDb } from "./db/open";
 import { getMember, listMembers } from "./domain";
 import { mutualPass, softRank } from "./matchmaker/filters";
 import { matchmaker } from "./matchmaker/service";
-import type { Member } from "./types";
+import { isProfileComplete, type Member } from "./types";
 import { ensureRealMemberNumbers } from "./x/account";
 
 export type DirectoryEntry = {
@@ -45,7 +45,8 @@ function title(value: string): string {
 export function matchingCues(viewer: Member, person: Member): string[] {
   if (viewer.id === person.id) {
     const notes = person.profile.interests.slice(0, 4).map(title);
-    return [notes.length ? `Notes on file: ${notes.join(", ")}` : person.profile.city, "This is your profile."].filter(Boolean);
+    const line = notes.length ? `Notes on file: ${notes.join(", ")}` : person.profile.city;
+    return [line, "This is your profile."].filter((part): part is string => Boolean(part));
   }
   const cues = [...softRank(viewer, person).notes];
   if (viewer.profile.intent === person.profile.intent) {
@@ -62,8 +63,9 @@ export function matchingCues(viewer: Member, person: Member): string[] {
   return cues;
 }
 
-function toEntry(member: Member): DirectoryEntry | null {
+function toEntry(member: Member, allowIncomplete = false): DirectoryEntry | null {
   if (!member.xAccount || member.memberNumber == null) return null;
+  if (!allowIncomplete && !isProfileComplete(member)) return null;
   return {
     id: member.id,
     displayName: member.displayName,
@@ -71,7 +73,7 @@ function toEntry(member: Member): DirectoryEntry | null {
     avatarUrl: member.xAccount.avatarUrl,
     accent: member.profile.accent,
     bio: member.profile.bio,
-    city: member.profile.city,
+    city: member.profile.city ?? "",
     founder: member.founder,
     memberNumber: member.memberNumber,
   };
@@ -82,7 +84,7 @@ export function listDirectory(ctx: BotDateDb): DirectoryEntry[] {
   ensureRealMemberNumbers(ctx);
   return listMembers(ctx)
     .filter((member) => !subscriptionBlocks(member))
-    .map(toEntry)
+    .map((member) => toEntry(member))
     .filter((entry): entry is DirectoryEntry => entry !== null)
     .sort(byMemberNumber);
 }
@@ -93,13 +95,13 @@ function byMemberNumber(a: DirectoryEntry, b: DirectoryEntry): number {
 
 /** Keep the signed-in member visible when this instance has not stored their row yet. */
 export function includeViewer(people: DirectoryEntry[], member: Member): DirectoryEntry[] {
-  const self = toEntry(member);
+  const self = toEntry(member, true);
   if (!self || people.some((person) => person.id === self.id)) return people;
   return [...people, self].sort(byMemberNumber);
 }
 
 export function profileView(viewer: Member, person: Member): MemberProfileView | null {
-  const entry = toEntry(person);
+  const entry = toEntry(person, viewer.id === person.id);
   if (!entry) return null;
   return {
     ...entry,

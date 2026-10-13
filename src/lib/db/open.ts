@@ -5,7 +5,7 @@ import { createClient, type Client, type InValue } from "@libsql/client/web";
 import { drizzle, type SQLJsDatabase } from "drizzle-orm/sql-js";
 import initSqlJs from "sql.js";
 import * as schema from "./schema";
-import { ADDED_COLUMNS, REFERRAL_INDEX, STRIPE_CUSTOMER_INDEX, X_USER_INDEX, isBenignMigrationError } from "./migrate";
+import { ADDED_COLUMNS, REFERRAL_INDEX, STRIPE_CUSTOMER_INDEX, X_USER_INDEX, applyProfileMigration, isBenignMigrationError, legacyProfileMigrationSql, readLegacyProfileShape } from "./migrate";
 import { SCHEMA_SQL } from "./schema";
 import { seedIfEmpty } from "./seed";
 import { demoMode, logColdStartNote } from "../x/config";
@@ -125,6 +125,22 @@ export async function applyRemoteSchema(client: Client): Promise<void> {
   await client.execute(X_USER_INDEX);
   await client.execute(STRIPE_CUSTOMER_INDEX);
   await client.execute(REFERRAL_INDEX);
+  const loaded = new Map<string, unknown>();
+  const queries = [
+    "SELECT 1 AS ok FROM pragma_table_info('profiles') WHERE name = 'pronouns'",
+    'SELECT "notnull" AS is_required FROM pragma_table_info(\'profiles\') WHERE name = \'age\'',
+    'SELECT "notnull" AS is_required FROM pragma_table_info(\'prefs\') WHERE name = \'age_min\'',
+  ];
+  for (const sql of queries) {
+    const result = await client.execute(sql);
+    loaded.set(sql, result.rows[0]);
+  }
+  const migration = legacyProfileMigrationSql(readLegacyProfileShape((sql) => loaded.get(sql)));
+  try {
+    await client.executeMultiple(migration);
+  } catch {
+    await client.batch(statementsOf(migration), "write");
+  }
 }
 
 function errorText(error: unknown): string {
@@ -303,6 +319,21 @@ async function createSqlDatabase(options: { filePath: string | null; client: Cli
   raw.run(X_USER_INDEX);
   raw.run(STRIPE_CUSTOMER_INDEX);
   raw.run(REFERRAL_INDEX);
+  applyProfileMigration({
+    exec(sql) {
+      raw.exec(sql);
+    },
+    prepare(sql) {
+      return {
+        get() {
+          const stmt = originalPrepare(sql);
+          const row = stmt.step() ? stmt.getAsObject() : undefined;
+          stmt.free();
+          return row;
+        },
+      };
+    },
+  });
   persist();
   const db = drizzle(raw, { schema });
 

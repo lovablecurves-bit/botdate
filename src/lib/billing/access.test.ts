@@ -8,7 +8,7 @@ import { callTool } from "../agent/tools";
 import { openDatabase } from "../db/open";
 import { users } from "../db/schema";
 import { listDirectory } from "../directory";
-import { getMember } from "../domain";
+import { applyBotProfile, getMember } from "../domain";
 import { upsertXMember } from "../x/account";
 import { isFoundingMember } from "../founding";
 import { checkoutAllowed, isFounderAccount, needsPaywall, subscriptionBlocks } from "./access";
@@ -119,6 +119,10 @@ test("stripe webhooks store status and a resubscribe reactivates", async () => {
     upsertXMember(ctx, person("42", "ada", "Ada"));
     const created = upsertXMember(ctx, person("77", "grace", "Grace"));
     assert.equal(getMember(ctx, created.userId)?.founder, false);
+    assert.equal(
+      applyBotProfile(ctx, created.userId, { age: 36, city: "Austin", gender: "woman", occupation: "Engineer", ageMin: 28, ageMax: 45, cities: ["Austin"] }).ok,
+      true,
+    );
     ctx.db.update(users).set({ memberNumber: 1001 }).where(eq(users.id, created.userId)).run();
     assert.equal(isFoundingMember(getMember(ctx, created.userId)!), false);
     assert.equal(

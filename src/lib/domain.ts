@@ -9,13 +9,13 @@ import { subscriptionBlocks } from "./billing/access";
 import { created, fail, ok, type ActionResult, type CreatedResult } from "./result";
 import { formatPacific, isFutureIso, isoToPacificLocal, pacificLocalToIso } from "./time";
 import {
-  CITIES,
   INTERESTS,
-  PRONOUNS,
   canonicalPair,
+  isProfileComplete,
   matchIdFor,
-  voiceForPronouns,
+  voiceForGender,
   type ChannelChoice,
+  type Gender,
   type Intent,
   type IntentFilter,
   type KidsFilter,
@@ -30,9 +30,9 @@ import {
 export type PublicPerson = {
   id: string;
   displayName: string;
-  pronouns: string;
-  age: number;
-  city: string;
+  gender: Gender | null;
+  age: number | null;
+  city: string | null;
   occupation: string;
   bio: string;
   interests: string[];
@@ -175,7 +175,7 @@ export function toPublic(member: Member): PublicPerson {
   return {
     id: member.id,
     displayName: member.displayName,
-    pronouns: member.profile.pronouns,
+    gender: member.profile.gender,
     age: member.profile.age,
     city: member.profile.city,
     occupation: member.profile.occupation,
@@ -200,7 +200,8 @@ export function listMembers(ctx: BotDateDb): Member[] {
     const profile = profilesById.get(user.id);
     const pref = prefsById.get(user.id);
     if (!profile || !pref) continue;
-    const voice = parseJson<Voice>(profile.voice, voiceForPronouns(profile.pronouns));
+    const gender = profile.gender === "man" || profile.gender === "woman" ? profile.gender : null;
+    const voice = parseJson<Voice>(profile.voice, voiceForGender(gender));
     members.push({
       id: user.id,
       email: user.email,
@@ -214,11 +215,11 @@ export function listMembers(ctx: BotDateDb): Member[] {
           }
         : null,
       profile: {
-        age: profile.age,
-        city: profile.city,
+        age: profile.age == null ? null : Number(profile.age),
+        city: profile.city?.trim() ? profile.city : null,
         occupation: profile.occupation,
         bio: profile.bio,
-        pronouns: profile.pronouns,
+        gender,
         smoking: asBool(profile.smoking),
         kids: profile.kids as KidsStance,
         intent: profile.intent as Intent,
@@ -227,9 +228,9 @@ export function listMembers(ctx: BotDateDb): Member[] {
         voice,
       },
       prefs: {
-        ageMin: pref.ageMin,
-        ageMax: pref.ageMax,
-        cities: parseJson<string[]>(pref.cities, []),
+        ageMin: pref.ageMin == null ? null : Number(pref.ageMin),
+        ageMax: pref.ageMax == null ? null : Number(pref.ageMax),
+        cities: pref.cities == null || pref.cities === "" ? null : parseJson<string[]>(pref.cities, []),
         smoking: pref.smoking as SmokingFilter,
         kids: pref.kids as KidsFilter,
         intent: pref.intent as IntentFilter,
@@ -254,7 +255,7 @@ export function getMember(ctx: BotDateDb, userId: string): Member | null {
 export function memberToInput(member: Member): MemberInput {
   return {
     displayName: member.displayName,
-    pronouns: member.profile.pronouns,
+    gender: member.profile.gender,
     age: member.profile.age,
     city: member.profile.city,
     occupation: member.profile.occupation,
@@ -265,7 +266,7 @@ export function memberToInput(member: Member): MemberInput {
     interests: [...member.profile.interests],
     ageMin: member.prefs.ageMin,
     ageMax: member.prefs.ageMax,
-    cities: [...member.prefs.cities],
+    cities: member.prefs.cities ? [...member.prefs.cities] : null,
     smokingFilter: member.prefs.smoking,
     kidsFilter: member.prefs.kids,
     intentFilter: member.prefs.intent,
@@ -281,7 +282,7 @@ export function listRoster(ctx: BotDateDb): RosterEntry[] {
       id: member.id,
       displayName: member.displayName,
       accent: member.profile.accent,
-      city: member.profile.city,
+      city: member.profile.city ?? "",
       locked: member.prefs.locked,
     }))
     .sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
@@ -302,10 +303,10 @@ function proposalsFor(ctx: BotDateDb, matchId: string) {
 
 function ensureMutualMatches(ctx: BotDateDb, userId: string) {
   const viewer = getMember(ctx, userId);
-  if (!viewer?.prefs.locked) return;
+  if (!viewer?.prefs.locked || !isProfileComplete(viewer)) return;
   const now = new Date().toISOString();
   for (const other of listMembers(ctx)) {
-    if (other.id === userId || !mutualPass(viewer, other)) continue;
+    if (other.id === userId || !isProfileComplete(other) || !mutualPass(viewer, other)) continue;
     const id = matchIdFor(userId, other.id);
     const existing = ctx.db.select().from(matches).where(eq(matches.id, id)).get();
     if (existing) continue;
@@ -386,7 +387,7 @@ function sentBotCount(rows: MessageRow[]): number {
 export function listShortlist(ctx: BotDateDb, userId: string): Shortlist {
   const viewer = getMember(ctx, userId);
   if (!viewer) return { locked: false, niceToHaves: "", cards: [], heldBack: [], inactive: 0 };
-  if (!viewer.prefs.locked) {
+  if (!viewer.prefs.locked || !isProfileComplete(viewer)) {
     return { locked: false, niceToHaves: viewer.prefs.niceToHaves, cards: [], heldBack: [], inactive: 0 };
   }
   ensureMutualMatches(ctx, userId);
@@ -395,7 +396,7 @@ export function listShortlist(ctx: BotDateDb, userId: string): Shortlist {
   let inactive = 0;
   for (const other of listMembers(ctx)) {
     if (other.id === userId) continue;
-    if (subscriptionBlocks(other)) continue;
+    if (subscriptionBlocks(other) || !isProfileComplete(other)) continue;
     if (!other.prefs.locked) {
       inactive += 1;
       continue;
@@ -1110,7 +1111,7 @@ export type BotProfilePatch = {
   occupation?: string;
   city?: string;
   age?: number;
-  pronouns?: string;
+  gender?: Gender;
   interests?: string[];
   niceToHaves?: string;
   kids?: KidsStance;
@@ -1129,6 +1130,18 @@ function cleanFreeText(value: string, max: number): string {
   return value.trim().slice(0, max);
 }
 
+function ageRangeOk(min: number | null, max: number | null): boolean {
+  if (min == null && max == null) return true;
+  if (min == null || max == null) return false;
+  return Number.isInteger(min) && Number.isInteger(max) && min >= 18 && max <= 99 && min <= max;
+}
+
+function cleanCities(cities: string[] | null): string[] | null {
+  if (!cities) return null;
+  const next = [...new Set(cities.map((item) => item.trim()).filter((item) => item.length >= 2))].slice(0, 8);
+  return next.length ? next : null;
+}
+
 /** Fields a bot fills from conversation. City and interests are free text, not the form lists. */
 export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfilePatch): ActionResult {
   const existing = getMember(ctx, userId);
@@ -1139,9 +1152,9 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
     if (!displayName) return fail("Use a name under 60 characters.");
     next.displayName = displayName;
   }
-  if (patch.pronouns !== undefined) {
-    if (!oneOf(patch.pronouns, PRONOUNS)) return fail("pronouns must be she/her, he/him, or they/them.");
-    next.pronouns = patch.pronouns;
+  if (patch.gender !== undefined) {
+    if (patch.gender !== "man" && patch.gender !== "woman") return fail("gender must be man or woman.");
+    next.gender = patch.gender;
   }
   if (patch.age !== undefined) {
     if (!Number.isInteger(patch.age) || patch.age < 18 || patch.age > 99) return fail("Age needs to be between 18 and 99.");
@@ -1177,9 +1190,7 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
   }
   if (patch.ageMin !== undefined) next.ageMin = patch.ageMin;
   if (patch.ageMax !== undefined) next.ageMax = patch.ageMax;
-  if (!Number.isInteger(next.ageMin) || !Number.isInteger(next.ageMax) || next.ageMin < 18 || next.ageMax > 99 || next.ageMin > next.ageMax) {
-    return fail("Fix the age range.");
-  }
+  if (!ageRangeOk(next.ageMin, next.ageMax)) return fail("Fix the age range.");
   if (patch.cities !== undefined) {
     const cities = [...new Set(patch.cities.map((item) => cleanFreeText(item, 80)).filter((item) => item.length >= 2))].slice(0, 8);
     if (!cities.length) return fail("Pick at least one city.");
@@ -1202,7 +1213,7 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
     next.niceToHaves = niceToHaves;
   }
   if (patch.locked !== undefined) next.locked = patch.locked;
-  const voice = voiceForPronouns(next.pronouns);
+  const voice = voiceForGender(next.gender);
   ctx.db.update(users).set({ displayName: next.displayName }).where(eq(users.id, userId)).run();
   ctx.db
     .update(profiles)
@@ -1211,7 +1222,7 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
       city: next.city,
       occupation: next.occupation,
       bio: next.bio,
-      pronouns: next.pronouns,
+      gender: next.gender,
       smoking: next.smoking,
       kids: next.kids,
       intent: next.intent,
@@ -1225,7 +1236,7 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
     .set({
       ageMin: next.ageMin,
       ageMax: next.ageMax,
-      cities: JSON.stringify(next.cities),
+      cities: next.cities && next.cities.length ? JSON.stringify(next.cities) : null,
       smoking: next.smokingFilter,
       kids: next.kidsFilter,
       intent: next.intentFilter,
@@ -1242,36 +1253,35 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
   if (!existing) return fail("Member not found.");
   const displayName = input.displayName.trim();
   if (displayName.length < 1 || displayName.length > 60) return fail("Use a name under 60 characters.");
-  if (!oneOf(input.pronouns, PRONOUNS)) return fail("Choose pronouns.");
-  if (!Number.isInteger(input.age) || input.age < 18 || input.age > 99) return fail("Age needs to be between 18 and 99.");
-  if (!oneOf(input.city, CITIES)) return fail("Choose a city.");
+  if (input.gender !== null && input.gender !== "man" && input.gender !== "woman") return fail("Choose Man or Woman.");
+  if (input.age !== null && (!Number.isInteger(input.age) || input.age < 18 || input.age > 99)) return fail("Age needs to be between 18 and 99.");
+  const city = input.city?.trim() ?? "";
+  if (city.length > 80 || (city.length > 0 && city.length < 2)) return fail("Add a city.");
   const occupation = input.occupation.trim();
-  if (occupation.length < 2 || occupation.length > 80) return fail("Add an occupation.");
+  if (occupation.length > 80 || (occupation.length > 0 && occupation.length < 2)) return fail("Add an occupation.");
   const bio = input.bio.trim();
-  if (bio.length < 1 || bio.length > 500) return fail("Keep the bio under 500 characters.");
+  if (bio.length > 500) return fail("Keep the bio under 500 characters.");
   if (!oneOf(input.kids, ["wants", "open", "doesnt"] as const)) return fail("Choose a kids stance.");
   if (!oneOf(input.intent, ["serious", "casual"] as const)) return fail("Choose an intent.");
-  const interests = [...new Set(input.interests.map((item) => item.trim()))];
+  const interests = [...new Set(input.interests.map((item) => item.trim()).filter(Boolean))];
   if (interests.some((item) => !oneOf(item, INTERESTS))) return fail("Use the interest list.");
-  if (!Number.isInteger(input.ageMin) || !Number.isInteger(input.ageMax)) return fail("Age range needs whole numbers.");
-  if (input.ageMin < 18 || input.ageMax > 99 || input.ageMin > input.ageMax) return fail("Fix the age range.");
-  const cities = CITIES.filter((city) => input.cities.includes(city));
-  if (!cities.length) return fail("Pick at least one city.");
+  if (!ageRangeOk(input.ageMin, input.ageMax)) return fail("Fix the age range.");
+  const cities = cleanCities(input.cities);
   if (!oneOf(input.smokingFilter, ["no", "any"] as const)) return fail("Choose a smoking dealbreaker.");
   if (!oneOf(input.kidsFilter, ["wants", "doesnt", "any"] as const)) return fail("Choose a kids dealbreaker.");
   if (!oneOf(input.intentFilter, ["serious", "casual", "any"] as const)) return fail("Choose an intent dealbreaker.");
   const niceToHaves = input.niceToHaves.trim();
   if (niceToHaves.length > 400) return fail("Keep nice-to-haves under 400 characters.");
-  const voice = voiceForPronouns(input.pronouns);
+  const voice = voiceForGender(input.gender);
   ctx.db.update(users).set({ displayName }).where(eq(users.id, userId)).run();
   ctx.db
     .update(profiles)
     .set({
       age: input.age,
-      city: input.city,
+      city: city || null,
       occupation,
       bio,
-      pronouns: input.pronouns,
+      gender: input.gender,
       smoking: input.smoking,
       kids: input.kids,
       intent: input.intent,
@@ -1285,7 +1295,7 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
     .set({
       ageMin: input.ageMin,
       ageMax: input.ageMax,
-      cities: JSON.stringify(cities),
+      cities: cities ? JSON.stringify(cities) : null,
       smoking: input.smokingFilter,
       kids: input.kidsFilter,
       intent: input.intentFilter,

@@ -21,11 +21,11 @@ export const users = sqliteTable("users", {
 
 export const profiles = sqliteTable("profiles", {
   userId: text("user_id").primaryKey(),
-  age: integer("age").notNull(),
-  city: text("city").notNull(),
+  age: integer("age"),
+  city: text("city"),
   occupation: text("occupation").notNull(),
   bio: text("bio").notNull(),
-  pronouns: text("pronouns").notNull(),
+  gender: text("gender"),
   smoking: integer("smoking", { mode: "boolean" }).notNull(),
   kids: text("kids").notNull(),
   intent: text("intent").notNull(),
@@ -36,9 +36,9 @@ export const profiles = sqliteTable("profiles", {
 
 export const prefs = sqliteTable("prefs", {
   userId: text("user_id").primaryKey(),
-  ageMin: integer("age_min").notNull(),
-  ageMax: integer("age_max").notNull(),
-  cities: text("cities").notNull(),
+  ageMin: integer("age_min"),
+  ageMax: integer("age_max"),
+  cities: text("cities"),
   smoking: text("smoking").notNull(),
   kids: text("kids").notNull(),
   intent: text("intent").notNull(),
@@ -174,11 +174,11 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE TABLE IF NOT EXISTS profiles (
   user_id TEXT PRIMARY KEY REFERENCES users(id),
-  age INTEGER NOT NULL,
-  city TEXT NOT NULL,
+  age INTEGER,
+  city TEXT,
   occupation TEXT NOT NULL,
   bio TEXT NOT NULL,
-  pronouns TEXT NOT NULL,
+  gender TEXT,
   smoking INTEGER NOT NULL,
   kids TEXT NOT NULL,
   intent TEXT NOT NULL,
@@ -188,9 +188,9 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 CREATE TABLE IF NOT EXISTS prefs (
   user_id TEXT PRIMARY KEY REFERENCES users(id),
-  age_min INTEGER NOT NULL,
-  age_max INTEGER NOT NULL,
-  cities TEXT NOT NULL,
+  age_min INTEGER,
+  age_max INTEGER,
+  cities TEXT,
   smoking TEXT NOT NULL,
   kids TEXT NOT NULL,
   intent TEXT NOT NULL,

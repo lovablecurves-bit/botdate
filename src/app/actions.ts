@@ -31,14 +31,20 @@ import {
   wipeMemory,
 } from "@/lib/domain";
 import type { ActionResult } from "@/lib/result";
-import type { ChannelChoice, Intent, IntentFilter, KidsFilter, KidsStance, MemberInput, SmokingFilter } from "@/lib/types";
+import type { ChannelChoice, Gender, Intent, IntentFilter, KidsFilter, KidsStance, MemberInput, SmokingFilter } from "@/lib/types";
 
 export type FormState = { ok: boolean; error: string | null; message: string | null };
+
+function genderFromForm(value: string): Gender | null {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "man" || normalized === "woman") return normalized;
+  return null;
+}
 
 function inputFromForm(formData: FormData): MemberInput {
   return {
     displayName: String(formData.get("displayName") ?? ""),
-    pronouns: String(formData.get("pronouns") ?? ""),
+    gender: genderFromForm(String(formData.get("gender") ?? "")),
     age: Number(formData.get("age")),
     city: String(formData.get("city") ?? ""),
     occupation: String(formData.get("occupation") ?? ""),

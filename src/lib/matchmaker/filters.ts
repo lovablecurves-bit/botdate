@@ -1,4 +1,4 @@
-import type { KidsFilter, KidsStance, Member, Prefs, Profile } from "../types";
+import { isProfileComplete, type KidsFilter, type KidsStance, type Member, type Prefs, type Profile } from "../types";
 
 export type FilterKey = "age" | "city" | "smoking" | "kids" | "intent";
 
@@ -29,8 +29,13 @@ function kidsOk(filter: KidsFilter, stance: KidsStance): boolean {
 }
 
 export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterCheck[] {
-  const agePass = profile.age >= filters.ageMin && profile.age <= filters.ageMax;
-  const cityPass = filters.cities.includes(profile.city);
+  const agePass =
+    profile.age != null &&
+    filters.ageMin != null &&
+    filters.ageMax != null &&
+    profile.age >= filters.ageMin &&
+    profile.age <= filters.ageMax;
+  const cityPass = profile.city != null && (filters.cities ?? []).includes(profile.city);
   const smokingPass = filters.smoking === "any" || profile.smoking === false;
   const kidsPass = kidsOk(filters.kids, profile.kids);
   const intentPass = filters.intent === "any" || filters.intent === profile.intent;
@@ -74,6 +79,7 @@ export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterChe
 
 /** First reason a pair should stay off the shortlist, or null when both sides clear. */
 export function primaryHold(viewer: Member, candidate: Member): string | null {
+  if (!isProfileComplete(viewer) || !isProfileComplete(candidate)) return "inactive";
   if (!viewer.prefs.locked || !candidate.prefs.locked) return "inactive";
   const mine = evaluateHardFilters(viewer.prefs, candidate.profile).find((check) => !check.pass);
   if (mine) return mine.key;
@@ -83,6 +89,7 @@ export function primaryHold(viewer: Member, candidate: Member): string | null {
 }
 
 export function mutualPass(viewer: Member, candidate: Member): boolean {
+  if (!isProfileComplete(viewer) || !isProfileComplete(candidate)) return false;
   return primaryHold(viewer, candidate) === null;
 }
 
@@ -94,7 +101,7 @@ export function softRank(viewer: Member, candidate: Member): { score: number; no
     const pretty = overlaps.map((interest) => interest.slice(0, 1).toUpperCase() + interest.slice(1));
     notes.push(`Shared interests: ${pretty.join(", ")}`);
   }
-  if (viewer.profile.city === candidate.profile.city) {
+  if (viewer.profile.city && viewer.profile.city === candidate.profile.city) {
     score += 2;
     notes.push("Same city");
   }

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { voiceForPronouns, type Member } from "./types";
+import { voiceForGender, type Member } from "./types";
 
 /** Signed session. The value is an HMAC JWT, not a bare user id. */
 export const SESSION_COOKIE = "botdate_session";
@@ -139,10 +139,9 @@ function accentFor(id: string): string {
   return ACCENTS[hash] ?? ACCENTS[0];
 }
 
-/** A member the app can render when this instance has no database row. */
+/** A member the app can render when this instance has no database row. Profile fields stay unknown. */
 export function memberFromClaims(claims: SessionClaims): Member {
   const handle = claims.handle.replace(/^@/, "").trim();
-  const pronouns = "they/them";
   const name = claims.name.trim() || handle || "Member";
   return {
     id: claims.id,
@@ -150,23 +149,23 @@ export function memberFromClaims(claims: SessionClaims): Member {
     displayName: name,
     botPaused: false,
     profile: {
-      age: 30,
-      city: "San Francisco",
-      occupation: "New here",
-      bio: claims.bio.trim() || "Signed in with X.",
-      pronouns,
+      age: null,
+      city: null,
+      occupation: "",
+      bio: claims.bio.trim(),
+      gender: null,
       smoking: false,
       kids: "open",
       intent: "serious",
       interests: [],
       accent: accentFor(claims.id),
-      voice: voiceForPronouns(pronouns),
+      voice: voiceForGender(null),
     },
     prefs: {
-      ageMin: 25,
-      ageMax: 45,
-      cities: ["San Francisco"],
-      smoking: "no",
+      ageMin: null,
+      ageMax: null,
+      cities: null,
+      smoking: "any",
       kids: "any",
       intent: "any",
       niceToHaves: "",

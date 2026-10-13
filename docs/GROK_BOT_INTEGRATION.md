@@ -65,9 +65,9 @@ All routes require the bearer token. A missing or revoked token is `401`. When p
 
 Dealbreaker fields: `ageMin`, `ageMax`, `cities`, `smoking` (`no` or `any`), `kids` (`wants`, `doesnt`, or `any`), `intent` (`serious`, `casual`, or `any`), `niceToHaves`, `locked`.
 
-Profile fields the same request may set: `displayName`, `age`, `city`, `occupation`, `bio`, `pronouns`, `smokes`, `kidsStance` (`wants`, `open`, `doesnt`), `datingIntent` (`serious` or `casual`), `interests`.
+Profile fields the same request may set: `displayName`, `age`, `city`, `occupation`, `bio`, `gender` (`man` or `woman`), `smokes`, `kidsStance` (`wants`, `open`, `doesnt`), `datingIntent` (`serious` or `casual`), `interests`.
 
-Cities and interests have to be from the lists already in the app. A paused matchmaker cannot send a note or draft a date.
+City and interests are free text. Suggested cities include Austin, Bastrop, San Francisco, Oakland, Berkeley, and Los Angeles. A paused matchmaker cannot send a note or draft a date.
 
 Date body:
 
@@ -166,7 +166,7 @@ Read your member, including preferences and dealbreakers
 GET https://YOUR_HOST/api/agent/v1/me
 
 Update preferences and dealbreakers. Send only the fields that change.
-Profile fields, when you know them: age, city, occupation, bio, pronouns, smokes, kidsStance (wants, open, doesnt), datingIntent (serious or casual), interests.
+Profile fields, when you know them: age, city, occupation, bio, gender (man or woman), smokes, kidsStance (wants, open, doesnt), datingIntent (serious or casual), interests. A new signup has no age, city, gender, or preferences until update_my_profile sets them.
 Dealbreakers: ageMin, ageMax, cities, smoking (no or any), kids (wants, doesnt, or any), intent (serious, casual, or any), niceToHaves, locked.
 PATCH https://YOUR_HOST/api/agent/v1/preferences
 {"ageMin":28,"ageMax":42,"cities":["San Francisco","Oakland"],"smoking":"no","kids":"any","intent":"serious","niceToHaves":"Weeknight walks","locked":true}

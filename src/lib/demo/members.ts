@@ -2,12 +2,11 @@ import type { Intent, KidsStance, Member, Prefs, Profile, Voice } from "../types
 
 const SHE: Voice = { subject: "she", object: "her", possessive: "her" };
 const HE: Voice = { subject: "he", object: "him", possessive: "his" };
-const THEY: Voice = { subject: "they", object: "them", possessive: "their" };
 
 type Seed = {
   id: string;
   displayName: string;
-  pronouns: string;
+  gender: "man" | "woman";
   voice: Voice;
   age: number;
   city: string;
@@ -27,7 +26,7 @@ function member(seed: Seed): Member {
     city: seed.city,
     occupation: seed.occupation,
     bio: seed.bio,
-    pronouns: seed.pronouns,
+    gender: seed.gender,
     smoking: seed.smoking,
     kids: seed.kids,
     intent: seed.intent,
@@ -56,7 +55,7 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "avery",
     displayName: "Avery Chen",
-    pronouns: "she/her",
+    gender: "woman",
     voice: SHE,
     age: 32,
     city: "San Francisco",
@@ -80,7 +79,7 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "jordan",
     displayName: "Jordan Hale",
-    pronouns: "he/him",
+    gender: "man",
     voice: HE,
     age: 34,
     city: "San Francisco",
@@ -104,8 +103,8 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "sam",
     displayName: "Sam Okonkwo",
-    pronouns: "they/them",
-    voice: THEY,
+    gender: "man",
+    voice: HE,
     age: 30,
     city: "Oakland",
     occupation: "Chef",
@@ -128,7 +127,7 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "riley",
     displayName: "Riley Park",
-    pronouns: "she/her",
+    gender: "woman",
     voice: SHE,
     age: 29,
     city: "San Francisco",
@@ -152,7 +151,7 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "noah",
     displayName: "Noah Ibarra",
-    pronouns: "he/him",
+    gender: "man",
     voice: HE,
     age: 33,
     city: "San Francisco",
@@ -176,7 +175,7 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "alex",
     displayName: "Alex Kim",
-    pronouns: "she/her",
+    gender: "woman",
     voice: SHE,
     age: 33,
     city: "San Francisco",
@@ -200,7 +199,7 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "morgan",
     displayName: "Morgan Ellis",
-    pronouns: "he/him",
+    gender: "man",
     voice: HE,
     age: 36,
     city: "San Francisco",
@@ -224,7 +223,7 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "casey",
     displayName: "Casey Nguyen",
-    pronouns: "she/her",
+    gender: "woman",
     voice: SHE,
     age: 31,
     city: "Los Angeles",
@@ -248,7 +247,7 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "quinn",
     displayName: "Quinn Adler",
-    pronouns: "he/him",
+    gender: "man",
     voice: HE,
     age: 45,
     city: "San Francisco",
@@ -272,7 +271,7 @@ export const DEMO_MEMBERS: Member[] = [
   member({
     id: "priya",
     displayName: "Priya Shah",
-    pronouns: "she/her",
+    gender: "woman",
     voice: SHE,
     age: 30,
     city: "Oakland",
