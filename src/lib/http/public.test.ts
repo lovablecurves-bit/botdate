@@ -19,6 +19,8 @@ const OPEN = [
   "/preview/shortlist.png",
   "/preview/bot-desk.png",
   "/preview/confirmed-date.png",
+  "/demo",
+  "/demo/",
   "/api/health",
   "/api/mcp",
   "/.well-known/oauth-authorization-server",
