@@ -15,6 +15,7 @@ import {
 import { representedBy } from "../labels";
 import { isAllowedMemberAge, isProfileComplete, matchIdFor, MEMBER_AGE_ERROR, parseSeeking, type Gender, type Intent, type KidsStance, type Member, type Seeking, type SmokingFilter } from "../types";
 import type { AgentResponse } from "./dispatch";
+import { onboardingGuidance } from "./onboarding";
 
 function text(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -222,9 +223,18 @@ function profilePatch(args: Record<string, unknown>): BotProfilePatch | { error:
   return patch;
 }
 
+function ownProfile(member: Member) {
+  const guidance = onboardingGuidance(member);
+  return {
+    member: profileBody(member, true),
+    profileComplete: guidance.profileComplete,
+    next_step: guidance.next_step,
+  };
+}
+
 export function callTool(ctx: BotDateDb, member: Member, name: string, args: Record<string, unknown>): AgentResponse | null {
   if (name === "get_my_profile") {
-    return { status: 200, body: { member: profileBody(member, true) } };
+    return { status: 200, body: ownProfile(member) };
   }
   if (name === "update_my_profile" || name === "update_preferences") {
     const patch = profilePatch(args);
@@ -232,7 +242,7 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
     const result = applyBotProfile(ctx, member.id, patch);
     if (!result.ok) return { status: 400, body: { error: result.error } };
     const updated = getMember(ctx, member.id);
-    return { status: 200, body: { member: updated ? profileBody(updated, true) : null } };
+    return { status: 200, body: updated ? ownProfile(updated) : { member: null, profileComplete: false, next_step: "" } };
   }
   if (name === "browse_members" || name === "get_shortlist") {
     if (name === "get_shortlist") {

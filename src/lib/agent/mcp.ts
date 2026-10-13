@@ -1,4 +1,5 @@
 import type { BotDateDb } from "../db/open";
+import { MCP_SERVER_INSTRUCTIONS } from "./onboarding";
 import { authenticateAgent } from "./tokens";
 import { callTool } from "./tools";
 
@@ -14,12 +15,14 @@ const PROTOCOL = "2025-03-26";
 const TOOLS = [
   {
     name: "get_my_profile",
-    description: "Read this member's profile and preferences. Free-text fields are included.",
+    description:
+      "Call this first, before any other tool. Read this member's private profile. The result includes profileComplete and next_step. If the profile is incomplete, follow next_step and interview in this order: age and city first; then their gender and who they're seeking; then the age range and areas they'd date in; then what they want (Love, Casual, or Friends); then kids and smoking; last, nice-to-haves and dealbreakers. Anything intimate stays private with the member's own bot and never goes on the profile. Do not browse, message, or reveal other profiles until it is complete.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "update_my_profile",
-    description: "Update profile fields from the conversation. Omitted fields stay as they are. City, bio, occupation, interests, and nice-to-haves are free text.",
+    description:
+      "Call get_my_profile first. Save answers in interview order: age and city, then gender and who they're seeking, then age range and areas they'd date in, then what they want (Love is datingIntent serious, Casual is datingIntent casual, Friends in niceToHaves), then kids and smoking, last nice-to-haves and dealbreakers. Anything intimate stays private with the member's own bot and never goes on the profile. Do not write intimate details into bio, occupation, interests, or niceToHaves. Age is a whole number from 18 to 99. Gender is man or woman. Seeking is men, women, or either. Age range is ageMin and ageMax. Areas they'd date in go in cities. Set locked true when dealbreakers are saved. Photos are not accepted; ask for up to 6 photos if supported by another tool. Omitted fields stay as they are. City, bio, occupation, interests, and nice-to-haves are free text.",
     inputSchema: {
       type: "object",
       properties: {
@@ -31,7 +34,11 @@ const TOOLS = [
         gender: { type: "string", enum: ["man", "woman"], description: "Man or Woman." },
         smokes: { type: "boolean" },
         kidsStance: { type: "string", enum: ["wants", "open", "doesnt"] },
-        datingIntent: { type: "string", enum: ["serious", "casual"] },
+        datingIntent: {
+          type: "string",
+          enum: ["serious", "casual"],
+          description: "Looking for Love (serious) or Casual. Record Friends in niceToHaves.",
+        },
         interests: { type: "array", items: { type: "string" } },
         ageMin: { type: "integer" },
         ageMax: { type: "integer" },
@@ -40,7 +47,10 @@ const TOOLS = [
         kids: { type: "string", enum: ["wants", "doesnt", "any"] },
         intent: { type: "string", enum: ["serious", "casual", "any"] },
         seeking: { type: "string", enum: ["men", "women", "either"], description: "Seeking men, women, or either." },
-        niceToHaves: { type: "string" },
+        niceToHaves: {
+          type: "string",
+          description: "Must-haves, Friends, and a distance limit.",
+        },
         locked: { type: "boolean" },
       },
       additionalProperties: false,
@@ -48,7 +58,8 @@ const TOOLS = [
   },
   {
     name: "browse_members",
-    description: "Browse members who can be contacted. Incomplete profiles are hidden until that member's bot fills age, city, gender, who they are seeking, and preferences. Inactive subscriptions are hidden.",
+    description:
+      "Call get_my_profile first and finish onboarding when the profile is incomplete. Then browse members who can be contacted. Incomplete profiles stay private and are hidden until that member's bot fills age, city, gender, who they are seeking, and preferences. Inactive subscriptions are hidden.",
     inputSchema: {
       type: "object",
       properties: {
@@ -66,7 +77,8 @@ const TOOLS = [
   },
   {
     name: "get_member",
-    description: "Read one member's public profile. Incomplete profiles and inactive subscriptions are not returned.",
+    description:
+      "Call get_my_profile first. Read one other member's public profile. Incomplete profiles stay private and are not returned. Inactive subscriptions are not returned.",
     inputSchema: {
       type: "object",
       properties: { memberId: { type: "string" } },
@@ -76,7 +88,8 @@ const TOOLS = [
   },
   {
     name: "send_bot_message",
-    description: "Send a bot-to-bot note. It is delivered without a human approval. Refuses while the matchmaker is paused, and refuses if the other member's subscription is inactive.",
+    description:
+      "Call get_my_profile first and finish onboarding when the profile is incomplete. Send a bot-to-bot note. It is delivered without a human approval. Do not ping the human. Refuses while the matchmaker is paused, and refuses if the other member's subscription is inactive.",
     inputSchema: {
       type: "object",
       properties: { memberId: { type: "string" }, matchId: { type: "string" }, body: { type: "string" } },
@@ -86,7 +99,8 @@ const TOOLS = [
   },
   {
     name: "list_bot_messages",
-    description: "Inbox of bot-to-bot messages. Pass matchId or memberId to read one thread. Human chat is not included.",
+    description:
+      "Call get_my_profile first. Inbox of bot-to-bot messages. Pass matchId or memberId to read one thread. Human chat is not included. Keep profiles private.",
     inputSchema: {
       type: "object",
       properties: { matchId: { type: "string" }, memberId: { type: "string" } },
@@ -95,7 +109,8 @@ const TOOLS = [
   },
   {
     name: "propose_date",
-    description: "Offer a date. This pings the human in BotDate with who, why, and the proposed time and place. The other person is not pinged until this member accepts. Bot chat stays private.",
+    description:
+      "Call get_my_profile first and finish onboarding when the profile is incomplete. Offer a date. This is the only time to ping the human, and only when a date is ready to offer. They see who, why, and the proposed time and place. The other person is not pinged until this member accepts. Bot chat stays private.",
     inputSchema: {
       type: "object",
       properties: {
@@ -111,7 +126,7 @@ const TOOLS = [
   },
   {
     name: "respond_to_date",
-    description: "Accept or decline a date offer for this member.",
+    description: "Call get_my_profile first. Accept or decline a date offer for this member.",
     inputSchema: {
       type: "object",
       properties: {
@@ -160,6 +175,7 @@ export function handleMcp(input: { ctx: BotDateDb; authorization: string | null;
           protocolVersion,
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: "botdate", version: "0.1.0" },
+          instructions: MCP_SERVER_INSTRUCTIONS,
         },
       },
     };

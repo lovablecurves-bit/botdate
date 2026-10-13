@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { GrokPaste } from "@/components/grok-paste";
 
 function selectField(field: HTMLInputElement | null) {
   if (!field) return;
@@ -42,37 +43,40 @@ export function ConnectGrokButton({ mcpUrl }: { mcpUrl: string }) {
   }
 
   return (
-    <details
-      className="connect-reveal"
-      data-testid="connect-grok-reveal"
-      onToggle={(event) => {
-        if (!event.currentTarget.open) setCopied(false);
-      }}
-    >
-      <summary className="btn primary wide" data-testid="connect-grok-bot">
-        Connect your Grok Bot
-      </summary>
-      <div className="connect-fallback" data-testid="mcp-fallback">
-        <p className="paste-line">Paste this into your Grok Bot to connect.</p>
-        <input
-          ref={fieldRef}
-          className="mcp-url-field"
-          type="text"
-          readOnly
-          value={mcpUrl}
-          aria-label="MCP connector URL"
-          data-testid="mcp-url"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          onFocus={(event) => event.currentTarget.select()}
-          onClick={(event) => event.currentTarget.select()}
-        />
-        <button className="btn primary wide" type="button" data-testid="copy-mcp-url" onClick={onCopy}>
-          {copied ? "Copied!" : "Copy"}
-        </button>
-      </div>
-    </details>
+    <div className="connect-grok" data-testid="connect-grok-panel">
+      <GrokPaste mcpUrl={mcpUrl} />
+      <details
+        className="connect-reveal"
+        data-testid="connect-grok-reveal"
+        onToggle={(event) => {
+          if (!event.currentTarget.open) setCopied(false);
+        }}
+      >
+        <summary className="btn primary wide" data-testid="connect-grok-bot">
+          Connect your Grok Bot
+        </summary>
+        <div className="connect-fallback" data-testid="mcp-fallback">
+          <p className="paste-line">Paste this into your Grok Bot to connect.</p>
+          <input
+            ref={fieldRef}
+            className="mcp-url-field"
+            type="text"
+            readOnly
+            value={mcpUrl}
+            aria-label="MCP connector URL"
+            data-testid="mcp-url"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            onFocus={(event) => event.currentTarget.select()}
+            onClick={(event) => event.currentTarget.select()}
+          />
+          <button className="btn primary wide" type="button" data-testid="copy-mcp-url" onClick={onCopy}>
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+      </details>
+    </div>
   );
 }

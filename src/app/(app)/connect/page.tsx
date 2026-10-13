@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import { continueFromConnectAction } from "@/app/actions";
 import { Banner } from "@/components/banner";
 import { ConnectCard } from "@/components/connect-card";
+import { GrokPaste } from "@/components/grok-paste";
 import { SubmitButton } from "@/components/submit-button";
 import { grokMatchmakerPrompt } from "@/lib/agent/prompt";
 import { agentTokenStatus } from "@/lib/agent/tokens";
@@ -36,6 +37,7 @@ export default async function ConnectPage({ searchParams }: { searchParams: Prom
         {member.xAccount ? <p className="meta">Signed in as @{member.xAccount.handle}</p> : null}
       </header>
       <Banner>{error}</Banner>
+      <GrokPaste mcpUrl={mcpUrl} />
       <ConnectCard mcpUrl={mcpUrl} token={revealed} active={status.active} prefix={status.prefix} connected={status.connected} returnTo="connect" />
       <details className="quiet-fold">
         <summary>Optional matchmaker prompt</summary>
