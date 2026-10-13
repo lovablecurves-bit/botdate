@@ -130,7 +130,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .youre-in .handle-line { margin: 0; }
 .youre-in form,
-.youre-in .connect-reveal { width: 100%; margin-top: 8px; }
+.youre-in .connect-reveal,
+.youre-in .connect-grok { width: 100%; margin-top: 8px; }
+.youre-in .connect-grok { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+.youre-in .connect-grok .connect-reveal { margin-top: 0; }
 .youre-in .bot-status {
   margin: 0;
   font-size: 0.82rem;
@@ -154,11 +157,28 @@ button, input, select, textarea { font: inherit; color: inherit; }
   width: 100%;
   margin-top: 12px;
 }
-.youre-in .paste-line {
+.youre-in .paste-line,
+.grok-paste .paste-line {
   margin: 0;
   font-size: 0.95rem;
   line-height: 1.35;
   color: var(--ink-soft);
+}
+.grok-paste {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+.matchmaker-message {
+  min-height: 7.25rem;
+  text-align: left;
+  line-height: 1.45;
+  font-size: 0.95rem;
+  resize: none;
+  user-select: all;
+  -webkit-user-select: all;
 }
 .mcp-url-field {
   text-align: center;
