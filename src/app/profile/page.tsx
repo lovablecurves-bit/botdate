@@ -1,11 +1,12 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { issueAgentTokenAction } from "@/app/actions";
-import { SubmitButton } from "@/components/submit-button";
+import { ConnectGrokButton } from "@/components/connect-grok-button";
 import { Wordmark } from "@/components/wordmark";
-import { agentTokenStatus } from "@/lib/agent/tokens";
+import { isBotConnected } from "@/lib/agent/connection";
 import { checkoutDestination, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { displayAvatarUrl } from "@/lib/directory";
+import { appOrigin } from "@/lib/http/origin";
 
 export const metadata = { title: "You're in" };
 
@@ -16,7 +17,8 @@ export default async function ProfilePage() {
   if (checkout) redirect(checkout);
   const handle = member.xAccount?.handle ?? "";
   const avatar = displayAvatarUrl(member.xAccount?.avatarUrl);
-  const status = await withDb((db) => agentTokenStatus(db, member.id));
+  const connected = await withDb((db) => isBotConnected(db, member.id));
+  const mcpUrl = `${appOrigin(await headers())}/api/mcp`;
 
   return (
     <main className="youre-in" data-testid="post-login-card">
@@ -31,14 +33,9 @@ export default async function ProfilePage() {
           @{handle}
         </p>
       ) : null}
-      <form action={issueAgentTokenAction}>
-        <input type="hidden" name="next" value="profile" />
-        <SubmitButton className="btn primary wide" pendingLabel="Connecting…" testId="connect-grok-bot">
-          Connect your Grok Bot
-        </SubmitButton>
-      </form>
+      <ConnectGrokButton mcpUrl={mcpUrl} />
       <p className="bot-status" data-testid="bot-status">
-        {status.active ? "Bot connected" : "Not connected"}
+        {connected ? "Bot connected" : "Not connected yet"}
       </p>
     </main>
   );
