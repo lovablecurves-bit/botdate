@@ -129,11 +129,43 @@ button, input, select, textarea { font: inherit; color: inherit; }
   margin-top: 6px;
 }
 .youre-in .handle-line { margin: 0; }
-.youre-in form { width: 100%; margin-top: 8px; }
+.youre-in form,
+.youre-in .connect-reveal { width: 100%; margin-top: 8px; }
 .youre-in .bot-status {
   margin: 0;
   font-size: 0.82rem;
   color: var(--ink-soft);
+}
+.connect-reveal > summary {
+  list-style: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.connect-reveal > summary::-webkit-details-marker { display: none; }
+.connect-reveal > summary::marker { content: ""; }
+.connect-reveal > .connect-fallback {
+  display: none;
+}
+.connect-reveal[open] > .connect-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+}
+.youre-in .paste-line {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+.mcp-url-field {
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  user-select: all;
+  -webkit-user-select: all;
 }
 
 .tabbar {
@@ -421,6 +453,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-weight: 600;
   background: var(--wash);
   color: var(--ink);
+  touch-action: manipulation;
 }
 .btn.primary { background: var(--pop); color: var(--ink); }
 .btn.ghost { background: #fff; color: var(--ink); }

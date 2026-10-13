@@ -77,8 +77,11 @@ test("the public homepage offers Sign in with X and no waitlist", () => {
   assert.match(profile, /🔒 Only you see this\. Your bot does the rest\./);
   assert.match(profile, /data-testid="x-profile-photo"/);
   assert.match(profile, /data-testid="x-handle"/);
-  assert.match(profile, /Connect your Grok Bot/);
+  assert.match(profile, /Not connected yet/);
   assert.match(profile, /data-testid="bot-status"/);
+  const connectButton = fs.readFileSync(path.join(root, "src/components/connect-grok-button.tsx"), "utf8");
+  assert.match(connectButton, /Connect your Grok Bot/);
+  assert.match(connectButton, /Paste this into your Grok Bot to connect\./);
   assert.equal(profile.includes("About you"), false);
   assert.equal(profile.includes("member.profile.bio"), false);
   const onboard = fs.readFileSync(path.join(root, "src/app/(app)/onboarding/page.tsx"), "utf8");
