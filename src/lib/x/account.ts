@@ -4,7 +4,7 @@ import type { BotDateDb } from "../db/open";
 import { prefs, profiles, users } from "../db/schema";
 import { getMember } from "../domain";
 import { referralCode } from "../http/public";
-import { voiceForPronouns } from "../types";
+import { voiceForGender } from "../types";
 import type { XProfile } from "./profile";
 
 const ACCENTS = ["#ff2d92", "#ff3d6e", "#ff4db8", "#ff1744", "#ff5c8a"];
@@ -147,7 +147,6 @@ export function upsertXMember(
 
   const id = `x_${profile.xUserId}`;
   const now = new Date().toISOString();
-  const pronouns = "they/them";
   ctx.db
     .insert(users)
     .values({
@@ -173,27 +172,27 @@ export function upsertXMember(
     .insert(profiles)
     .values({
       userId: id,
-      age: 30,
-      city: "San Francisco",
-      occupation: "New here",
-      bio: bio || "Signed in with X.",
-      pronouns,
+      age: null,
+      city: null,
+      occupation: "",
+      bio,
+      gender: null,
       smoking: false,
       kids: "open",
       intent: "serious",
       interests: "[]",
       accent: accentFor(id),
-      voice: JSON.stringify(voiceForPronouns(pronouns)),
+      voice: JSON.stringify(voiceForGender(null)),
     })
     .run();
   ctx.db
     .insert(prefs)
     .values({
       userId: id,
-      ageMin: 25,
-      ageMax: 45,
-      cities: JSON.stringify(["San Francisco"]),
-      smoking: "no",
+      ageMin: null,
+      ageMax: null,
+      cities: null,
+      smoking: "any",
       kids: "any",
       intent: "any",
       niceToHaves: "",

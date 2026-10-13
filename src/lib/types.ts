@@ -13,12 +13,15 @@ export type Voice = {
   possessive: "her" | "his" | "their";
 };
 
+/** Man or Woman. Unknown until the member's own bot sets it. */
+export type Gender = "man" | "woman";
+
 export type Profile = {
-  age: number;
-  city: string;
+  age: number | null;
+  city: string | null;
   occupation: string;
   bio: string;
-  pronouns: string;
+  gender: Gender | null;
   smoking: boolean;
   kids: KidsStance;
   intent: Intent;
@@ -28,9 +31,9 @@ export type Profile = {
 };
 
 export type Prefs = {
-  ageMin: number;
-  ageMax: number;
-  cities: string[];
+  ageMin: number | null;
+  ageMax: number | null;
+  cities: string[] | null;
   smoking: SmokingFilter;
   kids: KidsFilter;
   intent: IntentFilter;
@@ -67,18 +70,18 @@ export type Member = {
 
 export type MemberInput = {
   displayName: string;
-  pronouns: string;
-  age: number;
-  city: string;
+  gender: Gender | null;
+  age: number | null;
+  city: string | null;
   occupation: string;
   bio: string;
   smoking: boolean;
   kids: KidsStance;
   intent: Intent;
   interests: string[];
-  ageMin: number;
-  ageMax: number;
-  cities: string[];
+  ageMin: number | null;
+  ageMax: number | null;
+  cities: string[] | null;
   smokingFilter: SmokingFilter;
   kidsFilter: KidsFilter;
   intentFilter: IntentFilter;
@@ -86,7 +89,8 @@ export type MemberInput = {
   locked: boolean;
 };
 
-export const CITIES = ["San Francisco", "Oakland", "Berkeley", "Los Angeles"] as const;
+/** Suggested cities. Austin first, then Bastrop. Bots may also save any other city as free text. */
+export const CITIES = ["Austin", "Bastrop", "San Francisco", "Oakland", "Berkeley", "Los Angeles"] as const;
 
 export const INTERESTS = [
   "cooking",
@@ -108,12 +112,43 @@ export const INTERESTS = [
   "art",
 ] as const;
 
-export const PRONOUNS = ["she/her", "he/him", "they/them"] as const;
+export function voiceForGender(gender: Gender | null): Voice {
+  if (gender === "man") return { subject: "he", object: "him", possessive: "his" };
+  if (gender === "woman") return { subject: "she", object: "her", possessive: "her" };
+  return { subject: "they", object: "them", possessive: "their" };
+}
 
-export function voiceForPronouns(pronouns: string): Voice {
-  if (pronouns === "he/him") return { subject: "he", object: "him", possessive: "his" };
-  if (pronouns === "they/them") return { subject: "they", object: "them", possessive: "their" };
-  return { subject: "she", object: "her", possessive: "her" };
+export function genderLabel(gender: Gender | null): string {
+  if (gender === "man") return "Man";
+  if (gender === "woman") return "Woman";
+  return "";
+}
+
+/** Age, city, gender, and a real preference range are set. Until then the member is not browsable or matchable. */
+export function isProfileComplete(member: {
+  profile: Pick<Profile, "age" | "city" | "gender">;
+  prefs: Pick<Prefs, "ageMin" | "ageMax" | "cities">;
+}): boolean {
+  const { age, city, gender } = member.profile;
+  const { ageMin, ageMax, cities } = member.prefs;
+  return (
+    typeof age === "number" &&
+    Number.isInteger(age) &&
+    age >= 18 &&
+    age <= 99 &&
+    typeof city === "string" &&
+    city.trim().length >= 2 &&
+    (gender === "man" || gender === "woman") &&
+    typeof ageMin === "number" &&
+    Number.isInteger(ageMin) &&
+    typeof ageMax === "number" &&
+    Number.isInteger(ageMax) &&
+    ageMin >= 18 &&
+    ageMax <= 99 &&
+    ageMin <= ageMax &&
+    Array.isArray(cities) &&
+    cities.length > 0
+  );
 }
 
 export function canonicalPair(a: string, b: string): [string, string] {

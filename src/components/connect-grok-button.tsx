@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { grokBotConnectLink } from "@/lib/agent/connect-link";
 
 function selectField(field: HTMLInputElement | null) {
   if (!field) return;
@@ -20,22 +19,6 @@ function copyFromField(field: HTMLInputElement | null): boolean {
     return document.execCommand("copy");
   } catch {
     return false;
-  }
-}
-
-/** Try the app scheme in a new context so this page, and the MCP URL, stay put. */
-function tryGrokBotLink(href: string) {
-  try {
-    const link = document.createElement("a");
-    link.href = href;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.hidden = true;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  } catch {
-    // The URL under the button is the fallback.
   }
 }
 
@@ -63,11 +46,7 @@ export function ConnectGrokButton({ mcpUrl }: { mcpUrl: string }) {
       className="connect-reveal"
       data-testid="connect-grok-reveal"
       onToggle={(event) => {
-        if (!event.currentTarget.open) {
-          setCopied(false);
-          return;
-        }
-        window.requestAnimationFrame(() => tryGrokBotLink(grokBotConnectLink(mcpUrl)));
+        if (!event.currentTarget.open) setCopied(false);
       }}
     >
       <summary className="btn primary wide" data-testid="connect-grok-bot">

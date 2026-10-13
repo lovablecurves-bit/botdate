@@ -1,5 +1,6 @@
 import { Avatar } from "@/components/avatar";
 import { intentLabel, kidsLabel, smokingLabel, titleWord, initials } from "@/lib/labels";
+import { genderLabel } from "@/lib/types";
 import type { PublicPerson } from "@/lib/domain";
 
 export function Portrait({ name, accent, imageUrl }: { name: string; accent: string; imageUrl?: string | null }) {
@@ -25,7 +26,7 @@ export function PersonStrip({ person }: { person: PublicPerson }) {
       <div>
         <h1>{person.displayName}</h1>
         <p className="meta">
-          {person.pronouns} · {person.age} · {person.city}
+          {[genderLabel(person.gender), person.age, person.city].filter((part) => part !== null && part !== undefined && part !== "").join(" · ")}
         </p>
       </div>
     </div>

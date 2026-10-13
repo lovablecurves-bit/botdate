@@ -13,7 +13,7 @@ import {
   type BotProfilePatch,
 } from "../domain";
 import { representedBy } from "../labels";
-import { matchIdFor, type Intent, type KidsStance, type Member, type SmokingFilter } from "../types";
+import { isProfileComplete, matchIdFor, type Gender, type Intent, type KidsStance, type Member, type SmokingFilter } from "../types";
 import type { AgentResponse } from "./dispatch";
 
 function text(value: unknown): string | undefined {
@@ -38,6 +38,13 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T | und
   return typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
 }
 
+function genderOf(value: unknown): Gender | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "man" || normalized === "woman") return normalized;
+  return undefined;
+}
+
 function profileBody(member: Member, self: boolean) {
   return {
     id: member.id,
@@ -51,7 +58,7 @@ function profileBody(member: Member, self: boolean) {
       city: member.profile.city,
       occupation: member.profile.occupation,
       bio: member.profile.bio,
-      pronouns: member.profile.pronouns,
+      gender: member.profile.gender,
       smoking: member.profile.smoking,
       kids: member.profile.kids,
       intent: member.profile.intent,
@@ -86,15 +93,15 @@ export function browseMembers(ctx: BotDateDb, viewerId: string, filters: BrowseF
   const city = filters.city?.trim().toLowerCase() ?? "";
   const limit = filters.limit && filters.limit > 0 ? Math.min(filters.limit, 50) : 20;
   const people = listMembers(ctx).filter((other) => {
-    if (other.id === viewerId || subscriptionBlocks(other)) return false;
-    if (city && other.profile.city.toLowerCase() !== city) return false;
-    if (filters.ageMin !== undefined && other.profile.age < filters.ageMin) return false;
-    if (filters.ageMax !== undefined && other.profile.age > filters.ageMax) return false;
+    if (other.id === viewerId || subscriptionBlocks(other) || !isProfileComplete(other)) return false;
+    if (city && other.profile.city?.toLowerCase() !== city) return false;
+    if (filters.ageMin !== undefined && (other.profile.age == null || other.profile.age < filters.ageMin)) return false;
+    if (filters.ageMax !== undefined && (other.profile.age == null || other.profile.age > filters.ageMax)) return false;
     if (filters.intent && filters.intent !== "any" && other.profile.intent !== filters.intent) return false;
     if (filters.kids && filters.kids !== "any" && other.profile.kids !== filters.kids) return false;
     if (filters.smoking === "no" && other.profile.smoking) return false;
     if (query) {
-      const hay = [other.displayName, other.xAccount?.handle ?? "", other.profile.bio, other.profile.city, other.profile.occupation, other.profile.interests.join(" ")]
+      const hay = [other.displayName, other.xAccount?.handle ?? "", other.profile.bio, other.profile.city ?? "", other.profile.occupation, other.profile.interests.join(" ")]
         .join(" ")
         .toLowerCase();
       if (!hay.includes(query)) return false;
@@ -150,10 +157,10 @@ function profilePatch(args: Record<string, unknown>): BotProfilePatch | { error:
     if (age === undefined) return { error: "age must be a whole number." };
     patch.age = age;
   }
-  if (args.pronouns !== undefined) {
-    const pronouns = oneOf(args.pronouns, ["she/her", "he/him", "they/them"] as const);
-    if (!pronouns) return { error: "pronouns must be she/her, he/him, or they/them." };
-    patch.pronouns = pronouns;
+  if (args.gender !== undefined) {
+    const gender = genderOf(args.gender);
+    if (!gender) return { error: "gender must be man or woman." };
+    patch.gender = gender;
   }
   if (args.interests !== undefined) {
     const interests = stringList(args.interests);
@@ -254,7 +261,7 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
   if (name === "get_member") {
     const memberId = text(args.memberId) ?? "";
     const person = getMember(ctx, memberId);
-    if (!person || person.id === member.id || subscriptionBlocks(person)) {
+    if (!person || person.id === member.id || subscriptionBlocks(person) || !isProfileComplete(person)) {
       return { status: 404, body: { error: "That member is not available." } };
     }
     return { status: 200, body: { member: profileBody(person, false) } };

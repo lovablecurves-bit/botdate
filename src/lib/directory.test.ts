@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { openDatabase } from "./db/open";
 import { displayAvatarUrl, includeViewer, listDirectory, memberProfile, profileView } from "./directory";
-import { getMember } from "./domain";
+import { applyBotProfile, getMember } from "./domain";
 import { markConnectSeen, upsertXMember } from "./x/account";
 
 const ada = {
@@ -12,6 +12,19 @@ const ada = {
   bio: "Analytical engines and long walks.",
   avatarUrl: "https://pbs.twimg.com/profile_images/a/ada_400x400.jpg",
 };
+
+function fillProfile(ctx: Awaited<ReturnType<typeof openDatabase>>, userId: string, city: string) {
+  const result = applyBotProfile(ctx, userId, {
+    age: 36,
+    city,
+    gender: "woman",
+    occupation: "Engineer",
+    ageMin: 28,
+    ageMax: 45,
+    cities: [city],
+  });
+  assert.equal(result.ok, true);
+}
 
 const grace = {
   xUserId: "200",
@@ -28,6 +41,10 @@ test("directory lists real members from the database and skips the demo roster",
 
   const first = upsertXMember(ctx, ada);
   const second = upsertXMember(ctx, grace);
+  assert.equal(listDirectory(ctx).length, 0);
+  assert.equal(memberProfile(ctx, first.userId, second.userId), null);
+  fillProfile(ctx, first.userId, "Austin");
+  fillProfile(ctx, second.userId, "Austin");
   const cards = listDirectory(ctx);
   assert.deepEqual(
     cards.map((card) => card.handle),
@@ -95,6 +112,11 @@ test("the first real sign-in on an empty database is member #1", async () => {
   assert.equal(member?.founder, true);
   assert.equal(member?.memberNumber, 1);
   assert.equal(member?.connectSeen, false);
+  assert.equal(member?.profile.age, null);
+  assert.equal(member?.profile.city, null);
+  assert.equal(member?.profile.gender, null);
+  assert.deepEqual(listDirectory(ctx).map((card) => card.id), []);
+  fillProfile(ctx, first.userId, "Bastrop");
   assert.deepEqual(listDirectory(ctx).map((card) => card.id), [first.userId]);
   const second = upsertXMember(ctx, grace);
   assert.equal(getMember(ctx, second.userId)?.founder, false);

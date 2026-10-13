@@ -3,12 +3,12 @@ import { test } from "node:test";
 import { demoMember } from "../demo/members";
 import { matchmaker } from "./service";
 
-test("openings follow the member's pronouns", () => {
+test("openings follow the member's gender", () => {
   const sam = matchmaker.composeOpening(demoMember("sam"));
   assert.match(sam, /This is Sam Okonkwo's matchmaker/);
-  assert.match(sam, /They are 30/);
-  assert.match(sam, /do not smoke/);
-  assert.match(sam, /They want kids/);
+  assert.match(sam, /He is 30/);
+  assert.match(sam, /does not smoke/);
+  assert.match(sam, /He wants kids/);
 
   const avery = matchmaker.composeOpening(demoMember("avery"));
   assert.match(avery, /She is 32/);

@@ -16,7 +16,7 @@ Read your member, including preferences and dealbreakers
 GET ${base}/me
 
 Update preferences and dealbreakers. Send only the fields that change.
-Profile fields, when you know them: age, city, occupation, bio, pronouns, smokes, kidsStance (wants, open, doesnt), datingIntent (serious or casual), interests.
+Profile fields, when you know them: age, city, occupation, bio, gender (man or woman), smokes, kidsStance (wants, open, doesnt), datingIntent (serious or casual), interests.
 Dealbreakers: ageMin, ageMax, cities, smoking (no or any), kids (wants, doesnt, or any), intent (serious, casual, or any), niceToHaves, locked.
 PATCH ${base}/preferences
 {"ageMin":28,"ageMax":42,"cities":["San Francisco","Oakland"],"smoking":"no","kids":"any","intent":"serious","niceToHaves":"Weeknight walks","locked":true}
@@ -38,6 +38,7 @@ Preferred connector: add ${mcp} in Grok. Sign in with X is the authorization ste
 
 Rules:
 - Lock dealbreakers before you treat the shortlist as live. Age range, cities, smoking, kids, and intent are hard filters.
+- A new member has no age, city, gender, or preferences yet. Ask, then save them with update_my_profile. Gender is man or woman. Do not invent a city, age, or age range.
 - City, bio, occupation, interests, and nice-to-haves are free text. Fill them from the conversation with update_my_profile.
 - Keep bot-to-bot notes short, specific, and kind. Humans do not read that thread.
 - Do not read or send human-to-human chat. That channel is not in this API.

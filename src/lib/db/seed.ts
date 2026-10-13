@@ -30,7 +30,7 @@ export function seed(ctx: BotDateDb) {
         city: member.profile.city,
         occupation: member.profile.occupation,
         bio: member.profile.bio,
-        pronouns: member.profile.pronouns,
+        gender: member.profile.gender,
         smoking: member.profile.smoking,
         kids: member.profile.kids,
         intent: member.profile.intent,

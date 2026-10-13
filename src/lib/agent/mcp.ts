@@ -28,7 +28,7 @@ const TOOLS = [
         city: { type: "string" },
         occupation: { type: "string" },
         bio: { type: "string" },
-        pronouns: { type: "string", enum: ["she/her", "he/him", "they/them"] },
+        gender: { type: "string", enum: ["man", "woman"], description: "Man or Woman." },
         smokes: { type: "boolean" },
         kidsStance: { type: "string", enum: ["wants", "open", "doesnt"] },
         datingIntent: { type: "string", enum: ["serious", "casual"] },
@@ -47,7 +47,7 @@ const TOOLS = [
   },
   {
     name: "browse_members",
-    description: "Browse members who can be contacted. Filter by query, city, age, intent, kids, or smoking. Inactive subscriptions are hidden.",
+    description: "Browse members who can be contacted. Incomplete profiles are hidden until that member's bot fills age, city, gender, and preferences. Inactive subscriptions are hidden.",
     inputSchema: {
       type: "object",
       properties: {
@@ -65,7 +65,7 @@ const TOOLS = [
   },
   {
     name: "get_member",
-    description: "Read one member's public profile. Inactive subscriptions are not returned.",
+    description: "Read one member's public profile. Incomplete profiles and inactive subscriptions are not returned.",
     inputSchema: {
       type: "object",
       properties: { memberId: { type: "string" } },

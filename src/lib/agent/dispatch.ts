@@ -10,7 +10,7 @@ import {
   saveMember,
   sendBotNote,
 } from "../domain";
-import { PRONOUNS, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
+import { type Gender, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
 import { authenticateAgent } from "./tokens";
 
 export type AgentResponse = { status: number; body: unknown };
@@ -34,6 +34,13 @@ function stringList(value: unknown): string[] | undefined {
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
   return typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+}
+
+function genderOf(value: unknown): Gender | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "man" || normalized === "woman") return normalized;
+  return undefined;
 }
 
 export function dispatchAgent(input: {
@@ -86,7 +93,7 @@ export function dispatchAgent(input: {
             city: member.profile.city,
             occupation: member.profile.occupation,
             bio: member.profile.bio,
-            pronouns: member.profile.pronouns,
+            gender: member.profile.gender,
             smoking: member.profile.smoking,
             kids: member.profile.kids,
             intent: member.profile.intent,
@@ -126,10 +133,10 @@ export function dispatchAgent(input: {
     if (patch.niceToHaves !== undefined && text(patch.niceToHaves) === undefined) {
       return { status: 400, body: { error: "niceToHaves must be a string." } };
     }
-    const pronouns = patch.pronouns === undefined ? undefined : oneOf(patch.pronouns, PRONOUNS);
+    const gender = patch.gender === undefined ? undefined : genderOf(patch.gender);
     const kidsStance = patch.kidsStance === undefined ? undefined : oneOf(patch.kidsStance, ["wants", "open", "doesnt"] as const);
     const datingIntent = patch.datingIntent === undefined ? undefined : oneOf(patch.datingIntent, ["serious", "casual"] as const);
-    if (patch.pronouns !== undefined && !pronouns) return { status: 400, body: { error: "pronouns must be she/her, he/him, or they/them." } };
+    if (patch.gender !== undefined && !gender) return { status: 400, body: { error: "gender must be man or woman." } };
     if (patch.age !== undefined && int(patch.age) === undefined) return { status: 400, body: { error: "age must be a whole number." } };
     if (patch.city !== undefined && text(patch.city) === undefined) return { status: 400, body: { error: "city must be a string." } };
     if (patch.occupation !== undefined && text(patch.occupation) === undefined) return { status: 400, body: { error: "occupation must be a string." } };
@@ -142,7 +149,7 @@ export function dispatchAgent(input: {
     const result = saveMember(input.ctx, member.id, {
       ...current,
       displayName: text(patch.displayName) ?? current.displayName,
-      pronouns: pronouns ?? current.pronouns,
+      gender: gender ?? current.gender,
       age: int(patch.age) ?? current.age,
       city: text(patch.city) ?? current.city,
       occupation: text(patch.occupation) ?? current.occupation,

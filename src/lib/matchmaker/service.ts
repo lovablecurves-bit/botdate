@@ -32,9 +32,14 @@ export class MatchmakerBotService {
     const be = voice.subject === "they" ? "are" : "is";
     const interests = member.profile.interests.slice(0, 3);
     const bio = member.profile.bio.trim();
+    const facts = [
+      member.profile.age != null ? String(member.profile.age) : "",
+      member.profile.city ? `in ${member.profile.city}` : "",
+      member.profile.occupation ? `working as ${member.profile.occupation}` : "",
+    ].filter(Boolean);
     return [
       `${name}'s matchmaker has this on file.`,
-      `${cap(voice.subject)} ${be} ${member.profile.age}, in ${member.profile.city}, working as ${member.profile.occupation}.`,
+      facts.length ? `${cap(voice.subject)} ${be} ${facts.join(", ")}.` : "",
       bio,
       interests.length ? `Matching notes: ${interests.join(", ")}.` : "",
     ]
