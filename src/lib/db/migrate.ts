@@ -14,6 +14,7 @@ export const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "users", column: "referred_by", ddl: "TEXT" },
   { table: "agent_tokens", column: "last_used_at", ddl: "TEXT" },
   { table: "agent_tokens", column: "expires_at", ddl: "TEXT" },
+  { table: "prefs", column: "seeking", ddl: "TEXT" },
 ];
 
 export const X_USER_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS users_x_user_idx ON users(x_user_id)";
@@ -81,9 +82,10 @@ CREATE TABLE prefs__migrated (
   kids TEXT NOT NULL,
   intent TEXT NOT NULL,
   nice_to_haves TEXT NOT NULL,
-  locked INTEGER NOT NULL DEFAULT 0
+  locked INTEGER NOT NULL DEFAULT 0,
+  seeking TEXT
 );
-INSERT INTO prefs__migrated (user_id, age_min, age_max, cities, smoking, kids, intent, nice_to_haves, locked)
+INSERT INTO prefs__migrated (user_id, age_min, age_max, cities, smoking, kids, intent, nice_to_haves, locked, seeking)
 SELECT
   p.user_id,
   CASE WHEN ${matched} THEN NULL ELSE p.age_min END,
@@ -93,7 +95,8 @@ SELECT
   p.kids,
   p.intent,
   p.nice_to_haves,
-  p.locked
+  p.locked,
+  NULL
 FROM prefs p
 LEFT JOIN profiles pr ON pr.user_id = p.user_id AND ${profileMatch("pr", usePronouns)};
 DROP TABLE prefs;

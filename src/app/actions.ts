@@ -31,7 +31,7 @@ import {
   wipeMemory,
 } from "@/lib/domain";
 import type { ActionResult } from "@/lib/result";
-import type { ChannelChoice, Gender, Intent, IntentFilter, KidsFilter, KidsStance, MemberInput, SmokingFilter } from "@/lib/types";
+import { parseSeeking, type ChannelChoice, type Gender, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type MemberInput, type SmokingFilter } from "@/lib/types";
 
 export type FormState = { ok: boolean; error: string | null; message: string | null };
 
@@ -59,6 +59,7 @@ function inputFromForm(formData: FormData): MemberInput {
     smokingFilter: String(formData.get("smokingFilter") ?? "") as SmokingFilter,
     kidsFilter: String(formData.get("kidsFilter") ?? "") as KidsFilter,
     intentFilter: String(formData.get("intentFilter") ?? "") as IntentFilter,
+    seeking: parseSeeking(String(formData.get("seeking") ?? "")),
     niceToHaves: String(formData.get("niceToHaves") ?? ""),
     locked: formData.get("locked") === "on",
   };
@@ -196,7 +197,12 @@ export async function resetDemoAction() {
 export async function saveOnboardingAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const saved = await withDb((db) => {
-    const result = saveMember(db, user.id, inputFromForm(formData));
+    const input = inputFromForm(formData);
+    if (!formData.has("seeking")) {
+      const existing = getMember(db, user.id);
+      if (existing) input.seeking = existing.prefs.seeking;
+    }
+    const result = saveMember(db, user.id, input);
     return { result, member: result.ok ? getMember(db, user.id) : null };
   });
   if (!saved.result.ok) return { ok: false, error: saved.result.error, message: null };

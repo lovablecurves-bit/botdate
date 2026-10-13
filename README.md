@@ -49,7 +49,7 @@ The homepage is public. **Sign in with X** creates the member account immediatel
 
 ## Preferences
 
-Hard filters (dealbreakers) are age range, cities, smoking, kids, and intent. A miss is never surfaced. The check is mutual: you must clear their dealbreakers too.
+Hard filters (dealbreakers) are age range, cities, smoking, kids, intent, and who someone is seeking (men, women, or either). A miss is never surfaced. The check is mutual: you must clear their dealbreakers too, including their seeking preference against your Man or Woman gender.
 
 Soft prefs rank the list. Shared interests add the most, then the same city. The free-text nice-to-have is stored for the matchmaker. This MVP does not pretend to parse it.
 

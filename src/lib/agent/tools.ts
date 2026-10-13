@@ -13,7 +13,7 @@ import {
   type BotProfilePatch,
 } from "../domain";
 import { representedBy } from "../labels";
-import { isProfileComplete, matchIdFor, type Gender, type Intent, type KidsStance, type Member, type SmokingFilter } from "../types";
+import { isProfileComplete, matchIdFor, parseSeeking, type Gender, type Intent, type KidsStance, type Member, type Seeking, type SmokingFilter } from "../types";
 import type { AgentResponse } from "./dispatch";
 
 function text(value: unknown): string | undefined {
@@ -71,6 +71,7 @@ function profileBody(member: Member, self: boolean) {
       smoking: member.prefs.smoking,
       kids: member.prefs.kids,
       intent: member.prefs.intent,
+      seeking: member.prefs.seeking,
       niceToHaves: member.prefs.niceToHaves,
       locked: member.prefs.locked,
     },
@@ -206,6 +207,12 @@ function profilePatch(args: Record<string, unknown>): BotProfilePatch | { error:
   const intentFilter = args.intent === undefined ? undefined : oneOf(args.intent, ["serious", "casual", "any"] as const);
   if (args.intent !== undefined && !intentFilter) return { error: "intent must be serious, casual, or any." };
   if (intentFilter) patch.intentFilter = intentFilter;
+  if (args.seeking !== undefined) {
+    if (typeof args.seeking !== "string") return { error: "seeking must be men, women, or either." };
+    const seeking = parseSeeking(args.seeking);
+    if (!seeking) return { error: "seeking must be men, women, or either." };
+    patch.seeking = seeking as Seeking;
+  }
   if (args.locked !== undefined) {
     const locked = bool(args.locked);
     if (locked === undefined) return { error: "locked must be true or false." };

@@ -44,6 +44,7 @@ function member(overrides: Partial<Member> = {}): Member {
       smoking: "any",
       kids: "any",
       intent: "any",
+      seeking: null,
       niceToHaves: "",
       locked: true,
     },

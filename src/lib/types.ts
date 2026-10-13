@@ -3,6 +3,8 @@ export type Intent = "serious" | "casual";
 export type SmokingFilter = "no" | "any";
 export type KidsFilter = "wants" | "doesnt" | "any";
 export type IntentFilter = Intent | "any";
+/** Who a member wants to meet. Unknown until their own bot sets it. */
+export type Seeking = "men" | "women" | "either";
 export type ChannelChoice = "unset" | "human" | "bot";
 export type ApprovalStatus = "pending" | "sent" | "killed";
 export type ProposalStatus = "proposed" | "confirmed" | "declined" | "withdrawn";
@@ -37,6 +39,8 @@ export type Prefs = {
   smoking: SmokingFilter;
   kids: KidsFilter;
   intent: IntentFilter;
+  /** men, women, or either. Null until the member sets it. */
+  seeking: Seeking | null;
   niceToHaves: string;
   locked: boolean;
 };
@@ -85,6 +89,7 @@ export type MemberInput = {
   smokingFilter: SmokingFilter;
   kidsFilter: KidsFilter;
   intentFilter: IntentFilter;
+  seeking: Seeking | null;
   niceToHaves: string;
   locked: boolean;
 };
@@ -124,13 +129,19 @@ export function genderLabel(gender: Gender | null): string {
   return "";
 }
 
-/** Age, city, gender, and a real preference range are set. Until then the member is not browsable or matchable. */
+export function parseSeeking(value: string): Seeking | null {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "men" || normalized === "women" || normalized === "either") return normalized;
+  return null;
+}
+
+/** Age, city, gender, who they are seeking, and a real preference range are set. Until then the member is not browsable or matchable. */
 export function isProfileComplete(member: {
   profile: Pick<Profile, "age" | "city" | "gender">;
-  prefs: Pick<Prefs, "ageMin" | "ageMax" | "cities">;
+  prefs: Pick<Prefs, "ageMin" | "ageMax" | "cities" | "seeking">;
 }): boolean {
   const { age, city, gender } = member.profile;
-  const { ageMin, ageMax, cities } = member.prefs;
+  const { ageMin, ageMax, cities, seeking } = member.prefs;
   return (
     typeof age === "number" &&
     Number.isInteger(age) &&
@@ -139,6 +150,7 @@ export function isProfileComplete(member: {
     typeof city === "string" &&
     city.trim().length >= 2 &&
     (gender === "man" || gender === "woman") &&
+    (seeking === "men" || seeking === "women" || seeking === "either") &&
     typeof ageMin === "number" &&
     Number.isInteger(ageMin) &&
     typeof ageMax === "number" &&

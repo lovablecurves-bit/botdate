@@ -133,6 +133,7 @@ async function memberFromSignIn(profile: XProfile, ref: string | null) {
         smoking: "any",
         kids: "any",
         intent: "any",
+        seeking: null,
         niceToHaves: "",
         locked: false,
       },

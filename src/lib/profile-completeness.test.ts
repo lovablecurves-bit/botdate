@@ -34,6 +34,7 @@ test("a new X signup stores unknown age, city, gender, and preferences", async (
     assert.equal(member.prefs.ageMin, null);
     assert.equal(member.prefs.ageMax, null);
     assert.equal(member.prefs.cities, null);
+    assert.equal(member.prefs.seeking, null);
     assert.equal(member.prefs.smoking, "any");
     assert.equal(listDirectory(ctx).some((card) => card.id === created.userId), false);
 
@@ -56,6 +57,7 @@ test("a new X signup stores unknown age, city, gender, and preferences", async (
     assert.equal(fallback.profile.occupation, "");
     assert.equal(fallback.prefs.ageMin, null);
     assert.equal(fallback.prefs.cities, null);
+    assert.equal(fallback.prefs.seeking, null);
     assert.equal(fallback.profile.bio, "Analytical.");
   } finally {
     ctx.close();
@@ -76,7 +78,7 @@ test("browse, get_member, and matching skip an incomplete profile until update_m
     assert.equal(missing?.status, 404);
     assert.equal(listShortlist(ctx, "avery").cards.some((card) => card.person.id === created.userId), false);
 
-    const filled = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", {
+    const withoutSeeking = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", {
       age: 32,
       city: "San Francisco",
       gender: "Woman",
@@ -89,11 +91,20 @@ test("browse, get_member, and matching skip an incomplete profile until update_m
       intent: "serious",
       locked: true,
     });
+    assert.equal(withoutSeeking?.status, 200);
+    assert.equal(listShortlist(ctx, "avery").cards.some((card) => card.person.id === created.userId), false);
+    assert.equal(listDirectory(ctx).some((card) => card.id === created.userId), false);
+
+    const rejected = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", { seeking: "everyone" });
+    assert.equal(rejected?.status, 400);
+
+    const filled = callTool(ctx, getMember(ctx, created.userId)!, "update_my_profile", { seeking: "Women" });
     assert.equal(filled?.status, 200);
-    const body = filled?.body as { member: { profile: { gender: string; city: string; age: number } } };
+    const body = filled?.body as { member: { profile: { gender: string; city: string; age: number }; preferences: { seeking: string } } };
     assert.equal(body.member.profile.gender, "woman");
     assert.equal(body.member.profile.city, "San Francisco");
     assert.equal(body.member.profile.age, 32);
+    assert.equal(body.member.preferences.seeking, "women");
 
     const visible = callTool(ctx, viewer, "browse_members", { city: "San Francisco" });
     assert.equal((visible?.body as { members: { id: string }[] }).members.some((member) => member.id === created.userId), true);
@@ -208,6 +219,8 @@ test("the placeholder backfill nulls only the exact signup defaults", async () =
     assert.equal(realPrefs?.ageMin, 28);
     assert.equal(realPrefs?.cities, '["Oakland"]');
     assert.equal(realPrefs?.smoking, "no");
+    assert.equal(realPrefs?.seeking, null);
+    assert.equal(placeholderPrefs?.seeking, null);
     applyProfileMigration(ctx.sqlite);
     assert.equal(ctx.db.select().from(profiles).all().find((row) => row.userId === "x_real")?.age, 30);
   } finally {

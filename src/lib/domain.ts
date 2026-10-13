@@ -22,7 +22,9 @@ import {
   type KidsStance,
   type Member,
   type MemberInput,
+  parseSeeking,
   type ProposalStatus,
+  type Seeking,
   type SmokingFilter,
   type Voice,
 } from "./types";
@@ -234,6 +236,7 @@ export function listMembers(ctx: BotDateDb): Member[] {
         smoking: pref.smoking as SmokingFilter,
         kids: pref.kids as KidsFilter,
         intent: pref.intent as IntentFilter,
+        seeking: pref.seeking === "men" || pref.seeking === "women" || pref.seeking === "either" ? pref.seeking : null,
         niceToHaves: pref.niceToHaves,
         locked: asBool(pref.locked),
       },
@@ -270,6 +273,7 @@ export function memberToInput(member: Member): MemberInput {
     smokingFilter: member.prefs.smoking,
     kidsFilter: member.prefs.kids,
     intentFilter: member.prefs.intent,
+    seeking: member.prefs.seeking,
     niceToHaves: member.prefs.niceToHaves,
     locked: member.prefs.locked,
   };
@@ -1123,6 +1127,7 @@ export type BotProfilePatch = {
   smokingFilter?: SmokingFilter;
   kidsFilter?: KidsFilter;
   intentFilter?: IntentFilter;
+  seeking?: Seeking | null;
   locked?: boolean;
 };
 
@@ -1208,6 +1213,10 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
     if (!oneOf(patch.intentFilter, ["serious", "casual", "any"] as const)) return fail("intent filter must be serious, casual, or any.");
     next.intentFilter = patch.intentFilter;
   }
+  if (patch.seeking !== undefined) {
+    if (patch.seeking !== null && !parseSeeking(patch.seeking)) return fail("seeking must be men, women, or either.");
+    next.seeking = patch.seeking;
+  }
   if (patch.niceToHaves !== undefined) {
     const niceToHaves = cleanFreeText(patch.niceToHaves, 400);
     next.niceToHaves = niceToHaves;
@@ -1240,6 +1249,7 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
       smoking: next.smokingFilter,
       kids: next.kidsFilter,
       intent: next.intentFilter,
+      seeking: next.seeking,
       niceToHaves: next.niceToHaves,
       locked: next.locked,
     })
@@ -1270,6 +1280,7 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
   if (!oneOf(input.smokingFilter, ["no", "any"] as const)) return fail("Choose a smoking dealbreaker.");
   if (!oneOf(input.kidsFilter, ["wants", "doesnt", "any"] as const)) return fail("Choose a kids dealbreaker.");
   if (!oneOf(input.intentFilter, ["serious", "casual", "any"] as const)) return fail("Choose an intent dealbreaker.");
+  if (input.seeking !== null && !parseSeeking(input.seeking)) return fail("seeking must be men, women, or either.");
   const niceToHaves = input.niceToHaves.trim();
   if (niceToHaves.length > 400) return fail("Keep nice-to-haves under 400 characters.");
   const voice = voiceForGender(input.gender);
@@ -1299,6 +1310,7 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
       smoking: input.smokingFilter,
       kids: input.kidsFilter,
       intent: input.intentFilter,
+      seeking: input.seeking,
       niceToHaves,
       locked: input.locked,
     })
