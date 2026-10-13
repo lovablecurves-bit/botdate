@@ -52,6 +52,10 @@ export async function SignInScreen({
             <a className="btn primary wide" href={startHref} data-testid="sign-in-x">
               Sign in with X
             </a>
+            <a className="btn demo-hero wide" href="/demo" data-testid="see-a-demo">
+              See a demo
+            </a>
+            <p className="help">No account needed. The demo uses sample data, not real members.</p>
             <p className="founding-pitch" data-testid="founding-pitch">
               {FOUNDING_PITCH}
             </p>

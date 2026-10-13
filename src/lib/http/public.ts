@@ -13,6 +13,7 @@ const OPEN = [
   /^\/video\/embed\/?$/,
   /^\/video\/botdate-how-it-works\.(?:mp4|png)$/,
   /^\/preview\/[a-z0-9-]+\.png$/,
+  /^\/demo\/?$/,
 ];
 
 /** Icons, manifest, and Next static files. Middleware must not send these to login. */
