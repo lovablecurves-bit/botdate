@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { loginAction, resetDemoAction } from "@/app/actions";
+import { HomeFooter, HomeShowcase } from "@/components/home-showcase";
 import { Portrait } from "@/components/person";
 import { Wordmark } from "@/components/wordmark";
 import { Banner } from "@/components/banner";
@@ -37,82 +37,81 @@ export async function SignInScreen({
   const [featured, ...rest] = roster;
 
   return (
-    <main className="login">
-      <header className="page-head">
-        <p className="wordmark splash">
-          <Wordmark />
-        </p>
-        <h1>{LANDING_LINE.slice(0, LANDING_LINE.indexOf(". ") + 1)}</h1>
-        <p className="lede">{LANDING_LINE.slice(LANDING_LINE.indexOf(". ") + 2)}</p>
-      </header>
-      <Banner>{notice}</Banner>
-      <section className="stack tight">
-        <a className="btn primary wide" href={startHref} data-testid="sign-in-x">
-          Sign in with X
-        </a>
-        <p className="founding-pitch" data-testid="founding-pitch">
-          {FOUNDING_PITCH}
-        </p>
-        {spotsLeft === null ? null : (
-          <p className="founding-spots" data-testid="founding-spots">
-            {foundingSpotCopy(spotsLeft)}
-          </p>
-        )}
-        <p className="help">
-          {spotsLeft === 0 && billing
-            ? "Founding spots are full. Membership is $4.20/mo."
-            : xReady
-              ? "Sign in with X creates your account. Founding members skip checkout."
-              : "Sign in with X creates your account. Demo members below are only for this local copy."}
-        </p>
-      </section>
-      {featured ? (
-        <section className="featured">
-          <Portrait name={featured.displayName} accent={featured.accent} />
-          <div className="person-copy">
-            <h2>{featured.displayName}</h2>
-            <p className="demo-note">{DEMO_NOTES[featured.id]}</p>
-          </div>
-          <form action={loginAction}>
-            <input type="hidden" name="userId" value={featured.id} />
-            <SubmitButton className="btn primary wide" pendingLabel="Opening…">
-              Continue as {featured.displayName}
-            </SubmitButton>
-          </form>
-        </section>
-      ) : null}
-      {rest.length > 0 ? (
-        <section className="stack tight">
-          <h2 className="section-label">Other demo members</h2>
-          {rest.map((person) => (
-            <form key={person.id} action={loginAction} className="member-row">
-              <input type="hidden" name="userId" value={person.id} />
-              <div>
-                <h3>{person.displayName}</h3>
-                <p className="demo-note">{person.locked ? DEMO_NOTES[person.id] : "Dealbreakers not locked yet."}</p>
+    <div className="home-page">
+      <main>
+        <div className="login">
+          <header className="page-head">
+            <p className="wordmark splash">
+              <Wordmark />
+            </p>
+            <h1>{LANDING_LINE.slice(0, LANDING_LINE.indexOf(". ") + 1)}</h1>
+            <p className="lede">{LANDING_LINE.slice(LANDING_LINE.indexOf(". ") + 2)}</p>
+          </header>
+          <Banner>{notice}</Banner>
+          <section className="stack tight">
+            <a className="btn primary wide" href={startHref} data-testid="sign-in-x">
+              Sign in with X
+            </a>
+            <p className="founding-pitch" data-testid="founding-pitch">
+              {FOUNDING_PITCH}
+            </p>
+            {spotsLeft === null ? null : (
+              <p className="founding-spots" data-testid="founding-spots">
+                {foundingSpotCopy(spotsLeft)}
+              </p>
+            )}
+            <p className="help">
+              {spotsLeft === 0 && billing
+                ? "Founding spots are full. Membership is $4.20/mo."
+                : xReady
+                  ? "Sign in with X creates your account. Founding members skip checkout."
+                  : "Sign in with X creates your account. Demo members below are only for this local copy."}
+            </p>
+          </section>
+          {featured ? (
+            <section className="featured">
+              <Portrait name={featured.displayName} accent={featured.accent} />
+              <div className="person-copy">
+                <h2>{featured.displayName}</h2>
+                <p className="demo-note">{DEMO_NOTES[featured.id]}</p>
               </div>
-              <SubmitButton className="btn ghost wide" pendingLabel="Opening…">
-                Enter as {person.displayName.split(" ")[0]}
+              <form action={loginAction}>
+                <input type="hidden" name="userId" value={featured.id} />
+                <SubmitButton className="btn primary wide" pendingLabel="Opening…">
+                  Continue as {featured.displayName}
+                </SubmitButton>
+              </form>
+            </section>
+          ) : null}
+          {rest.length > 0 ? (
+            <section className="stack tight">
+              <h2 className="section-label">Other demo members</h2>
+              {rest.map((person) => (
+                <form key={person.id} action={loginAction} className="member-row">
+                  <input type="hidden" name="userId" value={person.id} />
+                  <div>
+                    <h3>{person.displayName}</h3>
+                    <p className="demo-note">{person.locked ? DEMO_NOTES[person.id] : "Dealbreakers not locked yet."}</p>
+                  </div>
+                  <SubmitButton className="btn ghost wide" pendingLabel="Opening…">
+                    Enter as {person.displayName.split(" ")[0]}
+                  </SubmitButton>
+                </form>
+              ))}
+            </section>
+          ) : null}
+          {xReady ? null : (
+            <form action={resetDemoAction} className="reset-row">
+              <p className="help">If a previous pass changed the seed, reset brings every demo member, desk, and date back.</p>
+              <SubmitButton className="btn ghost wide" pendingLabel="Resetting…">
+                Reset demo data
               </SubmitButton>
             </form>
-          ))}
-        </section>
-      ) : null}
-      {xReady ? null : (
-        <form action={resetDemoAction} className="reset-row">
-          <p className="help">If a previous pass changed the seed, reset brings every demo member, desk, and date back.</p>
-          <SubmitButton className="btn ghost wide" pendingLabel="Resetting…">
-            Reset demo data
-          </SubmitButton>
-        </form>
-      )}
-      <footer className="login-foot">
-        <p className="credit">BotDate · by Lovable Curves</p>
-        <nav className="text-links legal-links" aria-label="Legal">
-          <Link href="/privacy">Privacy</Link>
-          <Link href="/terms">Terms</Link>
-        </nav>
-      </footer>
-    </main>
+          )}
+        </div>
+        <HomeShowcase startHref={startHref} />
+      </main>
+      <HomeFooter />
+    </div>
   );
 }
