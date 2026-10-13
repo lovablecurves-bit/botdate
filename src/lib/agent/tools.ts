@@ -13,7 +13,7 @@ import {
   type BotProfilePatch,
 } from "../domain";
 import { representedBy } from "../labels";
-import { isProfileComplete, matchIdFor, parseSeeking, type Gender, type Intent, type KidsStance, type Member, type Seeking, type SmokingFilter } from "../types";
+import { isAllowedMemberAge, isProfileComplete, matchIdFor, MEMBER_AGE_ERROR, parseSeeking, type Gender, type Intent, type KidsStance, type Member, type Seeking, type SmokingFilter } from "../types";
 import type { AgentResponse } from "./dispatch";
 
 function text(value: unknown): string | undefined {
@@ -156,6 +156,7 @@ function profilePatch(args: Record<string, unknown>): BotProfilePatch | { error:
   if (args.age !== undefined) {
     const age = int(args.age);
     if (age === undefined) return { error: "age must be a whole number." };
+    if (!isAllowedMemberAge(age)) return { error: MEMBER_AGE_ERROR };
     patch.age = age;
   }
   if (args.gender !== undefined) {

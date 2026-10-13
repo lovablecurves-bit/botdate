@@ -30,6 +30,22 @@ function withSeeking(member: Member, seeking: Seeking | null, gender: Member["pr
   };
 }
 
+test("an age under 18 or over 99 is incomplete and stays out of matching", () => {
+  const jordan = demoMember("jordan");
+  const minor = { ...avery, profile: { ...avery.profile, age: 17 } };
+  const tooOld = { ...avery, profile: { ...avery.profile, age: 100 } };
+  assert.equal(isProfileComplete(minor), false);
+  assert.equal(isProfileComplete(tooOld), false);
+  assert.equal(isProfileComplete({ ...avery, profile: { ...avery.profile, age: 18 } }), true);
+  assert.equal(isProfileComplete({ ...avery, profile: { ...avery.profile, age: 99 } }), true);
+  assert.equal(mutualPass(minor, jordan), false);
+  assert.equal(mutualPass(jordan, minor), false);
+  assert.equal(primaryHold(jordan, minor), "inactive");
+  const includesMinor = evaluateHardFilters({ ...jordan.prefs, ageMin: 16, ageMax: 20 }, minor.profile).find((check) => check.key === "age");
+  assert.equal(includesMinor?.pass, false);
+  assert.match(includesMinor?.detail ?? "", /between 18 and 99/);
+});
+
 test("seeking is required before a profile can match", () => {
   const open = withSeeking(avery, null);
   assert.equal(isProfileComplete(open), false);

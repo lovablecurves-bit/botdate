@@ -10,7 +10,7 @@ import {
   saveMember,
   sendBotNote,
 } from "../domain";
-import { parseSeeking, type Gender, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
+import { isAllowedMemberAge, MEMBER_AGE_ERROR, parseSeeking, type Gender, type Intent, type IntentFilter, type KidsFilter, type KidsStance, type SmokingFilter } from "../types";
 import { authenticateAgent } from "./tokens";
 
 export type AgentResponse = { status: number; body: unknown };
@@ -139,6 +139,7 @@ export function dispatchAgent(input: {
     const datingIntent = patch.datingIntent === undefined ? undefined : oneOf(patch.datingIntent, ["serious", "casual"] as const);
     if (patch.gender !== undefined && !gender) return { status: 400, body: { error: "gender must be man or woman." } };
     if (patch.age !== undefined && int(patch.age) === undefined) return { status: 400, body: { error: "age must be a whole number." } };
+    if (patch.age !== undefined && !isAllowedMemberAge(int(patch.age))) return { status: 400, body: { error: MEMBER_AGE_ERROR } };
     if (patch.city !== undefined && text(patch.city) === undefined) return { status: 400, body: { error: "city must be a string." } };
     if (patch.occupation !== undefined && text(patch.occupation) === undefined) return { status: 400, body: { error: "occupation must be a string." } };
     if (patch.bio !== undefined && text(patch.bio) === undefined) return { status: 400, body: { error: "bio must be a string." } };

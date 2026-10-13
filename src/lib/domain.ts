@@ -11,8 +11,12 @@ import { formatPacific, isFutureIso, isoToPacificLocal, pacificLocalToIso } from
 import {
   INTERESTS,
   canonicalPair,
+  isAllowedMemberAge,
   isProfileComplete,
   matchIdFor,
+  MEMBER_AGE_ERROR,
+  MIN_MEMBER_AGE,
+  MAX_MEMBER_AGE,
   voiceForGender,
   type ChannelChoice,
   type Gender,
@@ -1138,7 +1142,7 @@ function cleanFreeText(value: string, max: number): string {
 function ageRangeOk(min: number | null, max: number | null): boolean {
   if (min == null && max == null) return true;
   if (min == null || max == null) return false;
-  return Number.isInteger(min) && Number.isInteger(max) && min >= 18 && max <= 99 && min <= max;
+  return Number.isInteger(min) && Number.isInteger(max) && min >= MIN_MEMBER_AGE && max <= MAX_MEMBER_AGE && min <= max;
 }
 
 function cleanCities(cities: string[] | null): string[] | null {
@@ -1162,7 +1166,7 @@ export function applyBotProfile(ctx: BotDateDb, userId: string, patch: BotProfil
     next.gender = patch.gender;
   }
   if (patch.age !== undefined) {
-    if (!Number.isInteger(patch.age) || patch.age < 18 || patch.age > 99) return fail("Age needs to be between 18 and 99.");
+    if (!isAllowedMemberAge(patch.age)) return fail(MEMBER_AGE_ERROR);
     next.age = patch.age;
   }
   if (patch.city !== undefined) {
@@ -1264,7 +1268,7 @@ export function saveMember(ctx: BotDateDb, userId: string, input: MemberInput): 
   const displayName = input.displayName.trim();
   if (displayName.length < 1 || displayName.length > 60) return fail("Use a name under 60 characters.");
   if (input.gender !== null && input.gender !== "man" && input.gender !== "woman") return fail("Choose Man or Woman.");
-  if (input.age !== null && (!Number.isInteger(input.age) || input.age < 18 || input.age > 99)) return fail("Age needs to be between 18 and 99.");
+  if (input.age !== null && !isAllowedMemberAge(input.age)) return fail(MEMBER_AGE_ERROR);
   const city = input.city?.trim() ?? "";
   if (city.length > 80 || (city.length > 0 && city.length < 2)) return fail("Add a city.");
   const occupation = input.occupation.trim();

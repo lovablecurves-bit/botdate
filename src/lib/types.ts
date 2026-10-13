@@ -129,6 +129,15 @@ export function genderLabel(gender: Gender | null): string {
   return "";
 }
 
+export const MIN_MEMBER_AGE = 18;
+export const MAX_MEMBER_AGE = 99;
+export const MEMBER_AGE_ERROR = "Age needs to be between 18 and 99.";
+
+/** A member's own age. Null is unknown, not a minor. Preference ranges use the same bounds. */
+export function isAllowedMemberAge(age: number | null | undefined): age is number {
+  return typeof age === "number" && Number.isInteger(age) && age >= MIN_MEMBER_AGE && age <= MAX_MEMBER_AGE;
+}
+
 export function parseSeeking(value: string): Seeking | null {
   const normalized = value.trim().toLowerCase();
   if (normalized === "men" || normalized === "women" || normalized === "either") return normalized;
@@ -143,10 +152,7 @@ export function isProfileComplete(member: {
   const { age, city, gender } = member.profile;
   const { ageMin, ageMax, cities, seeking } = member.prefs;
   return (
-    typeof age === "number" &&
-    Number.isInteger(age) &&
-    age >= 18 &&
-    age <= 99 &&
+    isAllowedMemberAge(age) &&
     typeof city === "string" &&
     city.trim().length >= 2 &&
     (gender === "man" || gender === "woman") &&
@@ -155,8 +161,8 @@ export function isProfileComplete(member: {
     Number.isInteger(ageMin) &&
     typeof ageMax === "number" &&
     Number.isInteger(ageMax) &&
-    ageMin >= 18 &&
-    ageMax <= 99 &&
+    ageMin >= MIN_MEMBER_AGE &&
+    ageMax <= MAX_MEMBER_AGE &&
     ageMin <= ageMax &&
     Array.isArray(cities) &&
     cities.length > 0

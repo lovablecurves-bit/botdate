@@ -1,4 +1,4 @@
-import { isProfileComplete, type Gender, type KidsFilter, type KidsStance, type Member, type Prefs, type Profile, type Seeking } from "../types";
+import { isAllowedMemberAge, isProfileComplete, type Gender, type KidsFilter, type KidsStance, type Member, type Prefs, type Profile, type Seeking } from "../types";
 
 export type FilterKey = "age" | "city" | "smoking" | "kids" | "intent" | "seeking";
 
@@ -50,7 +50,7 @@ function kidsOk(filter: KidsFilter, stance: KidsStance): boolean {
 
 export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterCheck[] {
   const agePass =
-    profile.age != null &&
+    isAllowedMemberAge(profile.age) &&
     filters.ageMin != null &&
     filters.ageMax != null &&
     profile.age >= filters.ageMin &&
@@ -83,9 +83,11 @@ export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterChe
     {
       key: "age",
       pass: agePass,
-      detail: agePass
-        ? `Age ${profile.age} is inside ${filters.ageMin}–${filters.ageMax}`
-        : `Age ${profile.age} is outside ${filters.ageMin}–${filters.ageMax}`,
+      detail: profile.age != null && !isAllowedMemberAge(profile.age)
+        ? `Age ${profile.age} must be between 18 and 99`
+        : agePass
+          ? `Age ${profile.age} is inside ${filters.ageMin}–${filters.ageMax}`
+          : `Age ${profile.age} is outside ${filters.ageMin}–${filters.ageMax}`,
     },
     {
       key: "city",
