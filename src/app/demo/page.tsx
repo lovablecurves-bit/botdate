@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Wordmark } from "@/components/wordmark";
 import { DEMO_BANNER, SAMPLE_CHAT, SAMPLE_DATE, SAMPLE_MEMBER, SAMPLE_SHORTLIST } from "@/lib/demo/exhibit";
+import { BOTDATE_PUBLIC_URL, sharePreview } from "@/lib/share";
 
-export const metadata = { title: "Demo" };
+const preview = sharePreview(`${BOTDATE_PUBLIC_URL}/demo`);
+
+export const metadata: Metadata = {
+  title: "Demo",
+  description: preview.description,
+  openGraph: preview.openGraph,
+  twitter: preview.twitter,
+};
 
 function DemoBanner() {
   return (
