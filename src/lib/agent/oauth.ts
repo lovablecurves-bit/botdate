@@ -14,6 +14,10 @@ export const MCP_SCOPE = "mcp";
 export const ACCESS_TOKEN_SECONDS = 60 * 60;
 export const REFRESH_TOKEN_SECONDS = 60 * 60 * 24 * 30;
 const AUTH_CODE_SECONDS = 10 * 60;
+/** A client that retries the same code exchange (lost response, timeout) within this window still gets tokens. */
+export const CODE_RETRY_GRACE_SECONDS = 120;
+/** RFC 7636: code_verifier is 43-128 unreserved characters, including "." and "~". */
+const VERIFIER = /^[A-Za-z0-9._~-]{43,128}$/;
 
 const BLOCKED_SCHEMES = new Set(["javascript", "data", "file", "blob", "vbscript"]);
 
@@ -301,7 +305,7 @@ export function storeMcpAuthorizationCode(ctx: BotDateDb, pending: PendingMcpOau
 }
 
 function pkceMatches(verifier: string, challenge: string): boolean {
-  if (!/^[A-Za-z0-9_-]{43,128}$/.test(verifier)) return false;
+  if (!VERIFIER.test(verifier)) return false;
   if (!/^[A-Za-z0-9_-]{43,128}$/.test(challenge)) return false;
   let actual: string;
   try {
@@ -358,11 +362,20 @@ function revokeRefreshFamily(ctx: BotDateDb, userId: string, clientId: string) {
   }
 }
 
-function invalidGrant(description: string) {
-  return { status: 400, body: { error: "invalid_grant", error_description: description } };
+export type GrantResult = { status: number; body: Record<string, unknown>; reason?: string };
+
+/** `reason` is for server logs only; it never contains a code, token, or verifier. */
+function invalidGrant(description: string, reason: string): GrantResult {
+  return { status: 400, body: { error: "invalid_grant", error_description: description }, reason };
 }
 
-export function grantMcpToken(ctx: BotDateDb, form: OauthForm): { status: number; body: Record<string, unknown> } {
+function secondsSince(iso: string | null, now = Date.now()): number | null {
+  if (!iso) return null;
+  const parsed = Date.parse(iso);
+  return Number.isFinite(parsed) ? Math.round((now - parsed) / 1000) : null;
+}
+
+export function grantMcpToken(ctx: BotDateDb, form: OauthForm): GrantResult {
   const grant = form.grant_type ?? "";
   const clientId = form.client_id ?? "";
   if (!clientId || !ctx.db.select().from(oauthClients).where(eq(oauthClients.clientId, clientId)).get()) {
@@ -373,42 +386,56 @@ export function grantMcpToken(ctx: BotDateDb, form: OauthForm): { status: number
   return { status: 400, body: { error: "unsupported_grant_type", error_description: "Use authorization_code or refresh_token." } };
 }
 
-function grantAuthorizationCode(ctx: BotDateDb, form: OauthForm, clientId: string): { status: number; body: Record<string, unknown> } {
+function grantAuthorizationCode(ctx: BotDateDb, form: OauthForm, clientId: string): GrantResult {
   const code = form.code ?? "";
   const redirectUri = form.redirect_uri ?? "";
   const verifier = form.code_verifier ?? "";
-  if (!code || !redirectUri || !verifier) return invalidGrant("code, redirect_uri, and code_verifier are required.");
-  const row = ctx.db.select().from(oauthCodes).where(eq(oauthCodes.codeHash, hashAgentToken(code))).get();
-  if (!row || row.usedAt || row.clientId !== clientId || row.redirectUri !== redirectUri) return invalidGrant("That authorization code is not valid.");
-  if (Date.parse(row.expiresAt) <= Date.now()) return invalidGrant("That authorization code expired.");
-  if (form.resource && form.resource.trim().replace(/\/$/, "") !== row.resource.replace(/\/$/, "")) {
-    return invalidGrant("resource does not match the authorization request.");
+  if (!code || !redirectUri || !verifier) {
+    const missing = [!code && "code", !redirectUri && "redirect_uri", !verifier && "code_verifier"].filter(Boolean).join(",");
+    return invalidGrant("code, redirect_uri, and code_verifier are required.", `missing_params:${missing}`);
   }
-  if (!pkceMatches(verifier, row.codeChallenge)) return invalidGrant("PKCE verification failed.");
+  const row = ctx.db.select().from(oauthCodes).where(eq(oauthCodes.codeHash, hashAgentToken(code))).get();
+  if (!row) return invalidGrant("That authorization code is not valid.", "code_not_found");
+  const age = secondsSince(row.createdAt);
+  if (row.clientId !== clientId) return invalidGrant("That authorization code is not valid.", `client_mismatch age=${age}s`);
+  if (row.redirectUri !== redirectUri) return invalidGrant("That authorization code is not valid.", `redirect_uri_mismatch age=${age}s`);
+  if (Date.parse(row.expiresAt) <= Date.now()) return invalidGrant("That authorization code expired.", `code_expired age=${age}s`);
+  if (form.resource && form.resource.trim().replace(/\/$/, "") !== row.resource.replace(/\/$/, "")) {
+    return invalidGrant("resource does not match the authorization request.", `resource_mismatch age=${age}s`);
+  }
+  if (!pkceMatches(verifier, row.codeChallenge)) {
+    const shape = VERIFIER.test(verifier) ? "verifier_hash_mismatch" : `verifier_bad_format len=${verifier.length}`;
+    return invalidGrant("PKCE verification failed.", `pkce_failed ${shape} age=${age}s`);
+  }
+  const usedAgo = secondsSince(row.usedAt);
+  if (row.usedAt && (usedAgo === null || usedAgo > CODE_RETRY_GRACE_SECONDS)) {
+    return invalidGrant("That authorization code was already used.", `code_reused used_ago=${usedAgo}s age=${age}s`);
+  }
   const now = new Date();
-  ctx.db.update(oauthCodes).set({ usedAt: now.toISOString() }).where(eq(oauthCodes.id, row.id)).run();
+  if (!row.usedAt) ctx.db.update(oauthCodes).set({ usedAt: now.toISOString() }).where(eq(oauthCodes.id, row.id)).run();
   const access = issueCompanionAgentToken(ctx, row.userId, new Date(now.getTime() + ACCESS_TOKEN_SECONDS * 1000).toISOString());
-  if (!access) return invalidGrant("That member is not available.");
+  if (!access) return invalidGrant("That member is not available.", "member_unavailable");
   markConnectSeen(ctx, row.userId);
   const refresh = issueRefresh(ctx, clientId, row.userId, access.id, now);
-  return { status: 200, body: tokenBody(access.token, refresh) };
+  return { status: 200, body: tokenBody(access.token, refresh), reason: row.usedAt ? `code_retry_within_grace used_ago=${usedAgo}s` : undefined };
 }
 
-function grantRefreshToken(ctx: BotDateDb, form: OauthForm, clientId: string): { status: number; body: Record<string, unknown> } {
+function grantRefreshToken(ctx: BotDateDb, form: OauthForm, clientId: string): GrantResult {
   const refresh = form.refresh_token ?? "";
-  if (!refresh.startsWith("bdr_")) return invalidGrant("That refresh token is not valid.");
+  if (!refresh.startsWith("bdr_")) return invalidGrant("That refresh token is not valid.", "refresh_bad_format");
   const row = ctx.db.select().from(oauthRefreshTokens).where(eq(oauthRefreshTokens.tokenHash, hashAgentToken(refresh))).get();
-  if (!row || row.clientId !== clientId) return invalidGrant("That refresh token is not valid.");
+  if (!row) return invalidGrant("That refresh token is not valid.", "refresh_not_found");
+  if (row.clientId !== clientId) return invalidGrant("That refresh token is not valid.", "refresh_client_mismatch");
   if (row.revokedAt) {
     revokeRefreshFamily(ctx, row.userId, row.clientId);
-    return invalidGrant("That refresh token was already used.");
+    return invalidGrant("That refresh token was already used.", `refresh_reused revoked_ago=${secondsSince(row.revokedAt)}s`);
   }
-  if (Date.parse(row.expiresAt) <= Date.now()) return invalidGrant("That refresh token expired.");
+  if (Date.parse(row.expiresAt) <= Date.now()) return invalidGrant("That refresh token expired.", "refresh_expired");
   const now = new Date();
   ctx.db.update(oauthRefreshTokens).set({ revokedAt: now.toISOString() }).where(eq(oauthRefreshTokens.id, row.id)).run();
   revokeAgentTokenId(ctx, row.accessTokenId);
   const access = issueCompanionAgentToken(ctx, row.userId, new Date(now.getTime() + ACCESS_TOKEN_SECONDS * 1000).toISOString());
-  if (!access) return invalidGrant("That member is not available.");
+  if (!access) return invalidGrant("That member is not available.", "member_unavailable");
   const next = issueRefresh(ctx, clientId, row.userId, access.id, now);
   return { status: 200, body: tokenBody(access.token, next) };
 }
