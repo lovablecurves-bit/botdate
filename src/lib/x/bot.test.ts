@@ -408,6 +408,17 @@ describe("BotDateApp auto-posting", { concurrency: false }, () => {
         assert.equal(failed.status, 502);
         assert.equal(JSON.stringify(await failed.json()).includes(ACCESS), false);
 
+        globalThis.fetch = async () =>
+          new Response(
+            JSON.stringify({ title: "Forbidden", detail: "You are not permitted to perform this action.", status: 403 }),
+            { status: 403 },
+          );
+        const refused = await POST(jsonRequest("POST", { text: "nope", reply_to_id: "1001" }, `Bearer ${POSTER}`));
+        assert.equal(refused.status, 502);
+        const refusedBody = (await refused.json()) as { x_status: number; x_error: string };
+        assert.equal(refusedBody.x_status, 403);
+        assert.equal(refusedBody.x_error, "Forbidden | You are not permitted to perform this action.");
+
         saveBotCredentials(db, {
           xUserId: "8675309",
           username: "BotDateApp",

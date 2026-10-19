@@ -74,8 +74,52 @@ export async function postBotTweet(ctx: BotDateDb, input: PostInput, fetchImpl: 
   });
   const json = (await response.json().catch(() => null)) as { data?: { id?: unknown } } | null;
   const id = json?.data && typeof json.data.id === "string" ? json.data.id : "";
-  if (!response.ok || !TWEET_ID.test(id)) throw new BotPosterError("X did not create the post.", 502);
+  if (!response.ok || !TWEET_ID.test(id)) throw new XPostError(response.status, redact(describeXError(json), accessToken));
   return { id };
+}
+
+/** X refused the post. Carries X's own status code and error text so callers can see why. */
+export class XPostError extends BotPosterError {
+  readonly xStatus: number;
+  readonly xError: string;
+
+  constructor(xStatus: number, xError: string) {
+    super(`X did not create the post (X status ${xStatus}): ${xError}`, 502);
+    this.name = "XPostError";
+    this.xStatus = xStatus;
+    this.xError = xError;
+  }
+}
+
+function redact(text: string, secret: string): string {
+  return secret ? text.split(secret).join("[redacted]") : text;
+}
+
+/** Pull the human-readable reason out of an X API v2 error body. */
+export function describeXError(json: unknown): string {
+  if (!json || typeof json !== "object") return "X returned no error details.";
+  const record = json as Record<string, unknown>;
+  const parts: string[] = [];
+  const add = (value: unknown) => {
+    if (typeof value === "string" && value.trim() && !parts.includes(value.trim())) parts.push(value.trim());
+  };
+  add(record.title);
+  add(record.detail);
+  if (Array.isArray(record.errors)) {
+    for (const item of record.errors) {
+      if (item && typeof item === "object") {
+        const err = item as Record<string, unknown>;
+        add(err.title);
+        add(err.detail);
+        add(err.message);
+      }
+    }
+  }
+  if (!parts.length) {
+    const raw = JSON.stringify(json);
+    return raw.length > 500 ? `${raw.slice(0, 500)}...` : raw;
+  }
+  return parts.join(" | ").slice(0, 1000);
 }
 
 export type MentionsResult = { data: unknown[]; meta: Record<string, unknown> };
