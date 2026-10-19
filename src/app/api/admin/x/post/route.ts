@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { withDb } from "@/lib/db/open";
 import { posterAuthorized } from "@/lib/x/admin-auth";
 import { BotPosterError } from "@/lib/x/bot-credentials";
-import { parsePostBody, postBotTweet } from "@/lib/x/poster";
+import { XPostError, parsePostBody, postBotTweet } from "@/lib/x/poster";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +27,13 @@ export async function POST(request: Request) {
     const result = await withDb((db) => postBotTweet(db, parsed.value));
     return NextResponse.json({ id: result.id }, { headers: NO_STORE });
   } catch (error) {
+    if (error instanceof XPostError) {
+      console.error(`BotDateApp post rejected by X: status ${error.xStatus}: ${error.xError}`);
+      return NextResponse.json(
+        { error: error.message, x_status: error.xStatus, x_error: error.xError },
+        { status: error.status, headers: NO_STORE },
+      );
+    }
     if (error instanceof BotPosterError) return jsonError(error.message, error.status);
     console.error(`BotDateApp post failed: ${error instanceof Error ? error.name : "Error"}`);
     return jsonError("X did not create the post.", 502);
