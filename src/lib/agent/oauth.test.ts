@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { eq } from "drizzle-orm";
 import { openDatabase, useAppDatabaseForTests } from "../db/open";
-import { users } from "../db/schema";
+import { oauthCodes, users } from "../db/schema";
 import { getMember } from "../domain";
 import { X_ME_URL, X_TOKEN_URL, codeChallenge, randomVerifier } from "../x/pkce";
 import { handleMcp } from "./mcp";
-import { acceptableRedirectUri, authorizationServerMetadata, protectedResourceMetadata, wwwAuthenticate } from "./oauth";
+import { acceptableRedirectUri, authorizationServerMetadata, protectedResourceMetadata, storeMcpAuthorizationCode, wwwAuthenticate } from "./oauth";
 import { issueAgentToken, memberForAgentToken } from "./tokens";
 
 const ORIGIN = "https://botdate.vercel.app";
@@ -188,7 +188,66 @@ test("adding the MCP URL signs in with X once, creates the member, and keeps a b
         }),
       }),
     );
-    assert.equal(again.status, 400);
+    assert.equal(again.status, 200, "a quick retry of the same exchange with the right verifier still succeeds");
+    const wrongVerifier = await token(
+      new Request(`${ORIGIN}/oauth/token`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: REDIRECT,
+          client_id: client.client_id,
+          code_verifier: randomVerifier(),
+        }),
+      }),
+    );
+    assert.equal(wrongVerifier.status, 400);
+    db.db.update(oauthCodes).set({ usedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString() }).run();
+    const stale = await token(
+      new Request(`${ORIGIN}/oauth/token`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: REDIRECT,
+          client_id: client.client_id,
+          code_verifier: verifier,
+        }),
+      }),
+    );
+    assert.equal(stale.status, 400);
+    assert.equal(((await stale.json()) as { error: string }).error, "invalid_grant");
+
+    const dotted = "abc.DEF~ghi-JKL_mno.PQR~stu-VWX_yz0.123~456-789_abc";
+    const dottedCode = storeMcpAuthorizationCode(
+      db,
+      {
+        clientId: client.client_id,
+        redirectUri: REDIRECT,
+        state: "s",
+        codeChallenge: codeChallenge(dotted),
+        resource: `${ORIGIN}/api/mcp`,
+        exp: Math.floor(Date.now() / 1000) + 600,
+      },
+      "x_42",
+    );
+    assert.ok(dottedCode);
+    const dottedExchange = await token(
+      new Request(`${ORIGIN}/oauth/token`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: dottedCode,
+          redirect_uri: REDIRECT,
+          client_id: client.client_id,
+          code_verifier: dotted,
+        }),
+      }),
+    );
+    assert.equal(dottedExchange.status, 200, "RFC 7636 verifiers may use . and ~");
 
     const refreshed = await token(
       new Request(`${ORIGIN}/oauth/token`, {
