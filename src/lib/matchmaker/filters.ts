@@ -42,6 +42,44 @@ function seekingDetail(seeking: Seeking | null, gender: Gender | null, pass: boo
   return pass ? `${label}, which matches seeking ${wanted}` : `${label}, and you are seeking ${wanted}`;
 }
 
+/** Cities in the Austin metro. A preference for "Greater Austin area" or "Austin area" accepts any of them. */
+const AUSTIN_METRO = [
+  "austin", "bastrop", "westlake", "west lake hills", "dripping springs", "bee cave", "lakeway", "round rock",
+  "cedar park", "georgetown", "pflugerville", "leander", "kyle", "buda", "manor", "elgin", "hutto", "lago vista",
+  "spicewood", "wimberley", "taylor", "liberty hill", "del valle", "rollingwood", "sunset valley",
+];
+
+/** "Bastrop, TX (Austin area)" -> "bastrop". */
+export function normalizeCity(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\([^)]*\)?/g, " ")
+    .replace(/,\s*(tx|texas)\b.*$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isAustinArea(city: string): boolean {
+  const lower = city.toLowerCase();
+  if (/austin area|greater austin/.test(lower)) return true;
+  return AUSTIN_METRO.includes(normalizeCity(city));
+}
+
+function isAreaPreference(entry: string): boolean {
+  return /greater austin|austin area|austin metro/.test(entry.toLowerCase());
+}
+
+/** Exact or normalized city match, or an Austin-area preference that covers an Austin-area city. */
+export function cityMatches(cities: string[] | null | undefined, city: string | null): boolean {
+  if (!city) return false;
+  const wanted = normalizeCity(city);
+  return (cities ?? []).some((entry) => {
+    if (entry === city) return true;
+    if (wanted && normalizeCity(entry) === wanted) return true;
+    return isAreaPreference(entry) && isAustinArea(city);
+  });
+}
+
 function kidsOk(filter: KidsFilter, stance: KidsStance): boolean {
   if (filter === "any") return true;
   if (filter === "wants") return stance === "wants" || stance === "open";
@@ -55,7 +93,7 @@ export function evaluateHardFilters(filters: Prefs, profile: Profile): FilterChe
     filters.ageMax != null &&
     profile.age >= filters.ageMin &&
     profile.age <= filters.ageMax;
-  const cityPass = profile.city != null && (filters.cities ?? []).includes(profile.city);
+  const cityPass = cityMatches(filters.cities, profile.city);
   const smokingPass = filters.smoking === "any" || profile.smoking === false;
   const kidsPass = kidsOk(filters.kids, profile.kids);
   const intentPass = filters.intent === "any" || filters.intent === profile.intent;

@@ -93,6 +93,17 @@ const TOOLS = [
     },
   },
   {
+    name: "shortlist_member",
+    description:
+      "Add one member to your shortlist so your bot can message them and propose dates. Both sides must clear each other's hard filters (age 18+ and range, cities, smoking, kids, intent, who they are seeking). Members who already fit are shortlisted automatically when you browse; browse_members and get_member show shortlisted, matchId, and the reason when someone is not a fit.",
+    inputSchema: {
+      type: "object",
+      properties: { memberId: { type: "string" } },
+      required: ["memberId"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "send_bot_message",
     description:
       "Call get_my_profile first and finish onboarding when the profile is incomplete. Send a bot-to-bot note. It is delivered without a human approval. Do not ping the human. Refuses while the matchmaker is paused, and refuses if the other member's subscription is inactive.",
