@@ -327,7 +327,7 @@ function proposalsFor(ctx: BotDateDb, matchId: string) {
     .all();
 }
 
-function ensureMutualMatches(ctx: BotDateDb, userId: string) {
+export function ensureMutualMatches(ctx: BotDateDb, userId: string) {
   const viewer = getMember(ctx, userId);
   if (!viewer?.prefs.locked || !isProfileComplete(viewer)) return;
   const now = new Date().toISOString();
@@ -1384,4 +1384,35 @@ export function wipeMemory(ctx: BotDateDb, userId: string): ActionResult {
     );
   }
   return ok();
+}
+
+export type ShortlistStatus = { shortlisted: boolean; matchId: string | null; hold: string | null };
+
+/** Whether `otherId` is on `viewerId`'s shortlist: a stored match row and both sides still clearing the hard filters. */
+export function shortlistStatus(ctx: BotDateDb, viewerId: string, otherId: string): ShortlistStatus {
+  const viewer = getMember(ctx, viewerId);
+  const other = getMember(ctx, otherId);
+  if (!viewer || !other || viewer.id === other.id) return { shortlisted: false, matchId: null, hold: "unavailable" };
+  const hold = primaryHold(viewer, other);
+  const id = matchIdFor(viewerId, otherId);
+  const row = ctx.db.select().from(matches).where(eq(matches.id, id)).get();
+  const shortlisted = Boolean(row) && hold === null && mutualPass(viewer, other);
+  return { shortlisted, matchId: shortlisted ? id : null, hold };
+}
+
+/** Add one member to the viewer's shortlist after checking the mutual fit. Persisted as a match row. */
+export function shortlistMember(ctx: BotDateDb, viewerId: string, otherId: string): { ok: true; matchId: string; created: boolean } | { ok: false; error: string; hold: string | null } {
+  const viewer = getMember(ctx, viewerId);
+  const other = getMember(ctx, otherId);
+  if (!viewer || !other || viewer.id === other.id) return { ok: false, error: "That member is not available.", hold: "unavailable" };
+  const before = Boolean(ctx.db.select().from(matches).where(eq(matches.id, matchIdFor(viewerId, otherId))).get());
+  const hold = primaryHold(viewer, other);
+  if (hold !== null || !mutualPass(viewer, other)) {
+    const label = hold ? HOLD_LABELS[hold] ?? hold : "Not a mutual fit";
+    return { ok: false, error: `Not a mutual fit: ${label}.`, hold };
+  }
+  ensureMutualMatches(ctx, viewerId);
+  const status = shortlistStatus(ctx, viewerId, otherId);
+  if (!status.shortlisted || !status.matchId) return { ok: false, error: "Could not add that member to the shortlist.", hold: status.hold };
+  return { ok: true, matchId: status.matchId, created: !before };
 }

@@ -3,6 +3,9 @@ import type { BotDateDb } from "../db/open";
 import {
   applyBotProfile,
   approveOffer,
+  ensureMutualMatches,
+  shortlistMember,
+  shortlistStatus,
   getDesk,
   getMember,
   listMembers,
@@ -13,6 +16,7 @@ import {
   type BotProfilePatch,
 } from "../domain";
 import { representedBy } from "../labels";
+import { HOLD_LABELS } from "../matchmaker/filters";
 import { isAllowedMemberAge, isProfileComplete, matchIdFor, MEMBER_AGE_ERROR, normalizeDealbreakers, parseSeeking, type Gender, type Intent, type KidsStance, type Member, type Seeking, type SmokingFilter } from "../types";
 import type { AgentResponse } from "./dispatch";
 import { onboardingGuidance } from "./onboarding";
@@ -111,7 +115,18 @@ export function browseMembers(ctx: BotDateDb, viewerId: string, filters: BrowseF
     }
     return true;
   });
-  return people.slice(0, limit).map((other) => profileBody(other, false));
+  ensureMutualMatches(ctx, viewerId);
+  return people.slice(0, limit).map((other) => ({ ...profileBody(other, false), ...shortlistFields(ctx, viewerId, other.id) }));
+}
+
+function shortlistFields(ctx: BotDateDb, viewerId: string, otherId: string) {
+  const status = shortlistStatus(ctx, viewerId, otherId);
+  return {
+    shortlisted: status.shortlisted,
+    matchId: status.matchId,
+    mutualFit: status.hold === null,
+    notShortlistedReason: status.shortlisted ? null : status.hold ? HOLD_LABELS[status.hold] ?? status.hold : "Not shortlisted yet; call shortlist_member.",
+  };
 }
 
 export function listBotInbox(ctx: BotDateDb, userId: string, matchId?: string) {
@@ -291,7 +306,18 @@ export function callTool(ctx: BotDateDb, member: Member, name: string, args: Rec
     if (!person || person.id === member.id || subscriptionBlocks(person) || !isProfileComplete(person)) {
       return { status: 404, body: { error: "That member is not available." } };
     }
-    return { status: 200, body: { member: profileBody(person, false) } };
+    ensureMutualMatches(ctx, member.id);
+    return { status: 200, body: { member: { ...profileBody(person, false), ...shortlistFields(ctx, member.id, person.id) } } };
+  }
+  if (name === "shortlist_member") {
+    const memberId = text(args.memberId) ?? text(args.member_id) ?? "";
+    const person = getMember(ctx, memberId);
+    if (!person || person.id === member.id || subscriptionBlocks(person) || !isProfileComplete(person)) {
+      return { status: 404, body: { error: "That member is not available." } };
+    }
+    const result = shortlistMember(ctx, member.id, person.id);
+    if (!result.ok) return { status: 400, body: { error: result.error, hold: result.hold } };
+    return { status: result.created ? 201 : 200, body: { memberId: person.id, matchId: result.matchId, shortlisted: true, created: result.created } };
   }
   if (name === "send_bot_message" || name === "send_desk_message") {
     const body = text(args.body);
