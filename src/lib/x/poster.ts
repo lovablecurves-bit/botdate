@@ -136,3 +136,18 @@ export async function listBotMentions(ctx: BotDateDb, sinceId: string | null, fe
     json.meta && typeof json.meta === "object" ? (json.meta as Record<string, unknown>) : { result_count: data.length };
   return { data, meta };
 }
+
+/** Delete one of the bot account's own posts. X refuses ids the account does not own. */
+export async function deleteBotTweet(ctx: BotDateDb, id: string, fetchImpl: FetchLike = fetch): Promise<{ deleted: boolean }> {
+  if (!TWEET_ID.test(id)) throw new BotPosterError("id must be a post id.", 400);
+  const { accessToken } = await ensureBotAccessToken(ctx, { fetchImpl });
+  const response = await xFetch(fetchImpl, `${X_TWEETS_URL}/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const json = (await response.json().catch(() => null)) as { data?: { deleted?: unknown } } | null;
+  if (!response.ok || json?.data?.deleted !== true) {
+    throw new XPostError(response.status, redact(describeXError(json), accessToken));
+  }
+  return { deleted: true };
+}
