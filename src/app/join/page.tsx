@@ -7,8 +7,7 @@ import { Wordmark } from "@/components/wordmark";
 import { memberHome, requireUser } from "@/lib/auth";
 import { withDb } from "@/lib/db/open";
 import { getMember } from "@/lib/domain";
-import { FOUNDING_PITCH, foundingSpotCopy } from "@/lib/founding";
-import { loadFoundingSpotsLeft } from "@/lib/founding-count";
+import { FOUNDING_PITCH, FOUNDING_SPOTS_LINE } from "@/lib/founding";
 import { canManageBilling, MEMBERSHIP_LABEL, needsPaywall } from "@/lib/stripe/access";
 import { fulfillCheckoutSession } from "@/lib/stripe/fulfill";
 
@@ -30,7 +29,6 @@ export default async function JoinPage({
   }
   if (!needsPaywall(member)) redirect(memberHome(member));
 
-  const spotsLeft = await loadFoundingSpotsLeft();
   const notice =
     query.error ??
     (query.checkout === "cancel" ? "Checkout was cancelled. You can join whenever you're ready." : null) ??
@@ -43,16 +41,10 @@ export default async function JoinPage({
           <Wordmark />
         </p>
         <h1>{FOUNDING_PITCH}</h1>
-        {spotsLeft === null ? null : (
-          <p className="founding-spots" data-testid="founding-spots">
-            {foundingSpotCopy(spotsLeft)}
-          </p>
-        )}
-        <p className="lede">
-          {spotsLeft === 0
-            ? "Founding spots are full. Membership is $4.20/mo."
-            : "Your matchmaker does the small talk. You step in when there is a date to approve."}
+        <p className="founding-spots" data-testid="founding-spots">
+          {FOUNDING_SPOTS_LINE}
         </p>
+        <p className="lede">Your matchmaker does the small talk. You step in when there is a date to approve.</p>
       </header>
       <Banner>{notice}</Banner>
       <section className="paywall-card">

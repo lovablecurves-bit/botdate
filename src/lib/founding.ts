@@ -5,6 +5,12 @@ export const FOUNDING_MEMBER_LIMIT = 1000;
 export const FOUNDING_PITCH = "Free for the first 1,000 members";
 
 /**
+ * Public status under the pitch. Number-free on purpose: the live member
+ * count and spots left stay on the server and never go on the site.
+ */
+export const FOUNDING_SPOTS_LINE = "Founding spots are filling";
+
+/**
  * Permanent. Member numbers are assigned once, in sign-up order, and are not reused.
  * A number from 1 through 1,000 is founding status for good, even if a subscription later lapses.
  * This does not read the founder flag. That flag is the owner (member #1) only.
@@ -15,21 +21,13 @@ export function isFoundingMember(member: { memberNumber: number | null }): boole
 }
 
 /**
- * Spots left from a real member count. Refuses a missing or negative count
- * so a caller cannot substitute a full 1,000.
+ * Spots left from a real member count. Internal only: pricing uses member
+ * numbers, and public pages must not render this number.
+ * Refuses a missing or negative count so a caller cannot substitute a full 1,000.
  */
 export function foundingSpotsLeft(realMemberCount: number): number {
   if (!Number.isInteger(realMemberCount) || realMemberCount < 0) {
     throw new Error("Founding spots need a real member count.");
   }
   return Math.max(0, FOUNDING_MEMBER_LIMIT - realMemberCount);
-}
-
-/** Small line under the pitch. The number is the caller's real spots-left count. */
-export function foundingSpotCopy(spotsLeft: number): string {
-  if (!Number.isInteger(spotsLeft) || spotsLeft < 0) {
-    throw new Error("Founding spot copy needs a real spots-left count.");
-  }
-  const left = spotsLeft.toLocaleString("en-US");
-  return `Free founding spot: ${left} of 1,000 left`;
 }

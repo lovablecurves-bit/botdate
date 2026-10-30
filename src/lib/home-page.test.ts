@@ -12,7 +12,12 @@ test("the public homepage keeps sign-in and adds how-it-works, preview, FAQ, and
 
   assert.match(screen, /data-testid="sign-in-x"/);
   assert.match(screen, /founding-spots/);
-  assert.match(screen, /loadFoundingSpotsLeft/);
+  assert.match(screen, /\{FOUNDING_SPOTS_LINE\}/);
+  const founding = fs.readFileSync(path.join(root, "src/lib/founding.ts"), "utf8");
+  assert.match(founding, /export const FOUNDING_SPOTS_LINE = "Founding spots are filling"/);
+  assert.equal(screen.includes("loadFoundingSpotsLeft"), false);
+  assert.equal(screen.includes("of 1,000 left"), false);
+  assert.equal(screen.includes("spots left"), false);
   assert.match(screen, /HomeShowcase/);
   assert.match(screen, /HomeFooter/);
 

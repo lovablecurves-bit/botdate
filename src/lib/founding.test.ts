@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { eq } from "drizzle-orm";
 import { test } from "node:test";
 import { handleMcp } from "./agent/mcp";
@@ -9,7 +10,7 @@ import { openDatabase } from "./db/open";
 import { users } from "./db/schema";
 import { listDirectory } from "./directory";
 import { applyBotProfile, getMember } from "./domain";
-import { FOUNDING_MEMBER_LIMIT, FOUNDING_PITCH, foundingSpotCopy, foundingSpotsLeft, isFoundingMember } from "./founding";
+import { FOUNDING_MEMBER_LIMIT, FOUNDING_PITCH, FOUNDING_SPOTS_LINE, foundingSpotsLeft, isFoundingMember } from "./founding";
 import { subscriptionBlocks } from "./billing/access";
 import { setSubscription } from "./billing/stripe";
 import { countRealMembers, ensureRealMemberNumbers, upsertXMember } from "./x/account";
@@ -31,12 +32,10 @@ test("founding spots come from the real X member count and ignore the demo roste
   try {
     assert.equal(countRealMembers(ctx), 0);
     assert.equal(foundingSpotsLeft(countRealMembers(ctx)), FOUNDING_MEMBER_LIMIT);
-    assert.equal(foundingSpotCopy(foundingSpotsLeft(0)), "Free founding spot: 1,000 of 1,000 left");
     upsertXMember(ctx, { xUserId: "10", handle: "ada", name: "Ada", bio: "", avatarUrl: "" });
     upsertXMember(ctx, { xUserId: "11", handle: "grace", name: "Grace", bio: "", avatarUrl: "" });
     assert.equal(countRealMembers(ctx), 2);
     assert.equal(foundingSpotsLeft(countRealMembers(ctx)), 998);
-    assert.equal(foundingSpotCopy(998), "Free founding spot: 998 of 1,000 left");
   } finally {
     ctx.close();
   }
@@ -82,7 +81,6 @@ test("members 1 through 1,000 stay founding forever and member 1,001 needs a sub
     assert.equal(byNumber.get(FOUNDING_MEMBER_LIMIT + 1)?.xUserId, String(FOUNDING_MEMBER_LIMIT + 1));
     assert.equal(countRealMembers(ctx), FOUNDING_MEMBER_LIMIT + 1);
     assert.equal(foundingSpotsLeft(countRealMembers(ctx)), 0);
-    assert.equal(foundingSpotCopy(0), "Free founding spot: 0 of 1,000 left");
 
     assert.equal(isFoundingMember({ memberNumber: Number(byNumber.get(FOUNDING_MEMBER_LIMIT)?.memberNumber) }), true);
     assert.equal(isFoundingMember({ memberNumber: Number(byNumber.get(FOUNDING_MEMBER_LIMIT + 1)?.memberNumber) }), false);
@@ -175,9 +173,45 @@ test("sign-in, join, and metadata use the founding pitch instead of the trial li
   const join = readFileSync("src/app/join/page.tsx", "utf8");
   const layout = readFileSync("src/app/layout.tsx", "utf8");
   assert.match(home, /FOUNDING_PITCH/);
+  assert.match(home, /FOUNDING_SPOTS_LINE/);
   assert.match(home, /founding-spots/);
   assert.match(join, /FOUNDING_PITCH/);
+  assert.match(join, /FOUNDING_SPOTS_LINE/);
   assert.match(join, /founding-spots/);
   assert.match(layout, /openGraph/);
   assert.equal(FOUNDING_PITCH, "Free for the first 1,000 members");
+  assert.equal(FOUNDING_SPOTS_LINE, "Founding spots are filling");
+  assert.equal(/\d/.test(FOUNDING_SPOTS_LINE), false);
+});
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return sourceFiles(full);
+    return full.endsWith(".ts") || full.endsWith(".tsx") ? [full] : [];
+  });
+}
+
+test("public pages and unauthenticated APIs do not publish a member or signup count", () => {
+  const leaked = /spots left|of 1,000 left|loadFoundingSpotsLeft|foundingSpotCopy|countRealMembers|members joined|role="progressbar"/;
+  const publicFiles = [
+    ...sourceFiles("src/app").filter((file) => !file.includes(`${path.sep}api${path.sep}admin${path.sep}`)),
+    ...sourceFiles("src/components"),
+    "src/lib/share.ts",
+  ];
+  for (const file of publicFiles) {
+    const source = readFileSync(file, "utf8");
+    assert.equal(leaked.test(source), false, file);
+  }
+
+  const routes = sourceFiles("src/app/api");
+  for (const file of routes) {
+    const normalized = file.split(path.sep).join("/");
+    if (normalized === "src/app/api/admin/signups/route.ts") continue;
+    const source = readFileSync(file, "utf8");
+    assert.equal(source.includes("countRealMembers"), false, file);
+    assert.equal(source.includes("listSignups"), false, file);
+    assert.equal(source.includes("foundingSpotsLeft"), false, file);
+    assert.equal(source.includes("total:"), false, file);
+  }
 });
